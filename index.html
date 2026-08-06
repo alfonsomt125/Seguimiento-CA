@@ -1718,12 +1718,12 @@
 
 <!-- Modal: firma de recibido -->
 <div class="modal-bg" id="firmaModalBg" style="-webkit-user-select:none;user-select:none;">
-  <div class="modal" style="max-width:960px;">
-    <h3>Firma de recibido</h3>
-    <p class="hint" id="firmaResumen" style="margin:0 0 12px;"></p>
-    <canvas id="firmaCanvas" width="1100" height="460" style="border:2px solid var(--line);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;width:100%;max-width:1100px;height:min(60vh,460px);display:block;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;"></canvas>
-    <p class="hint" style="margin:8px 0 0;font-size:13.5px;">Firma aquí con el dedo (pantalla táctil), el mouse o el lápiz.</p>
-    <div class="modal-actions" style="justify-content:space-between;">
+  <div class="modal" style="max-width:none;width:96vw;height:94vh;max-height:94vh;display:flex;flex-direction:column;">
+    <h3 style="flex-shrink:0;">Firma de recibido</h3>
+    <p class="hint" id="firmaResumen" style="margin:0 0 10px;flex-shrink:0;"></p>
+    <canvas id="firmaCanvas" width="1600" height="900" style="border:2px solid var(--line);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;width:100%;flex:1;min-height:0;display:block;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;"></canvas>
+    <p class="hint" style="margin:8px 0 0;font-size:13.5px;flex-shrink:0;">Firma aquí con el dedo (pantalla táctil), el mouse o el lápiz.</p>
+    <div class="modal-actions" style="justify-content:space-between;flex-shrink:0;">
       <button class="ghost" id="btnLimpiarFirma">Limpiar firma</button>
       <div style="display:flex;gap:10px;">
         <button class="ghost" id="btnCancelFirma">Cancelar</button>
