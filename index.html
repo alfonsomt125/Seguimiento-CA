@@ -356,6 +356,8 @@
   .pill-Pendiente{background:var(--amber-bg);color:var(--amber);}
   .pill-No_ejecutado,.pill-No_completado{background:var(--red-bg);color:var(--red);}
   .pill-Cancelado{background:var(--gray-bg);color:var(--gray);}
+  .pill-orden-Abierta{background:var(--green-bg);color:var(--green);}
+  .pill-orden-Cerrada{background:var(--gray-bg);color:var(--gray);}
   .pill-Operativo{background:var(--green-bg);color:var(--green);}
   .pill-En_mantenimiento{background:var(--blue-bg);color:var(--blue);}
   .pill-Dañado{background:var(--red-bg);color:var(--red);}
@@ -525,9 +527,14 @@
         <div id="statusBars"></div>
       </div>
       <div class="panel">
-        <h2>Actividades por área</h2>
-        <div id="areaBars"></div>
+        <h2>Órdenes: abiertas vs. cerradas</h2>
+        <p class="hint" style="margin:0 0 10px;">Se considera "Cerrada" cuando llega al 100% de avance, se marca Finalizada, o se Cancela. Toca para ver el detalle.</p>
+        <div id="ordenPie" class="pie-wrap"></div>
       </div>
+    </div>
+    <div class="panel">
+      <h2>Actividades por área</h2>
+      <div id="areaBars"></div>
     </div>
     <div class="panel">
       <h2>Últimas entradas de bitácora</h2>
@@ -591,6 +598,14 @@
           <label>Área</label>
           <select id="filterArea"><option value="">Todas</option></select>
         </div>
+        <div class="field">
+          <label>Orden</label>
+          <select id="filterOrden">
+            <option value="">Todas</option>
+            <option value="Abierta">Abiertas</option>
+            <option value="Cerrada">Cerradas</option>
+          </select>
+        </div>
         <button class="primary" id="btnNewActivity" style="white-space:nowrap;">+ Nueva actividad</button>
         <button class="ghost" id="btnSyncCatalog" style="white-space:nowrap;" title="Vuelve a revisar si hay actividades nuevas del catálogo (informes de gestión) que aún no estén en tu lista">↻ Actualizar catálogo</button>
       </div>
@@ -603,7 +618,7 @@
           <thead>
             <tr>
               <th class="sortable" data-sort="proyecto">Proyecto / Actividad</th><th class="sortable" data-sort="area">Área</th><th class="sortable" data-sort="responsable">Responsable</th><th class="sortable" data-sort="prioridad">Prioridad</th>
-              <th class="sortable" data-sort="estado">Estado</th><th class="sortable" data-sort="avance">Avance</th><th></th>
+              <th class="sortable" data-sort="estado">Estado</th><th class="sortable" data-sort="avance">Avance</th><th>Orden</th><th></th>
             </tr>
           </thead>
           <tbody id="activitiesBody"></tbody>
@@ -1703,10 +1718,10 @@
 
 <!-- Modal: firma de recibido -->
 <div class="modal-bg" id="firmaModalBg" style="-webkit-user-select:none;user-select:none;">
-  <div class="modal" style="max-width:760px;">
+  <div class="modal" style="max-width:960px;">
     <h3>Firma de recibido</h3>
     <p class="hint" id="firmaResumen" style="margin:0 0 12px;"></p>
-    <canvas id="firmaCanvas" width="900" height="380" style="border:2px solid var(--line);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;width:100%;max-width:900px;height:min(50vh,380px);display:block;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;"></canvas>
+    <canvas id="firmaCanvas" width="1100" height="460" style="border:2px solid var(--line);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;width:100%;max-width:1100px;height:min(60vh,460px);display:block;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;"></canvas>
     <p class="hint" style="margin:8px 0 0;font-size:13.5px;">Firma aquí con el dedo (pantalla táctil), el mouse o el lápiz.</p>
     <div class="modal-actions" style="justify-content:space-between;">
       <button class="ghost" id="btnLimpiarFirma">Limpiar firma</button>
@@ -1743,6 +1758,16 @@
    DATA
    ============================================================ */
 const ESTADOS = ['Pendiente','En proceso','Finalizado','No ejecutado','No completado','Cancelado'];
+
+/* Clasifica cada actividad como "Abierta" (sigue pendiente de trabajo) o
+   "Cerrada" (ya se completó, o quedó formalmente cerrada) — combinando el
+   % de avance con el estado, no solo el estado, ya que a veces una actividad
+   llega al 100% de avance antes de que alguien actualice el estado a
+   "Finalizado" a mano. */
+function getOrdenEstado(a){
+  if(a.estado==='Finalizado' || a.estado==='Cancelado' || Number(a.avance||0)>=100) return 'Cerrada';
+  return 'Abierta';
+}
 const PRIORIDADES = ['Alta','Media','Baja'];
 const STATUS_COLOR = {
   'Finalizado':'#2F7D4F','En proceso':'#B45309','Pendiente':'#B45309',
@@ -2882,6 +2907,33 @@ function renderResumen(){
       <span class="count">${areaCounts[ar]}</span>
     </div>`).join('') : '<p class="empty">Sin datos aún.</p>';
 
+  // --- Torta: Órdenes abiertas vs cerradas (interactiva) ---
+  const abiertas = activities0.filter(a=>getOrdenEstado(a)==='Abierta').length;
+  const cerradas = activities0.filter(a=>getOrdenEstado(a)==='Cerrada').length;
+  const ordenPieEl = document.getElementById('ordenPie');
+  const totalOrden = abiertas + cerradas;
+  if(!totalOrden){
+    ordenPieEl.innerHTML = '<p class="empty">Sin datos aún.</p>';
+  } else {
+    const pctAbiertas = abiertas/totalOrden*360;
+    const stops = `#00A884 0deg ${pctAbiertas}deg, #6B7280 ${pctAbiertas}deg 360deg`;
+    ordenPieEl.innerHTML = `
+      <div class="pie-chart" id="ordenPieChart" style="background:conic-gradient(${stops});cursor:pointer;" title="Toca para ver las órdenes abiertas"></div>
+      <div class="pie-legend">
+        <div class="pie-legend-row" data-ordencat="Abierta" style="cursor:pointer;"><span class="pie-swatch" style="background:#00A884"></span><span class="pie-legend-name">Abiertas</span><span class="pie-legend-val">${abiertas} (${Math.round(abiertas/totalOrden*100)}%)</span></div>
+        <div class="pie-legend-row" data-ordencat="Cerrada" style="cursor:pointer;"><span class="pie-swatch" style="background:#6B7280"></span><span class="pie-legend-name">Cerradas</span><span class="pie-legend-val">${cerradas} (${Math.round(cerradas/totalOrden*100)}%)</span></div>
+      </div>`;
+    const irAActividadesConOrden = (orden)=>{
+      document.querySelector('#mantSubActividades nav.tabs button[data-view="actividades"]').click();
+      document.getElementById('filterOrden').value = orden;
+      renderActivitiesTable();
+    };
+    document.getElementById('ordenPieChart').addEventListener('click', ()=>irAActividadesConOrden('Abierta'));
+    document.querySelectorAll('#ordenPie [data-ordencat]').forEach(row=>{
+      row.addEventListener('click', ()=>irAActividadesConOrden(row.dataset.ordencat));
+    });
+  }
+
   const recent = [...bitacora0].sort((a,b)=> (b.fecha+b.createdAt).localeCompare(a.fecha+a.createdAt)).slice(0,5);
   document.getElementById('recentEntries').innerHTML = recent.length ? recent.map(e=>{
     const act = activities0.find(a=>a.id===e.actividadId);
@@ -3068,11 +3120,13 @@ function renderActivitiesTable(){
   const search = document.getElementById('filterSearch').value.toLowerCase();
   const estadoF = document.getElementById('filterEstado').value;
   const areaF = document.getElementById('filterArea').value;
+  const ordenF = document.getElementById('filterOrden').value;
   const anoF = document.getElementById('filterAno').dataset.value || '';
   let rows = activities.filter(a=>{
     if(search && !a.proyecto.toLowerCase().includes(search)) return false;
     if(estadoF && a.estado!==estadoF) return false;
     if(areaF && a.area!==areaF) return false;
+    if(ordenF && getOrdenEstado(a)!==ordenF) return false;
     if(anoF){
       const y = getActivityYear(a);
       if(anoF==='__sinfecha'){ if(y) return false; }
@@ -3084,10 +3138,12 @@ function renderActivitiesTable(){
   updateSortHeaders();
   const tbody = document.getElementById('activitiesBody');
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">Ninguna actividad coincide con el filtro.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Ninguna actividad coincide con el filtro.</td></tr>`;
     return;
   }
-  tbody.innerHTML = rows.map(a=>`
+  tbody.innerHTML = rows.map(a=>{
+    const orden = getOrdenEstado(a);
+    return `
     <tr>
       <td><strong>${esc(a.proyecto)}</strong>${a.obs?`<div style="color:var(--gray);font-size:11.5px;margin-top:2px;">${esc(a.obs)}</div>`:''}</td>
       <td>${esc(a.area)}</td>
@@ -3095,11 +3151,13 @@ function renderActivitiesTable(){
       <td><span class="pri-${a.prioridad}">${a.prioridad}</span></td>
       <td><span class="pill pill-${String(a.estado).replace(/ /g,'_')}">${a.estado}</span></td>
       <td><span class="prog-mini"><span class="prog-mini-fill" style="width:${a.avance}%"></span></span>${a.avance}%</td>
+      <td><span class="pill pill-orden-${orden}">${orden==='Abierta'?'🟢 Abierta':'⚫ Cerrada'}</span></td>
       <td><div class="row-actions">
         <button class="ghost" data-edit="${a.id}">Editar</button>
         <button class="ghost danger" data-del="${a.id}">Eliminar</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   tbody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openModal(b.dataset.edit)));
   tbody.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', async ()=>{
@@ -3134,7 +3192,7 @@ document.querySelectorAll('#view-actividades th.sortable').forEach(th=>{
     renderActivitiesTable();
   });
 });
-['filterEstado','filterArea'].forEach(id=>{
+['filterEstado','filterArea','filterOrden'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderActivitiesTable);
   document.getElementById(id).addEventListener('change', renderActivitiesTable);
 });
