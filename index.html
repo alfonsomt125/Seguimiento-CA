@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-<meta name="theme-color" content="#0C2E4E">
+<meta name="theme-color" content="#011632">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,23 +15,26 @@
      funcionando con su almacenamiento normal. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#F7FAF9;
-    --paper-2:#EAF6F1;
-    --ink:#1E2A28;
-    --navy:#0C2E4E;
-    --navy-2:#00A884;
-    --teal:#00D9A6;
-    --orange:#E8833A;
-    --line:#D6E5E0;
-    --green:#2F7D4F; --green-bg:#E3F3E8;
-    --amber:#B45309; --amber-bg:#FDF1DD;
-    --red:#B3261E; --red-bg:#FBEAEA;
-    --gray:#6B7280; --gray-bg:#ECEAE3;
-    --blue:#2C5F8A; --blue-bg:#E5EEF6;
-    --shadow: 0 1px 2px rgba(12,46,78,.06), 0 4px 14px rgba(12,46,78,.07);
+    --paper:#F1F2F6;
+    --paper-2:#E9ECF4;
+    --ink:#1D1D1F;
+    --navy:#011632;
+    --navy-2:#03459B;
+    --teal:#5D88D6;
+    --orange:#F29622;
+    --line:#E1E4ED;
+    --green:#1F9E6B; --green-bg:#E1F5EC;
+    --amber:#D97F0A; --amber-bg:#FDF0DC;
+    --red:#E0342A; --red-bg:#FCEAEA;
+    --gray:#6E7480; --gray-bg:#EEF0F5;
+    --blue:#03459B; --blue-bg:#E5EEF9;
+    --shadow: 0 1px 3px rgba(1,22,50,.05), 0 10px 28px rgba(1,22,50,.08);
+    --shadow-lg: 0 24px 60px rgba(1,22,50,.20);
+    --radius-lg:20px; --radius-md:14px; --radius-sm:10px;
+    --sys-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
   *{box-sizing:border-box;}
   /* Evita el "zoom por doble toque" del navegador al tocar rápido dos veces
@@ -44,61 +47,73 @@
   body{
     margin:0;
     overflow-x:hidden;
-    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    font-family:var(--sys-font);
     background:
-      linear-gradient(var(--paper) 1px, transparent 1px),
-      linear-gradient(90deg, var(--paper) 1px, transparent 1px),
+      radial-gradient(circle at 12% 8%, rgba(93,136,214,.10), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(242,150,34,.07), transparent 40%),
       var(--paper);
     color:var(--ink);
     min-height:100vh;
     -webkit-text-size-adjust:100%;
     touch-action: manipulation;
+    -webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 80px;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 24px 80px;display:flow-root;}
   /* module selector */
   .selector-wrap{
     min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;
     padding:40px 20px;
     background:
-      radial-gradient(circle at 15% 15%, rgba(0,217,166,.10), transparent 45%),
-      radial-gradient(circle at 85% 85%, rgba(232,131,58,.08), transparent 45%),
+      radial-gradient(circle at 15% 15%, rgba(93,136,214,.10), transparent 45%),
+      radial-gradient(circle at 85% 85%, rgba(242,150,34,.08), transparent 45%),
       linear-gradient(160deg, var(--navy) 0%, #123B60 55%, var(--navy) 100%);
   }
   .selector-inner{width:100%;max-width:640px;text-align:center;}
   .selector-header{margin-bottom:44px;}
   .selector-header img{height:76px;margin-bottom:18px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));}
   .selector-eyebrow{margin:0;color:var(--teal);font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;}
-  .selector-header h1{font-family:'Fraunces',serif;font-size:32px;margin:8px 0 18px;color:#fff;font-weight:600;}
+  .selector-header h1{font-family:var(--sys-font);font-size:34px;margin:10px 0 18px;color:#fff;font-weight:800;letter-spacing:-.02em;}
   .selector-rule{width:52px;height:3px;background:var(--orange);margin:0 auto 18px;border-radius:2px;}
   .selector-motto{margin:0;color:rgba(255,255,255,.72);font-size:13.5px;font-style:italic;}
   .module-cards{display:flex;justify-content:center;gap:22px;flex-wrap:wrap;}
   .module-card{
-    background:#fff;border:none;border-radius:14px;
-    width:220px;height:140px;
-    display:flex;align-items:center;justify-content:center;text-align:center;
-    cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.18);
-    transition:transform .15s ease, box-shadow .15s ease;
-    border-bottom:3px solid var(--teal);
+    background:#fff;border:none;border-radius:var(--radius-lg);
+    width:200px;height:190px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;
+    cursor:pointer;box-shadow:0 16px 40px rgba(1,22,50,.22);
+    transition:transform .18s ease, box-shadow .18s ease;
   }
-  .module-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(0,0,0,.24);}
-  .module-card span{font-family:'Fraunces',serif;font-size:18px;color:var(--navy);font-weight:600;line-height:1.35;padding:0 12px;}
+  .module-card:hover{transform:translateY(-6px) scale(1.015);box-shadow:0 22px 50px rgba(1,22,50,.30);}
+  .module-card::before{
+    content:"📦";font-size:28px;width:64px;height:64px;border-radius:18px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 22px rgba(1,22,50,.24);
+    background:linear-gradient(135deg,var(--teal),var(--navy-2));
+  }
+  .module-card[data-open="inventario"]::before{content:"📦";background:linear-gradient(135deg,#7EA6E8,#03459B);}
+  .module-card[data-open="mantenimiento"]::before{content:"🛠️";background:linear-gradient(135deg,#F7AC4D,#D9761A);}
+  .module-card[data-open="espacios"]::before{content:"🗓️";background:linear-gradient(135deg,#3DBB8A,#0F6E4A);}
+  .module-card span{font-family:var(--sys-font);font-size:16px;color:var(--navy);font-weight:700;line-height:1.35;padding:0 14px;letter-spacing:-.01em;}
   @media(max-width:520px){
     .module-cards{gap:16px;}
-    .module-card{width:100%;max-width:260px;height:120px;}
+    .module-card{width:100%;max-width:260px;height:160px;}
   }
   .mant-selector-wrap{padding:24px 0 48px;text-align:center;}
   .mant-selector-wrap p.hint{font-size:14px;margin:0 0 26px;}
   .mant-subcards{display:flex;justify-content:center;gap:22px;flex-wrap:wrap;}
   .mant-subcard{
-    background:#fff;border:none;border-radius:14px;width:260px;padding:34px 24px;
-    display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;
-    cursor:pointer;box-shadow:var(--shadow);border-bottom:4px solid var(--teal);
-    transition:transform .15s ease, box-shadow .15s ease;
+    background:#fff;border:none;border-radius:var(--radius-lg);width:260px;padding:32px 24px;
+    display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
+    cursor:pointer;box-shadow:var(--shadow);
+    transition:transform .18s ease, box-shadow .18s ease;
   }
-  .mant-subcard:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(12,46,78,.16);}
-  .mant-subcard.aires{border-bottom-color:var(--orange);}
-  .mant-subcard .mant-icon{font-size:34px;}
-  .mant-subcard span{font-family:'Fraunces',serif;font-size:17px;color:var(--navy);font-weight:600;line-height:1.35;}
+  .mant-subcard:hover{transform:translateY(-5px);box-shadow:0 18px 40px rgba(1,22,50,.20);}
+  .mant-subcard .mant-icon{
+    font-size:30px;width:60px;height:60px;border-radius:17px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--teal),var(--navy-2));box-shadow:0 8px 18px rgba(1,22,50,.22);
+  }
+  .mant-subcard.aires .mant-icon{background:linear-gradient(135deg,#F7AC4D,#D9761A);}
+  .mant-subcard span{font-family:var(--sys-font);font-size:16px;color:var(--navy);font-weight:700;line-height:1.35;letter-spacing:-.01em;}
   .mant-subcard p{margin:0;font-size:12.5px;color:var(--gray);}
   @media(max-width:520px){
     .mant-subcard{width:100%;max-width:280px;}
@@ -106,7 +121,7 @@
 
   /* Calendario de Gestión de Inventario (reserva de espacios) */
   .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap;}
-  .cal-header h3{margin:0;font-family:'Fraunces',serif;color:var(--navy);font-size:19px;text-transform:capitalize;}
+  .cal-header h3{margin:0;font-family:var(--sys-font);color:var(--navy);font-size:18px;font-weight:800;text-transform:capitalize;letter-spacing:-.01em;}
   .cal-nav-btn{background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 14px;cursor:pointer;font-weight:600;color:var(--navy);font-size:13px;white-space:nowrap;}
   .cal-nav-btn:hover{background:var(--paper-2);}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
@@ -151,7 +166,7 @@
     box-shadow:var(--shadow);border-bottom:3px solid var(--teal);transition:transform .15s, box-shadow .15s;
     display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;min-height:64px;
   }
-  .tile-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(12,46,78,.14);}
+  .tile-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(1,22,50,.14);}
   .tile-card.low{border-bottom-color:var(--red);}
   .tile-card .tc-name{font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.3;}
   .tile-card .tc-sub{font-size:10.5px;color:var(--gray);}
@@ -163,7 +178,7 @@
   .carrito-row .cr-qty{color:var(--navy);font-weight:700;white-space:nowrap;}
   .carrito-row .cr-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1;padding:8px;}
   .keypad-display{
-    font-family:'Fraunces',serif;font-size:32px;font-weight:700;color:var(--navy);text-align:center;
+    font-family:var(--sys-font);font-size:32px;font-weight:800;color:var(--navy);text-align:center;letter-spacing:-.01em;
     background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:14px;
   }
   .keypad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;}
@@ -198,35 +213,65 @@
   .brand-left{display:flex;align-items:center;gap:14px;}
   .escudo{width:56px;height:56px;object-fit:contain;flex-shrink:0;border-radius:4px;}
   .brand-eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--navy-2);margin:0 0 4px;}
-  h1{margin:0;font-size:24px;font-weight:700;color:var(--navy);letter-spacing:-.01em;}
+  h1{margin:0;font-size:25px;font-weight:800;color:var(--navy);letter-spacing:-.02em;}
   .subtitle{margin:4px 0 0;color:var(--gray);font-size:13.5px;}
   .today-stamp{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#fff;background:var(--navy);border-radius:3px;padding:7px 12px;white-space:nowrap;}
 
-  /* tabs */
-  nav.tabs{display:flex;gap:4px;margin-bottom:22px;border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x;overscroll-behavior-y:contain;}
+  /* tabs -> sidebar vertical estilo app nativa (usa float, así el contenido
+     de las vistas se acomoda solo al lado, sin tener que envolver cada
+     módulo en HTML nuevo — funciona igual en los 17 lugares de la app que
+     usan este mismo patrón de pestañas). */
+  nav.tabs{
+    float:left;width:196px;display:flex;flex-direction:column;gap:3px;
+    margin:0 26px 24px 0;border-bottom:none;
+    background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);
+    padding:10px;box-shadow:var(--shadow);
+    overflow-x:visible;overflow-y:visible;scrollbar-width:none;touch-action:auto;overscroll-behavior-y:auto;
+  }
   nav.tabs::-webkit-scrollbar{display:none;}
   nav.tabs button{
-    font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;color:var(--gray);
-    background:none;border:none;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;
-    margin-bottom:-1px;transition:color .15s;flex-shrink:0;white-space:nowrap;
+    font-family:var(--sys-font);font-size:13.5px;font-weight:600;color:var(--ink);
+    background:none;border:none;padding:10px 12px;cursor:pointer;border-radius:var(--radius-sm);
+    margin-bottom:0;transition:background .15s, color .15s;flex-shrink:0;white-space:nowrap;
+    display:flex;align-items:center;gap:9px;text-align:left;width:100%;
   }
-  nav.tabs button:hover{color:var(--navy);}
-  nav.tabs button.active{color:var(--navy);border-bottom-color:var(--teal);}
+  nav.tabs button::before{font-size:14px;line-height:1;}
+  nav.tabs button[data-view="resumen"]::before,nav.tabs button[data-aireview="panel"]::before,nav.tabs button[data-invview="panel"]::before{content:"📊";}
+  nav.tabs button[data-view="bitacora"]::before{content:"📓";}
+  nav.tabs button[data-view="actividades"]::before{content:"🧾";}
+  nav.tabs button[data-view="cronograma"]::before{content:"📅";}
+  nav.tabs button[data-invview="movimientos"]::before{content:"📥";}
+  nav.tabs button[data-invview="entrega"]::before{content:"📤";}
+  nav.tabs button[data-invview="movtab"]::before{content:"🔁";}
+  nav.tabs button[data-aireview="equipos"]::before{content:"❄️";}
+  nav.tabs button[data-aireview="reportes"]::before{content:"🗂️";}
+  nav.tabs button:hover{background:var(--paper-2);color:var(--navy);}
+  nav.tabs button.active{background:linear-gradient(135deg,var(--navy-2),var(--navy));color:#fff;box-shadow:0 4px 14px rgba(3,69,155,.32);}
+  @media(max-width:760px){
+    nav.tabs{
+      float:none;width:100%;flex-direction:row;overflow-x:auto;overflow-y:hidden;
+      touch-action:pan-x;overscroll-behavior-y:contain;margin:0 0 20px;border-radius:var(--radius-md);
+    }
+    nav.tabs button{width:auto;}
+  }
 
-  .view{display:none;}
+  .view{display:none;margin-left:222px;}
+  @media(max-width:760px){
+    .view{margin-left:0;}
+  }
   .view.active{display:block;animation:fade .18s ease;}
   @keyframes fade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
 
   /* KPI cards */
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:26px;}
-  .kpi{background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px 18px;box-shadow:var(--shadow);}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:11px;padding:16px 18px;box-shadow:var(--shadow);}
   .kpi-clickable{cursor:pointer;transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;}
-  .kpi-clickable:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(12,46,78,.14);}
+  .kpi-clickable:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(1,22,50,.14);}
   .kpi-active{border-color:var(--navy);border-width:2px;background:var(--paper-2);}
   .kpi .num{font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:var(--navy);}
   .kpi .lbl{font-size:12px;color:var(--gray);margin-top:4px;}
 
-  .panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;box-shadow:var(--shadow);margin-bottom:20px;}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:13px;padding:20px;box-shadow:var(--shadow);margin-bottom:20px;}
   .panel h2{margin:0 0 14px;font-size:15px;color:var(--navy);font-weight:700;}
 
   /* status bars */
@@ -252,10 +297,10 @@
   /* forms */
   label{display:block;font-size:12px;font-weight:600;color:var(--navy);margin-bottom:5px;}
   input,select,textarea{
-    width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--ink);
-    border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:#fff;
+    width:100%;font-family:var(--sys-font);font-size:13.5px;color:var(--ink);
+    border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;transition:border-color .15s, box-shadow .15s;
   }
-  input:focus,select:focus,textarea:focus{outline:2px solid var(--navy-2);outline-offset:1px;border-color:var(--navy-2);}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy-2);box-shadow:0 0 0 3px rgba(3,69,155,.14);}
   textarea{resize:vertical;min-height:64px;}
   .field{margin-bottom:12px;}
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -287,17 +332,19 @@
   }
 
   button.primary{
-    font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:13.5px;color:#fff;
-    background:var(--navy);border:none;border-radius:6px;padding:10px 18px;cursor:pointer;transition:background .15s;
+    font-family:var(--sys-font);font-weight:600;font-size:13.5px;color:#fff;
+    background:linear-gradient(155deg, var(--navy-2), var(--navy) 85%);border:none;border-radius:9px;padding:10px 18px;cursor:pointer;
+    box-shadow:0 2px 8px rgba(3,69,155,.28);transition:transform .12s ease, box-shadow .12s ease, filter .15s ease;
   }
-  button.primary:hover{background:var(--navy-2);}
+  button.primary:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 6px 16px rgba(3,69,155,.32);}
+  button.primary:active{transform:translateY(0);}
   button.ghost{
-    font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:12.5px;color:var(--navy);
-    background:none;border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;
+    font-family:var(--sys-font);font-weight:600;font-size:12.5px;color:var(--navy);
+    background:#fff;border:1px solid var(--line);border-radius:9px;padding:7px 12px;cursor:pointer;transition:border-color .15s, color .15s, background .15s;
   }
-  button.ghost:hover{border-color:var(--navy-2);color:var(--navy-2);}
+  button.ghost:hover{border-color:var(--navy-2);color:var(--navy-2);background:var(--paper-2);}
   button.danger{color:var(--red);}
-  button.danger:hover{border-color:var(--red);}
+  button.danger:hover{border-color:var(--red);color:var(--red);background:var(--red-bg);}
 
   /* bitacora entries */
   .day-group{margin-bottom:22px;}
@@ -370,7 +417,8 @@
   .row-actions{display:flex;gap:6px;}
   .row-actions button{font-size:11px;padding:4px 8px;}
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .table-wrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--radius-md);background:#fff;}
+  .table-wrap td, .table-wrap th{padding-left:14px;}
   #aireAlertasPanel .table-wrap thead th{position:sticky;top:0;background:#fff;z-index:1;}
 
   /* Gantt chart */
@@ -382,8 +430,8 @@
   .gantt-col-label{flex-shrink:0;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--navy);padding:8px 2px;border-right:1px solid var(--line);white-space:nowrap;overflow:hidden;}
   .gantt-row{display:flex;border-bottom:1px solid var(--line);}
   .gantt-row:hover{background:var(--paper-2) !important;}
-  .gantt-row.gantt-row-blue{background:rgba(12,46,78,.05);}
-  .gantt-row.gantt-row-orange{background:rgba(232,131,58,.07);}
+  .gantt-row.gantt-row-blue{background:rgba(1,22,50,.05);}
+  .gantt-row.gantt-row-orange{background:rgba(242,150,34,.07);}
   .gantt-row-label{width:260px;flex-shrink:0;padding:8px 10px;font-size:12px;color:var(--ink);border-right:1px solid var(--line);display:flex;align-items:center;gap:6px;}
   .gantt-row-label .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
   .gantt-row-track{flex:1;position:relative;display:flex;min-height:38px;}
@@ -399,7 +447,7 @@
   /* modal */
   .modal-bg{display:none;position:fixed;inset:0;background:rgba(31,59,87,.35);z-index:50;align-items:center;justify-content:center;padding:20px;}
   .modal-bg.active{display:flex;}
-  .modal{background:#fff;border-radius:10px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .modal{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;padding:22px;box-shadow:0 24px 64px rgba(1,22,50,.28);}
   .modal h3{margin:0 0 16px;color:var(--navy);font-size:16px;}
   .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap;}
 
@@ -665,6 +713,7 @@
   <nav class="tabs">
     <button data-aireview="panel" class="active">Resumen</button>
     <button data-aireview="equipos">Equipos</button>
+    <button data-aireview="reportes">Reportes</button>
   </nav>
 
   <!-- RESUMEN: KPIs + gráficos + alertas + listado -->
@@ -759,6 +808,49 @@
         </tr></thead>
         <tbody id="aireEquiposBody"></tbody>
       </table>
+    </div>
+  </section>
+
+  <!-- REPORTES: historial consolidado de mantenimientos de todos los equipos -->
+  <section class="view" id="view-aire-reportes">
+    <div class="panel">
+      <h2>Historial de mantenimientos — todos los equipos</h2>
+      <p class="hint" style="margin:0 0 14px;">Cada mantenimiento registrado en cualquier equipo, en un solo listado. Toca una fila para ir a la hoja de vida del equipo.</p>
+      <div class="filters" style="margin-bottom:14px;">
+        <div class="field" style="flex:2;min-width:200px;">
+          <label>Buscar salón</label>
+          <input type="text" id="aireRepSearch" placeholder="Ej: Paraninfo, 10A...">
+        </div>
+        <div class="field">
+          <label>Tipo</label>
+          <select id="aireRepTipo">
+            <option value="">Todos</option>
+            <option>Preventivo</option><option>Correctivo</option><option>Instalación</option><option>Revisión</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Desde</label>
+          <input type="date" id="aireRepDesde">
+        </div>
+        <div class="field">
+          <label>Hasta</label>
+          <input type="date" id="aireRepHasta">
+        </div>
+        <button class="ghost" id="btnExportarAireReportesPDF" style="white-space:nowrap;">⬇ Exportar a PDF</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th class="sortable" data-repsort="fecha">Fecha</th>
+            <th class="sortable" data-repsort="ubicacion">Salón</th>
+            <th class="sortable" data-repsort="bloque">Bloque</th>
+            <th class="sortable" data-repsort="tipo">Tipo</th>
+            <th>Responsable</th>
+            <th>Descripción</th>
+          </tr></thead>
+          <tbody id="aireReportesBody"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -1771,10 +1863,10 @@ function getOrdenEstado(a){
 const PRIORIDADES = ['Alta','Media','Baja'];
 const STATUS_COLOR = {
   'Finalizado':'#2F7D4F','En proceso':'#B45309','Pendiente':'#B45309',
-  'No ejecutado':'#B3261E','No completado':'#B3261E','Cancelado':'#6B7280'
+  'No ejecutado':'#B3261E','No completado':'#B3261E','Cancelado':'#64748B'
 };
 /* Paleta institucional (colegio): navy, verde-azulado, naranja, teal, azul, gris */
-const PIE_COLORS = ['#0C2E4E','#00A884','#E8833A','#00D9A6','#2C5F8A','#6B7280'];
+const PIE_COLORS = ['#011632','#03459B','#F29622','#5D88D6','#1F7A5C','#64748B'];
 
 const SEED_ACTIVITIES = [
  {proyecto:"Impermeabilización del pasillo Bloque Admon y Bloque D",area:"S. GENERALES/COMPRAS",responsable:"",contratista:"Constructora e inmobiliaria Salas Instalaciones SAS",prioridad:"Media",fechaInicio:"2025-01-22",fechaFin:"2025-02-12",estado:"Finalizado",avance:100,presupEst:30368727,presupEjec:30368727,evidencia:"https://colegioamericano1-my.sharepoint.com/:b:/g/personal/amonserrat_colegio-americano_edu_co/IQCrLL7xZwJmTK3ZQhdZxSjoAYhidqECSvyb5DNDPwyQoMQ?e=702Ivk",obs:"Fuente: Recibidos a satisfacción (2 actas: Bloque Admon + Pasillo A-D)"},
@@ -2916,12 +3008,12 @@ function renderResumen(){
     ordenPieEl.innerHTML = '<p class="empty">Sin datos aún.</p>';
   } else {
     const pctAbiertas = abiertas/totalOrden*360;
-    const stops = `#00A884 0deg ${pctAbiertas}deg, #6B7280 ${pctAbiertas}deg 360deg`;
+    const stops = `#03459B 0deg ${pctAbiertas}deg, #64748B ${pctAbiertas}deg 360deg`;
     ordenPieEl.innerHTML = `
       <div class="pie-chart" id="ordenPieChart" style="background:conic-gradient(${stops});cursor:pointer;" title="Toca para ver las órdenes abiertas"></div>
       <div class="pie-legend">
-        <div class="pie-legend-row" data-ordencat="Abierta" style="cursor:pointer;"><span class="pie-swatch" style="background:#00A884"></span><span class="pie-legend-name">Abiertas</span><span class="pie-legend-val">${abiertas} (${Math.round(abiertas/totalOrden*100)}%)</span></div>
-        <div class="pie-legend-row" data-ordencat="Cerrada" style="cursor:pointer;"><span class="pie-swatch" style="background:#6B7280"></span><span class="pie-legend-name">Cerradas</span><span class="pie-legend-val">${cerradas} (${Math.round(cerradas/totalOrden*100)}%)</span></div>
+        <div class="pie-legend-row" data-ordencat="Abierta" style="cursor:pointer;"><span class="pie-swatch" style="background:#03459B"></span><span class="pie-legend-name">Abiertas</span><span class="pie-legend-val">${abiertas} (${Math.round(abiertas/totalOrden*100)}%)</span></div>
+        <div class="pie-legend-row" data-ordencat="Cerrada" style="cursor:pointer;"><span class="pie-swatch" style="background:#64748B"></span><span class="pie-legend-name">Cerradas</span><span class="pie-legend-val">${cerradas} (${Math.round(cerradas/totalOrden*100)}%)</span></div>
       </div>`;
     const irAActividadesConOrden = (orden)=>{
       document.querySelector('#mantSubActividades nav.tabs button[data-view="actividades"]').click();
@@ -3303,7 +3395,7 @@ function renderGantt(){
     const widthDays = Math.max(daysBetween(start, end), 0);
     const width = Math.max(widthDays * pxPerDay, 14);
     const statusColor = STATUS_COLOR[a.estado] || 'var(--gray)';
-    const barColor = i%2===0 ? '#0C2E4E' : '#E8833A';
+    const barColor = i%2===0 ? '#011632' : '#F29622';
     const title = `${esc(a.proyecto)} | ${a.estado} | ${fmtDate(a.fechaInicio)} - ${a.fechaFin?fmtDate(a.fechaFin):'sin fecha fin'}`;
     const rowTint = i%2===0 ? 'gantt-row-blue' : 'gantt-row-orange';
     return `<div class="gantt-row ${rowTint}">
@@ -3692,11 +3784,129 @@ document.querySelectorAll('#mantSubAires th.sortable').forEach(th=>{
   });
 });
 
+let aireRepSort = {key:'fecha', dir:-1};
+
+function renderAireReportes(){
+  const search = (document.getElementById('aireRepSearch').value||'').toLowerCase().trim();
+  const tipoF = document.getElementById('aireRepTipo').value;
+  const desde = document.getElementById('aireRepDesde').value;
+  const hasta = document.getElementById('aireRepHasta').value;
+
+  let filas = aireHistorial.map(h=>{
+    const a = airesAcondicionados.find(x=>x.id===h.aireId);
+    return {...h, ubicacion: a?.ubicacion||'(equipo eliminado)', bloque: a?.bloque||''};
+  }).filter(f=>{
+    if(search && !f.ubicacion.toLowerCase().includes(search)) return false;
+    if(tipoF && f.tipo!==tipoF) return false;
+    if(desde && f.fecha<desde) return false;
+    if(hasta && f.fecha>hasta) return false;
+    return true;
+  });
+
+  filas.sort((a,b)=>{
+    const {key, dir} = aireRepSort;
+    let va = a[key]||'', vb = b[key]||'';
+    if(va<vb) return -1*dir;
+    if(va>vb) return 1*dir;
+    return 0;
+  });
+
+  document.querySelectorAll('#view-aire-reportes th.sortable').forEach(th=>{
+    th.classList.remove('sort-active');
+    const old = th.querySelector('.sort-arrow'); if(old) old.remove();
+    if(th.dataset.repsort===aireRepSort.key){
+      th.classList.add('sort-active');
+      const arrow = document.createElement('span');
+      arrow.className = 'sort-arrow';
+      arrow.textContent = aireRepSort.dir===1 ? '▲' : '▼';
+      th.appendChild(arrow);
+    }
+  });
+
+  const tbody = document.getElementById('aireReportesBody');
+  tbody.innerHTML = filas.length ? filas.map(f=>{
+    const rango = (f.fechaFin && f.fechaFin!==f.fecha) ? `${fmtDate(f.fecha)} — ${fmtDate(f.fechaFin)}` : fmtDate(f.fecha);
+    return `<tr data-verairerep="${f.aireId}" style="cursor:pointer;">
+      <td style="white-space:nowrap;">${rango}</td>
+      <td><strong>${esc(f.ubicacion)}</strong></td>
+      <td>${esc(f.bloque)||'—'}</td>
+      <td><span class="mov-badge mov-entrada">${esc(f.tipo)}</span></td>
+      <td>${esc(f.responsable)||'—'}</td>
+      <td>${esc(f.descripcion)||'—'}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" class="empty">No hay mantenimientos que coincidan con el filtro.</td></tr>`;
+  tbody.querySelectorAll('[data-verairerep]').forEach(tr=>{
+    tr.addEventListener('click', ()=>openAireDetail(tr.dataset.verairerep));
+  });
+}
+['aireRepSearch','aireRepTipo','aireRepDesde','aireRepHasta'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', renderAireReportes);
+  document.getElementById(id).addEventListener('change', renderAireReportes);
+});
+document.querySelectorAll('#view-aire-reportes th.sortable').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.repsort;
+    if(aireRepSort.key===key){ aireRepSort.dir *= -1; } else { aireRepSort = {key, dir:1}; }
+    renderAireReportes();
+  });
+});
+
+function construirAireReportesHTML(){
+  const filas = [...document.getElementById('aireReportesBody').querySelectorAll('tr[data-verairerep]')];
+  const fechaStr = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+  const filasHtml = filas.map(tr=>{
+    const celdas = [...tr.children].map(td=>td.textContent.trim());
+    return `<tr>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;white-space:nowrap;">${esc(celdas[0])}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;font-weight:600;">${esc(celdas[1])}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(celdas[2])}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(celdas[3])}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(celdas[4])}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(celdas[5])}</td>
+    </tr>`;
+  }).join('');
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reportes de Mantenimiento — Aires Acondicionados</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:16mm 14mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  table{width:100%;border-collapse:collapse;font-size:10px;}
+  @media print{ body{margin:10mm 12mm;} }
+</style></head><body>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Reportes de Mantenimiento — Aires Acondicionados</div>
+  <div style="font-size:11px;color:#6B7280;margin-bottom:12px;">Generado el ${fechaStr}.</div>
+  <div style="display:flex;height:3px;margin-bottom:16px;">
+    <div style="flex:1;background:#011632;"></div><div style="flex:1;background:#5D88D6;"></div><div style="flex:1;background:#F29622;"></div>
+  </div>
+  <table>
+    <thead><tr style="background:#011632;color:#fff;">
+      <th style="padding:7px 8px;text-align:left;">Fecha</th><th style="padding:7px 8px;text-align:left;">Salón</th>
+      <th style="padding:7px 8px;text-align:left;">Bloque</th><th style="padding:7px 8px;text-align:left;">Tipo</th>
+      <th style="padding:7px 8px;text-align:left;">Responsable</th><th style="padding:7px 8px;text-align:left;">Descripción</th>
+    </tr></thead>
+    <tbody>${filasHtml || '<tr><td colspan="6" style="padding:10px;text-align:center;color:#6B7280;">Sin registros.</td></tr>'}</tbody>
+  </table>
+  <div style="font-size:9.5px;color:#6B7280;font-style:italic;margin-top:14px;">Total: ${filas.length} registro(s). Generado automáticamente desde la Bitácora de Seguimiento — Planta Física.</div>
+  <script>
+    window.addEventListener('load', function(){ setTimeout(function(){ window.focus(); window.print(); }, 300); });
+  <\/script>
+</body></html>`;
+}
+document.getElementById('btnExportarAireReportesPDF').addEventListener('click', ()=>{
+  const win = window.open('', '_blank');
+  if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
+  win.document.open();
+  win.document.write(construirAireReportesHTML());
+  win.document.close();
+  showToast('Se abrió una pestaña nueva con el reporte. Ahí elige "Guardar como PDF".');
+});
+
 function renderAiresAll(){
   populateAireFiltros();
   renderAireDashboard();
   renderAireEquiposTable();
   renderAireDashboardCompleto();
+  renderAireReportes();
 }
 
 /* ============================================================
@@ -3722,13 +3932,13 @@ function renderAireDashboardCompleto(){
   }else{
     const pctVencidos = vencidos/totalPie*360;
     const pctAlDia = alDia/totalPie*360;
-    const stops = `#B3261E 0deg ${pctVencidos}deg, #00A884 ${pctVencidos}deg ${pctVencidos+pctAlDia}deg, #6B7280 ${pctVencidos+pctAlDia}deg 360deg`;
+    const stops = `#B3261E 0deg ${pctVencidos}deg, #03459B ${pctVencidos}deg ${pctVencidos+pctAlDia}deg, #64748B ${pctVencidos+pctAlDia}deg 360deg`;
     pieEl.innerHTML = `
       <div class="pie-chart" id="aireDashPieChart" style="background:conic-gradient(${stops});cursor:pointer;" title="Toca para ver los equipos vencidos"></div>
       <div class="pie-legend">
         <div class="pie-legend-row" data-piecat="Vencido" style="cursor:pointer;"><span class="pie-swatch" style="background:#B3261E"></span><span class="pie-legend-name">Vencidos</span><span class="pie-legend-val">${vencidos} (${Math.round(vencidos/totalPie*100)}%)</span></div>
-        <div class="pie-legend-row" data-piecat="Al día" style="cursor:pointer;"><span class="pie-swatch" style="background:#00A884"></span><span class="pie-legend-name">Al día</span><span class="pie-legend-val">${alDia} (${Math.round(alDia/totalPie*100)}%)</span></div>
-        <div class="pie-legend-row" data-piecat="Sin mantenimiento registrado" style="cursor:pointer;"><span class="pie-swatch" style="background:#6B7280"></span><span class="pie-legend-name">Sin mantenimiento registrado</span><span class="pie-legend-val">${sinRegistro} (${Math.round(sinRegistro/totalPie*100)}%)</span></div>
+        <div class="pie-legend-row" data-piecat="Al día" style="cursor:pointer;"><span class="pie-swatch" style="background:#03459B"></span><span class="pie-legend-name">Al día</span><span class="pie-legend-val">${alDia} (${Math.round(alDia/totalPie*100)}%)</span></div>
+        <div class="pie-legend-row" data-piecat="Sin mantenimiento registrado" style="cursor:pointer;"><span class="pie-swatch" style="background:#64748B"></span><span class="pie-legend-name">Sin mantenimiento registrado</span><span class="pie-legend-val">${sinRegistro} (${Math.round(sinRegistro/totalPie*100)}%)</span></div>
       </div>`;
     document.querySelectorAll('#aireDashPie [data-piecat]').forEach(row=>{
       row.addEventListener('click', ()=>openAirePieDetalle(row.dataset.piecat));
@@ -3804,7 +4014,7 @@ function renderAireDashboardCompleto(){
   document.getElementById('aireDashTopReportes').innerHTML = topReportes.length ? topReportes.map(x=>`
     <div class="bar-row" data-airetopreporte="${x.aire.id}" style="cursor:pointer;">
       <span class="name" style="width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(x.aire.ubicacion)||''}${x.aire.bloque?' — '+esc(x.aire.bloque):''}">${esc(x.aire.ubicacion)||'(sin salón)'}${x.aire.bloque?' — '+esc(x.aire.bloque):''}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${(x.count/maxReportes*100)}%;background:#E8833A"></div></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(x.count/maxReportes*100)}%;background:#F29622"></div></div>
       <span class="count" style="width:auto;white-space:nowrap;flex-shrink:0;">${x.count} reporte${x.count===1?'':'s'}</span>
     </div>`).join('') : '<p class="empty">Aún no hay reportes correctivos registrados.</p>';
   document.querySelectorAll('#aireDashTopReportes [data-airetopreporte]').forEach(el=>{
@@ -4174,11 +4384,11 @@ function construirHojaVidaHTML(aireId){
 </style>
 </head>
 <body>
-  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#00A884;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
-  <div style="font-size:21px;font-weight:700;color:#0C2E4E;margin:5px 0 3px;">Hoja de Vida — Aire Acondicionado</div>
-  <div style="font-size:11px;color:#6B7280;margin-bottom:12px;">Generado el ${fechaStr}.</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Hoja de Vida — Aire Acondicionado</div>
+  <div style="font-size:11px;color:#64748B;margin-bottom:12px;">Generado el ${fechaStr}.</div>
   <div style="display:flex;height:3px;margin-bottom:16px;">
-    <div style="flex:1;background:#0C2E4E;"></div><div style="flex:1;background:#00D9A6;"></div><div style="flex:1;background:#E8833A;"></div>
+    <div style="flex:1;background:#011632;"></div><div style="flex:1;background:#5D88D6;"></div><div style="flex:1;background:#F29622;"></div>
   </div>
 
   <table style="margin-bottom:6px;">
@@ -4198,18 +4408,18 @@ function construirHojaVidaHTML(aireId){
 
   ${linajeHtml}
 
-  <h3 style="color:#0C2E4E;font-size:13px;margin:16px 0 8px;">Historial de mantenimientos (${historial.length})</h3>
+  <h3 style="color:#011632;font-size:13px;margin:16px 0 8px;">Historial de mantenimientos (${historial.length})</h3>
   <table>
-    <thead><tr style="background:#0C2E4E;color:#fff;">
+    <thead><tr style="background:#011632;color:#fff;">
       <th style="padding:7px 8px;text-align:left;">Fecha</th><th style="padding:7px 8px;text-align:left;">Tipo</th>
       <th style="padding:7px 8px;text-align:left;">Responsable</th><th style="padding:7px 8px;text-align:left;">Descripción</th>
     </tr></thead>
-    <tbody>${filasHist || '<tr><td colspan="4" style="padding:8px;text-align:center;color:#6B7280;">Sin mantenimientos registrados.</td></tr>'}</tbody>
+    <tbody>${filasHist || '<tr><td colspan="4" style="padding:8px;text-align:center;color:#64748B;">Sin mantenimientos registrados.</td></tr>'}</tbody>
   </table>
 
   <div style="display:flex;gap:40px;margin-top:40px;">
-    <div style="flex:1;border-top:1px solid #0C2E4E;padding-top:5px;font-size:10.5px;font-weight:700;color:#0C2E4E;">Elaborado por — Servicios Generales</div>
-    <div style="flex:1;border-top:1px solid #0C2E4E;padding-top:5px;font-size:10.5px;font-weight:700;color:#0C2E4E;">Recibido / Revisado por</div>
+    <div style="flex:1;border-top:1px solid #011632;padding-top:5px;font-size:10.5px;font-weight:700;color:#011632;">Elaborado por — Servicios Generales</div>
+    <div style="flex:1;border-top:1px solid #011632;padding-top:5px;font-size:10.5px;font-weight:700;color:#011632;">Recibido / Revisado por</div>
   </div>
 
   <script>
@@ -4263,11 +4473,11 @@ function construirVencidosHTML(){
 </style>
 </head>
 <body>
-  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#00A884;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
-  <div style="font-size:21px;font-weight:700;color:#0C2E4E;margin:5px 0 3px;">Mantenimientos Preventivos Vencidos — Aires Acondicionados</div>
-  <div style="font-size:11px;color:#6B7280;margin-bottom:12px;">Generado el ${fechaStr}. Ordenados del más urgente al menos urgente.</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Mantenimientos Preventivos Vencidos — Aires Acondicionados</div>
+  <div style="font-size:11px;color:#64748B;margin-bottom:12px;">Generado el ${fechaStr}. Ordenados del más urgente al menos urgente.</div>
   <div style="display:flex;height:3px;margin-bottom:16px;">
-    <div style="flex:1;background:#0C2E4E;"></div><div style="flex:1;background:#00D9A6;"></div><div style="flex:1;background:#E8833A;"></div>
+    <div style="flex:1;background:#011632;"></div><div style="flex:1;background:#5D88D6;"></div><div style="flex:1;background:#F29622;"></div>
   </div>
   <table>
     <thead><tr style="background:#B3261E;color:#fff;">
@@ -4276,12 +4486,12 @@ function construirVencidosHTML(){
       <th style="padding:8px 9px;">Venció el</th>
       <th style="padding:8px 9px;">Días vencido</th>
     </tr></thead>
-    <tbody>${filas || '<tr><td colspan="4" style="padding:10px;text-align:center;color:#6B7280;">No hay equipos con mantenimiento vencido.</td></tr>'}</tbody>
+    <tbody>${filas || '<tr><td colspan="4" style="padding:10px;text-align:center;color:#64748B;">No hay equipos con mantenimiento vencido.</td></tr>'}</tbody>
   </table>
-  <div style="font-size:9.5px;color:#6B7280;font-style:italic;margin-top:14px;">Total: ${vencidos.length} equipo(s) con mantenimiento preventivo vencido. Generado automáticamente desde la Bitácora de Seguimiento — Planta Física.</div>
+  <div style="font-size:9.5px;color:#64748B;font-style:italic;margin-top:14px;">Total: ${vencidos.length} equipo(s) con mantenimiento preventivo vencido. Generado automáticamente desde la Bitácora de Seguimiento — Planta Física.</div>
   <div style="display:flex;gap:40px;margin-top:40px;">
-    <div style="flex:1;border-top:1px solid #0C2E4E;padding-top:5px;font-size:10.5px;font-weight:700;color:#0C2E4E;">Elaborado por — Servicios Generales</div>
-    <div style="flex:1;border-top:1px solid #0C2E4E;padding-top:5px;font-size:10.5px;font-weight:700;color:#0C2E4E;">Recibido / Revisado por</div>
+    <div style="flex:1;border-top:1px solid #011632;padding-top:5px;font-size:10.5px;font-weight:700;color:#011632;">Elaborado por — Servicios Generales</div>
+    <div style="flex:1;border-top:1px solid #011632;padding-top:5px;font-size:10.5px;font-weight:700;color:#011632;">Recibido / Revisado por</div>
   </div>
   <script>
     window.addEventListener('load', function(){
@@ -4812,21 +5022,21 @@ function construirListadoReservasHTML(tipo){
   @media print{ body{margin:10mm 12mm;} }
 </style></head>
 <body>
-  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#00A884;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
-  <div style="font-size:21px;font-weight:700;color:#0C2E4E;margin:5px 0 3px;">Reservas de Espacios — Actividades ${tipo}</div>
-  <div style="font-size:11px;color:#6B7280;margin-bottom:12px;text-transform:capitalize;">${mesLabel}. Generado el ${fechaStr}.</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Reservas de Espacios — Actividades ${tipo}</div>
+  <div style="font-size:11px;color:#64748B;margin-bottom:12px;text-transform:capitalize;">${mesLabel}. Generado el ${fechaStr}.</div>
   <div style="display:flex;height:3px;margin-bottom:16px;">
-    <div style="flex:1;background:#0C2E4E;"></div><div style="flex:1;background:#00D9A6;"></div><div style="flex:1;background:#E8833A;"></div>
+    <div style="flex:1;background:#011632;"></div><div style="flex:1;background:#5D88D6;"></div><div style="flex:1;background:#F29622;"></div>
   </div>
   <table>
-    <thead><tr style="background:#0C2E4E;color:#fff;">
+    <thead><tr style="background:#011632;color:#fff;">
       <th style="padding:7px 8px;text-align:left;">Fecha</th><th style="padding:7px 8px;text-align:left;">Hora</th>
       <th style="padding:7px 8px;text-align:left;">Espacio</th><th style="padding:7px 8px;text-align:left;">Solicitante</th>
       <th style="padding:7px 8px;text-align:left;">Motivo</th><th style="padding:7px 8px;text-align:left;">Estado</th>
     </tr></thead>
-    <tbody>${filas || '<tr><td colspan="6" style="padding:10px;text-align:center;color:#6B7280;">No hay reservas este mes.</td></tr>'}</tbody>
+    <tbody>${filas || '<tr><td colspan="6" style="padding:10px;text-align:center;color:#64748B;">No hay reservas este mes.</td></tr>'}</tbody>
   </table>
-  <div style="font-size:9.5px;color:#6B7280;font-style:italic;margin-top:14px;">Total: ${reservas.length} reserva(s). Generado automáticamente desde la Bitácora de Seguimiento — Planta Física.</div>
+  <div style="font-size:9.5px;color:#64748B;font-style:italic;margin-top:14px;">Total: ${reservas.length} reserva(s). Generado automáticamente desde la Bitácora de Seguimiento — Planta Física.</div>
   <script>
     window.addEventListener('load', function(){ setTimeout(function(){ window.focus(); window.print(); }, 300); });
   <\/script>
@@ -4870,11 +5080,11 @@ function construirComprobanteHTML(reserva){
   @media print{ body{margin:10mm 12mm;} }
 </style></head>
 <body>
-  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#00A884;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
-  <div style="font-size:21px;font-weight:700;color:#0C2E4E;margin:5px 0 3px;">Comprobante de Reserva de Espacio</div>
-  <div style="font-size:11px;color:#6B7280;margin-bottom:12px;">Generado el ${fechaStr}. Actividad ${r.tipo}.</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Comprobante de Reserva de Espacio</div>
+  <div style="font-size:11px;color:#64748B;margin-bottom:12px;">Generado el ${fechaStr}. Actividad ${r.tipo}.</div>
   <div style="display:flex;height:3px;margin-bottom:16px;">
-    <div style="flex:1;background:#0C2E4E;"></div><div style="flex:1;background:#00D9A6;"></div><div style="flex:1;background:#E8833A;"></div>
+    <div style="flex:1;background:#011632;"></div><div style="flex:1;background:#5D88D6;"></div><div style="flex:1;background:#F29622;"></div>
   </div>
   <table>
     <tr><td style="padding:5px 8px;font-weight:700;background:#EAF6F1;width:35%;">Espacio</td><td style="padding:5px 8px;">${esc(r.espacio)}</td></tr>
@@ -4888,8 +5098,8 @@ function construirComprobanteHTML(reserva){
     ${r.obs?`<tr><td style="padding:5px 8px;font-weight:700;background:#EAF6F1;">Observaciones</td><td style="padding:5px 8px;">${esc(r.obs)}</td></tr>`:''}
   </table>
   <div style="display:flex;gap:40px;margin-top:46px;">
-    <div style="flex:1;border-top:1px solid #0C2E4E;padding-top:5px;font-size:10.5px;font-weight:700;color:#0C2E4E;">Elaborado por — Servicios Generales</div>
-    <div style="flex:1;border-top:1px solid #0C2E4E;padding-top:5px;font-size:10.5px;font-weight:700;color:#0C2E4E;">Firma del solicitante</div>
+    <div style="flex:1;border-top:1px solid #011632;padding-top:5px;font-size:10.5px;font-weight:700;color:#011632;">Elaborado por — Servicios Generales</div>
+    <div style="flex:1;border-top:1px solid #011632;padding-top:5px;font-size:10.5px;font-weight:700;color:#011632;">Firma del solicitante</div>
   </div>
   <script>
     window.addEventListener('load', function(){ setTimeout(function(){ window.focus(); window.print(); }, 300); });
@@ -5170,12 +5380,12 @@ function renderInvDashboard(){
     pieEl.innerHTML = '<p class="empty">Sin datos aún.</p>';
   } else {
     const pctConsumo = consumoMes/totalPie*360;
-    const stops = `#E8833A 0deg ${pctConsumo}deg, #0C2E4E ${pctConsumo}deg 360deg`;
+    const stops = `#F29622 0deg ${pctConsumo}deg, #011632 ${pctConsumo}deg 360deg`;
     pieEl.innerHTML = `
       <div class="pie-chart" id="invConsumoPieChart" style="background:conic-gradient(${stops});cursor:pointer;" title="Toca para ver el detalle del mes actual"></div>
       <div class="pie-legend">
-        <div class="pie-legend-row" data-invpiecat="consumo" style="cursor:pointer;"><span class="pie-swatch" style="background:#E8833A"></span><span class="pie-legend-name">Consumido este mes</span><span class="pie-legend-val">${consumoMes} (${Math.round(consumoMes/totalPie*100)}%)</span></div>
-        <div class="pie-legend-row" data-invpiecat="stock" style="cursor:pointer;"><span class="pie-swatch" style="background:#0C2E4E"></span><span class="pie-legend-name">Stock actual</span><span class="pie-legend-val">${totalDisponible} (${Math.round(totalDisponible/totalPie*100)}%)</span></div>
+        <div class="pie-legend-row" data-invpiecat="consumo" style="cursor:pointer;"><span class="pie-swatch" style="background:#F29622"></span><span class="pie-legend-name">Consumido este mes</span><span class="pie-legend-val">${consumoMes} (${Math.round(consumoMes/totalPie*100)}%)</span></div>
+        <div class="pie-legend-row" data-invpiecat="stock" style="cursor:pointer;"><span class="pie-swatch" style="background:#011632"></span><span class="pie-legend-name">Stock actual</span><span class="pie-legend-val">${totalDisponible} (${Math.round(totalDisponible/totalPie*100)}%)</span></div>
       </div>`;
     const mesActual = meses[meses.length-1];
     document.getElementById('invConsumoPieChart').addEventListener('click', ()=>openMesDetalle(mesActual.key, `${mesActual.label} ${mesActual.key.slice(0,4)}`));
@@ -5224,7 +5434,7 @@ function openMesDetalle(mesKey, mesLabel){
   `;
 
   const maxTotal = Math.max(1, ...ranking.map(p=>p.total));
-  const paletaBarras = ['#0C2E4E','#00A884','#E8833A','#00D9A6','#2C5F8A','#6B7280'];
+  const paletaBarras = ['#011632','#03459B','#F29622','#5D88D6','#1F7A5C','#64748B'];
   document.getElementById('mesDetalleBars').innerHTML = ranking.length ? ranking.map((p,i)=>`
     <div class="bar-row">
       <span class="name" title="${esc(p.nombre)}">${esc(p.nombre)}</span>
@@ -5358,14 +5568,14 @@ function construirPedidoHTML(pedido){
 </style>
 </head>
 <body>
-  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#00A884;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
-  <div style="font-size:21px;font-weight:700;color:#0C2E4E;margin:5px 0 3px;">Pedido Sugerido a Compras — Insumos</div>
-  <div style="font-size:11px;color:#6B7280;margin-bottom:12px;">Generado el ${fechaStr}. Cantidad a pedir = consumo mensual del personal − stock disponible actual.</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Pedido Sugerido a Compras — Insumos</div>
+  <div style="font-size:11px;color:#64748B;margin-bottom:12px;">Generado el ${fechaStr}. Cantidad a pedir = consumo mensual del personal − stock disponible actual.</div>
   <div style="display:flex;height:3px;margin-bottom:16px;">
-    <div style="flex:1;background:#0C2E4E;"></div><div style="flex:1;background:#00D9A6;"></div><div style="flex:1;background:#E8833A;"></div>
+    <div style="flex:1;background:#011632;"></div><div style="flex:1;background:#5D88D6;"></div><div style="flex:1;background:#F29622;"></div>
   </div>
   <table>
-    <thead><tr style="background:#0C2E4E;color:#fff;">
+    <thead><tr style="background:#011632;color:#fff;">
       <th style="padding:8px 9px;text-align:left;">Producto</th>
       <th style="padding:8px 9px;">Consumo mensual</th>
       <th style="padding:8px 9px;">Disponible actual</th>
@@ -5373,12 +5583,12 @@ function construirPedidoHTML(pedido){
     </tr></thead>
     <tbody>${filas}</tbody>
   </table>
-  <div style="font-size:9.5px;color:#6B7280;font-style:italic;margin-top:14px;">Total: ${pedido.length} producto(s) requieren reposición. Generado automáticamente desde la Bitácora de Seguimiento — Planta Física.</div>
+  <div style="font-size:9.5px;color:#64748B;font-style:italic;margin-top:14px;">Total: ${pedido.length} producto(s) requieren reposición. Generado automáticamente desde la Bitácora de Seguimiento — Planta Física.</div>
   <div style="display:flex;gap:40px;margin-top:46px;">
-    <div style="flex:1;border-top:1px solid #0C2E4E;padding-top:5px;font-size:10.5px;font-weight:700;color:#0C2E4E;">Elaborado por — Servicios Generales</div>
-    <div style="flex:1;border-top:1px solid #0C2E4E;padding-top:5px;font-size:10.5px;font-weight:700;color:#0C2E4E;">Recibido por — Departamento de Compras</div>
+    <div style="flex:1;border-top:1px solid #011632;padding-top:5px;font-size:10.5px;font-weight:700;color:#011632;">Elaborado por — Servicios Generales</div>
+    <div style="flex:1;border-top:1px solid #011632;padding-top:5px;font-size:10.5px;font-weight:700;color:#011632;">Recibido por — Departamento de Compras</div>
   </div>
-  <p style="margin-top:28px;font-size:11px;color:#6B7280;">
+  <p style="margin-top:28px;font-size:11px;color:#64748B;">
     Para guardar como PDF: usa el menú de compartir/imprimir de tu navegador
     (en iPhone/iPad: botón compartir → Imprimir → pellizca la vista previa
     para ampliarla → botón compartir de la vista previa → Guardar en Archivos).
@@ -5953,7 +6163,7 @@ function setupFirmaCanvas(){
   ctx.lineWidth = 3.6;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.strokeStyle = '#0C2E4E';
+  ctx.strokeStyle = '#011632';
 
   // Puntos recientes del trazo actual: se usan para dibujar curvas suaves
   // (pasando por el punto medio de cada par) en vez de líneas rectas entre
