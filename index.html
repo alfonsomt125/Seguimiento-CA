@@ -68,7 +68,7 @@
       radial-gradient(circle at 85% 85%, rgba(242,150,34,.08), transparent 45%),
       linear-gradient(160deg, var(--navy) 0%, #123B60 55%, var(--navy) 100%);
   }
-  .selector-inner{width:100%;max-width:640px;text-align:center;}
+  .selector-inner{width:100%;max-width:760px;text-align:center;}
   .selector-header{margin-bottom:44px;}
   .selector-header img{height:76px;margin-bottom:18px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25));}
   .selector-eyebrow{margin:0;color:var(--teal);font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;}
@@ -1146,6 +1146,11 @@
       </div>
     </div>
     <div class="panel">
+      <h2>Productos faltantes vs. disponibles</h2>
+      <p class="hint" style="margin:0 0 10px;">Por cantidad de productos distintos (no por unidades). "Faltante" = sin ninguna unidad en stock. Toca para ver el listado.</p>
+      <div id="invFaltantesPie" class="pie-wrap"></div>
+    </div>
+    <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
         <h2 style="margin:0;">Pedido sugerido a Compras</h2>
         <button class="ghost" id="btnImprimirPedido">⬇ Exportar a PDF</button>
@@ -1154,7 +1159,7 @@
       <div class="filters" style="margin-bottom:14px;align-items:flex-end;">
         <div class="field" style="flex:2;min-width:220px;">
           <label>Correo destinatario</label>
-          <input type="email" id="pedidoEmailDestino" value="compras@colegio-americano.edu.co">
+          <input type="email" id="pedidoEmailDestino" placeholder="correo@colegio-americano.edu.co">
         </div>
         <button class="primary" id="btnEnviarPedidoCompras" style="white-space:nowrap;">✉ Enviar pedido</button>
       </div>
@@ -1179,6 +1184,7 @@
         <select id="panelStockFilter">
           <option value="">Todos</option>
           <option value="bajo">Bajo mínimo</option>
+          <option value="faltante">Faltantes (sin stock)</option>
         </select>
       </div>
       <button class="primary" id="btnNewInsumo" style="white-space:nowrap;">+ Nuevo insumo</button>
@@ -1196,6 +1202,7 @@
   <section class="view" id="view-inv-movimientos">
     <div class="panel">
       <h2>Registrar entrada de insumos</h2>
+      <p class="hint" style="margin:0 0 14px;">Agrega todos los productos que llegaron (por ejemplo, de una misma compra) y regístralos todos juntos al final.</p>
       <div class="grid-2">
         <div class="field" style="grid-column:1/-1;">
           <label>Insumo</label>
@@ -1205,17 +1212,27 @@
           <label>Cantidad</label>
           <input type="number" id="movCantidad" min="1" step="1" value="1">
         </div>
+        <div class="field"></div>
         <div class="field">
-          <label>Fecha</label>
+          <label>Fecha (para todos los que agregues)</label>
           <input type="date" id="movFecha">
         </div>
         <div class="field" style="grid-column:1/-1;">
-          <label>Motivo / Observación</label>
+          <label>Motivo / Observación (para todos los que agregues)</label>
           <input type="text" id="movMotivo" placeholder="Ej: Compra mensual, Proveedor XYZ, Reposición de bodega...">
         </div>
       </div>
       <div class="modal-actions" style="justify-content:flex-start;margin-top:4px;">
-        <button class="primary" id="btnRegistrarMov">Registrar entrada</button>
+        <button class="ghost" id="btnAgregarMovCarrito">+ Agregar a la lista</button>
+      </div>
+
+      <div id="movCarritoWrap" style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px;">
+        <h3 style="margin:0 0 10px;font-size:14px;color:var(--navy);">Productos por registrar (<span id="movCarritoCount">0</span>)</h3>
+        <div id="movCarritoLista"></div>
+        <div class="modal-actions" style="justify-content:flex-start;margin-top:10px;">
+          <button class="primary" id="btnConfirmarMovCarrito">✔ Registrar todas las entradas</button>
+          <button class="ghost" id="btnVaciarMovCarrito">Vaciar lista</button>
+        </div>
       </div>
     </div>
 
@@ -5313,6 +5330,7 @@ function renderPanelCards(){
     if(search && !i.nombre.toLowerCase().includes(search)) return false;
     if(catF && i.categoria!==catF) return false;
     if(stockF==='bajo' && !(Number(i.cantidad) <= Number(i.stockMin))) return false;
+    if(stockF==='faltante' && !(Number(i.cantidad||0)<=0)) return false;
     return true;
   }).sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
@@ -5400,6 +5418,37 @@ function renderInvDashboard(){
           renderPanelCards();
           document.getElementById('panelBody').closest('.table-wrap').scrollIntoView({behavior:'smooth', block:'center'});
         }
+      });
+    });
+  }
+
+  // --- Torta: productos faltantes vs. disponibles (por catálogo, interactiva) ---
+  const faltantesEl = document.getElementById('invFaltantesPie');
+  const faltantes = insumos.filter(i=>Number(i.cantidad||0)<=0);
+  const disponibles = insumos.filter(i=>Number(i.cantidad||0)>0);
+  const totalCatalogo = faltantes.length + disponibles.length;
+  if(!totalCatalogo){
+    faltantesEl.innerHTML = '<p class="empty">Sin datos aún.</p>';
+  } else {
+    const pctFaltantes = faltantes.length/totalCatalogo*360;
+    const stopsF = `#E0342A 0deg ${pctFaltantes}deg, #1F9E6B ${pctFaltantes}deg 360deg`;
+    faltantesEl.innerHTML = `
+      <div class="pie-chart" id="invFaltantesPieChart" style="background:conic-gradient(${stopsF});cursor:pointer;" title="Toca para ver los productos faltantes"></div>
+      <div class="pie-legend">
+        <div class="pie-legend-row" data-faltantecat="faltantes" style="cursor:pointer;"><span class="pie-swatch" style="background:#E0342A"></span><span class="pie-legend-name">Faltantes</span><span class="pie-legend-val">${faltantes.length} (${Math.round(faltantes.length/totalCatalogo*100)}%)</span></div>
+        <div class="pie-legend-row" data-faltantecat="disponibles" style="cursor:pointer;"><span class="pie-swatch" style="background:#1F9E6B"></span><span class="pie-legend-name">Disponibles</span><span class="pie-legend-val">${disponibles.length} (${Math.round(disponibles.length/totalCatalogo*100)}%)</span></div>
+      </div>`;
+    const irAPanelConStock = (valorFiltro)=>{
+      document.getElementById('panelSearch').value = '';
+      document.getElementById('panelCategoria').value = '';
+      document.getElementById('panelStockFilter').value = valorFiltro;
+      renderPanelCards();
+      document.getElementById('panelBody').closest('.table-wrap').scrollIntoView({behavior:'smooth', block:'center'});
+    };
+    document.getElementById('invFaltantesPieChart').addEventListener('click', ()=>irAPanelConStock('faltante'));
+    document.querySelectorAll('#invFaltantesPie [data-faltantecat]').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        irAPanelConStock(row.dataset.faltantecat==='faltantes' ? 'faltante' : '');
       });
     });
   }
@@ -5729,33 +5778,83 @@ function renderMovimientosTable(){
   }));
 }
 
-document.getElementById('btnRegistrarMov').addEventListener('click', async ()=>{
+/* Carrito de "Entrada de Insumos": permite agregar varios productos (por
+   ejemplo, de una misma compra) y registrarlos todos juntos al final, en
+   vez de tener que repetir el formulario uno por uno. */
+let entradaCarrito = [];
+
+function renderMovCarrito(){
+  document.getElementById('movCarritoCount').textContent = entradaCarrito.length;
+  document.getElementById('movCarritoLista').innerHTML = entradaCarrito.length ? entradaCarrito.map((item,idx)=>{
+    const insumo = insumos.find(i=>i.id===item.insumoId);
+    return `
+    <div class="bar-row" style="padding:8px 4px;">
+      <span class="name">${esc(insumo?.nombre)||'(insumo eliminado)'}</span>
+      <span class="count" style="width:auto;white-space:nowrap;flex-shrink:0;">${item.cantidad} ${esc(insumo?.unidad)||''}</span>
+      <span class="entry-del" data-delcarrito="${idx}" title="Quitar" style="cursor:pointer;margin-left:8px;">✕</span>
+    </div>`;
+  }).join('') : '<p class="empty">Aún no has agregado ningún producto. Elige un insumo arriba y toca "+ Agregar a la lista".</p>';
+  document.querySelectorAll('[data-delcarrito]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      entradaCarrito.splice(Number(el.dataset.delcarrito), 1);
+      renderMovCarrito();
+    });
+  });
+  const btnConfirmar = document.getElementById('btnConfirmarMovCarrito');
+  const btnVaciar = document.getElementById('btnVaciarMovCarrito');
+  btnConfirmar.disabled = !entradaCarrito.length;
+  btnConfirmar.style.opacity = entradaCarrito.length ? '1' : '.5';
+  btnConfirmar.style.cursor = entradaCarrito.length ? 'pointer' : 'not-allowed';
+  btnVaciar.style.display = entradaCarrito.length ? 'inline-block' : 'none';
+}
+
+document.getElementById('btnAgregarMovCarrito').addEventListener('click', ()=>{
   const insumoId = document.getElementById('movInsumo').value;
   const cantidad = Number(document.getElementById('movCantidad').value)||0;
-  const fecha = document.getElementById('movFecha').value || todayISO();
-  const motivo = document.getElementById('movMotivo').value.trim();
-
   if(!insumoId){ showToast('Primero agrega un insumo en la pestaña "Insumos y Suministros".'); return; }
   if(cantidad<=0){ showToast('La cantidad debe ser mayor a 0.'); return; }
 
-  const insumo = insumos.find(i=>i.id===insumoId);
-  if(!insumo){ showToast('No se encontró el insumo seleccionado.'); return; }
-
-  insumo.cantidad = Number(insumo.cantidad||0) + cantidad;
-  await saveInsumos();
-
-  movimientos.push({id: uid(), insumoId, tipo:'entrada', cantidad, fecha, motivo, createdAt: new Date().toISOString()});
-  await saveMovimientos();
+  const existente = entradaCarrito.find(item=>item.insumoId===insumoId);
+  if(existente){ existente.cantidad += cantidad; }
+  else{ entradaCarrito.push({insumoId, cantidad}); }
 
   document.getElementById('movCantidad').value = 1;
+  renderMovCarrito();
+  showToast('Agregado a la lista. Puedes seguir agregando más productos.');
+});
+
+document.getElementById('btnVaciarMovCarrito').addEventListener('click', async ()=>{
+  if(!await customConfirm('¿Vaciar la lista de productos por registrar? No se guardará ninguno.')) return;
+  entradaCarrito = [];
+  renderMovCarrito();
+});
+
+document.getElementById('btnConfirmarMovCarrito').addEventListener('click', async ()=>{
+  if(!entradaCarrito.length) return;
+  const fecha = document.getElementById('movFecha').value || todayISO();
+  const motivo = document.getElementById('movMotivo').value.trim();
+
+  let totalRegistrado = 0;
+  entradaCarrito.forEach(item=>{
+    const insumo = insumos.find(i=>i.id===item.insumoId);
+    if(!insumo) return;
+    insumo.cantidad = Number(insumo.cantidad||0) + item.cantidad;
+    movimientos.push({id: uid(), insumoId: item.insumoId, tipo:'entrada', cantidad: item.cantidad, fecha, motivo, createdAt: new Date().toISOString()});
+    totalRegistrado++;
+  });
+  await saveInsumos();
+  await saveMovimientos();
+
+  entradaCarrito = [];
   document.getElementById('movMotivo').value = '';
+  renderMovCarrito();
 
   populateInvFilters();
   populateMovSelects();
   renderPanelCards();
   renderMovimientosTable();
   renderMovimientosAllTable();
-  showToast(`Entrada registrada. Nuevo disponible: ${insumo.cantidad} ${insumo.unidad||''}.`);
+  showToast(`Se registraron ${totalRegistrado} entrada(s) de insumos.`);
 });
 
 document.getElementById('movFiltroInsumo').addEventListener('change', renderMovimientosTable);
@@ -6504,6 +6603,7 @@ async function init(){
   document.getElementById('movFecha').value = todayISO();
   renderMovimientosTable();
   renderMovimientosAllTable();
+  renderMovCarrito();
 
   renderTrabajadorTiles();
   renderEntregasHistory();
