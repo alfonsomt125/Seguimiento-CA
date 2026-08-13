@@ -1170,31 +1170,37 @@
         </table>
       </div>
     </div>
-    <div class="filters" style="margin-bottom:14px;">
-      <div class="field" style="flex:2;min-width:200px;">
-        <label>Buscar</label>
-        <input type="text" id="panelSearch" placeholder="Nombre del insumo...">
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <h2 style="margin:0;">Inventario Disponible</h2>
+        <button class="ghost" id="btnExportarInventarioPDF">⬇ Exportar a PDF</button>
       </div>
-      <div class="field">
-        <label>Categoría</label>
-        <select id="panelCategoria"><option value="">Todas</option></select>
+      <div class="filters" style="margin-bottom:14px;">
+        <div class="field" style="flex:2;min-width:200px;">
+          <label>Buscar</label>
+          <input type="text" id="panelSearch" placeholder="Nombre del insumo...">
+        </div>
+        <div class="field">
+          <label>Categoría</label>
+          <select id="panelCategoria"><option value="">Todas</option></select>
+        </div>
+        <div class="field">
+          <label>Stock</label>
+          <select id="panelStockFilter">
+            <option value="">Todos</option>
+            <option value="bajo">Bajo mínimo</option>
+            <option value="faltante">Faltantes (sin stock)</option>
+          </select>
+        </div>
+        <button class="primary" id="btnNewInsumo" style="white-space:nowrap;">+ Nuevo insumo</button>
       </div>
-      <div class="field">
-        <label>Stock</label>
-        <select id="panelStockFilter">
-          <option value="">Todos</option>
-          <option value="bajo">Bajo mínimo</option>
-          <option value="faltante">Faltantes (sin stock)</option>
-        </select>
+      <p class="hint" style="margin:0 0 14px;">Haz clic en una fila para ver el detalle completo del producto.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Producto</th><th>Stock</th></tr></thead>
+          <tbody id="panelBody"></tbody>
+        </table>
       </div>
-      <button class="primary" id="btnNewInsumo" style="white-space:nowrap;">+ Nuevo insumo</button>
-    </div>
-    <p class="hint" style="margin:0 0 14px;">Haz clic en una fila para ver el detalle completo del producto.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Producto</th><th>Stock</th></tr></thead>
-        <tbody id="panelBody"></tbody>
-      </table>
     </div>
   </section>
 
@@ -5674,6 +5680,76 @@ function exportarPedidoPDF(){
   if(win) showToast('Se abrió una pestaña nueva. Ahí, en el diálogo de impresión, elige "Guardar como PDF".');
 }
 document.getElementById('btnImprimirPedido').addEventListener('click', exportarPedidoPDF);
+
+/* Exportar a PDF el Inventario Disponible — respeta los filtros que tengas
+   activos (buscar/categoría/stock), para poder imprimir, por ejemplo, solo
+   los "Faltantes" si eso es lo que quieres comparar contra la bodega física.
+   Mismo mecanismo de pestaña nueva que el resto de exportaciones, sin
+   depender de ninguna librería externa. */
+function construirInventarioDisponibleHTML(){
+  const search = document.getElementById('panelSearch').value.toLowerCase().trim();
+  const catF = document.getElementById('panelCategoria').value;
+  const stockF = document.getElementById('panelStockFilter').value;
+  const rows = insumos.filter(i=>{
+    if(search && !i.nombre.toLowerCase().includes(search)) return false;
+    if(catF && i.categoria!==catF) return false;
+    if(stockF==='bajo' && !(Number(i.cantidad) <= Number(i.stockMin))) return false;
+    if(stockF==='faltante' && !(Number(i.cantidad||0)<=0)) return false;
+    return true;
+  }).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
+  const fechaStr = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+  const filtroLabel = stockF==='bajo' ? ' — Solo bajo mínimo' : stockF==='faltante' ? ' — Solo faltantes' : '';
+
+  const filas = rows.map(i=>{
+    const faltante = Number(i.cantidad||0)<=0;
+    const bajo = !faltante && Number(i.cantidad) <= Number(i.stockMin);
+    const colorFila = faltante ? 'color:#E0342A;font-weight:700;' : bajo ? 'color:#D97F0A;font-weight:700;' : '';
+    return `<tr>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;font-weight:600;">${esc(i.nombre)}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(i.categoria)||'—'}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;text-align:center;${colorFila}">${i.cantidad} ${esc(i.unidad)||''}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;text-align:center;">${i.stockMin||0} ${esc(i.unidad)||''}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(i.ubicacion)||'—'}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;"></td>
+    </tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario Disponible — ${todayISO()}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:16mm 14mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  @media print{ body{margin:10mm 12mm;} }
+</style></head><body>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Inventario Disponible${filtroLabel}</div>
+  <div style="font-size:11px;color:#6B7280;margin-bottom:12px;">Generado el ${fechaStr}. Para comparar contra el conteo físico de bodega — la última columna queda en blanco para anotar a mano.</div>
+  <div style="display:flex;height:3px;margin-bottom:16px;">
+    <div style="flex:1;background:#011632;"></div><div style="flex:1;background:#5D88D6;"></div><div style="flex:1;background:#F29622;"></div>
+  </div>
+  <table>
+    <thead><tr style="background:#011632;color:#fff;">
+      <th style="padding:7px 8px;text-align:left;">Producto</th><th style="padding:7px 8px;text-align:left;">Categoría</th>
+      <th style="padding:7px 8px;">Stock en sistema</th><th style="padding:7px 8px;">Stock mínimo</th>
+      <th style="padding:7px 8px;text-align:left;">Ubicación</th><th style="padding:7px 8px;">Conteo físico</th>
+    </tr></thead>
+    <tbody>${filas || '<tr><td colspan="6" style="padding:10px;text-align:center;color:#6B7280;">No hay productos que coincidan con el filtro.</td></tr>'}</tbody>
+  </table>
+  <div style="font-size:9.5px;color:#6B7280;font-style:italic;margin-top:14px;">Total: ${rows.length} producto(s). Generado automáticamente desde la Bitácora de Seguimiento — Planta Física.</div>
+  <script>
+    window.addEventListener('load', function(){ setTimeout(function(){ window.focus(); window.print(); }, 300); });
+  <\/script>
+</body></html>`;
+}
+document.getElementById('btnExportarInventarioPDF').addEventListener('click', ()=>{
+  const win = window.open('', '_blank');
+  if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
+  win.document.open();
+  win.document.write(construirInventarioDisponibleHTML());
+  win.document.close();
+  showToast('Se abrió una pestaña nueva con el inventario. Ahí elige "Guardar como PDF".');
+});
 
 /* Envía el pedido: abre la pestaña nueva con el documento para guardar como
    PDF, y además abre tu correo con el destinatario (el que hayas escrito en
