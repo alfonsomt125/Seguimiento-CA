@@ -1832,10 +1832,11 @@
     <p class="hint" id="firmaResumen" style="margin:0 0 10px;flex-shrink:0;"></p>
     <canvas id="firmaCanvas" width="1600" height="900" style="border:2px solid var(--line);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;width:100%;flex:1;min-height:0;display:block;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;"></canvas>
     <p class="hint" style="margin:8px 0 0;font-size:13.5px;flex-shrink:0;">Firma aquí con el dedo (pantalla táctil), el mouse o el lápiz.</p>
-    <div class="modal-actions" style="justify-content:space-between;flex-shrink:0;">
+    <div class="modal-actions" style="justify-content:space-between;flex-shrink:0;flex-wrap:wrap;gap:10px;">
       <button class="ghost" id="btnLimpiarFirma">Limpiar firma</button>
-      <div style="display:flex;gap:10px;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="ghost" id="btnCancelFirma">Cancelar</button>
+        <button class="ghost" id="btnFirmarDespues" title="Registra la entrega ahora y guarda la firma más tarde">🕐 Firmar después</button>
         <button class="primary" id="btnConfirmarEntrega">Confirmar entrega</button>
       </div>
     </div>
@@ -6249,6 +6250,7 @@ document.getElementById('btnCerrarEntrega').addEventListener('click', ()=>{
   const resumen = carrito.map(c=>`${c.cantidad} ${c.unidad} — ${c.nombre}`).join(', ');
   document.getElementById('firmaResumen').textContent = `${entregaTrabajadorActual.nombre}: ${resumen}`;
   clearFirmaCanvas();
+  document.getElementById('btnFirmarDespues').style.display = 'inline-block';
   document.getElementById('firmaModalBg').classList.add('active');
 });
 document.getElementById('btnCancelFirma').addEventListener('click', ()=>{
@@ -6351,6 +6353,71 @@ function clearFirmaCanvas(){
 }
 document.getElementById('btnLimpiarFirma').addEventListener('click', clearFirmaCanvas);
 
+/* Crea la entrega y sus movimientos (descuenta stock), con la firma que se
+   le pase — o sin firma (null) si se eligió "Firmar después". En ese caso
+   la entrega queda visible en el historial con el aviso "⚠ Firmar", listo
+   para completarla más tarde con el mismo mecanismo que ya existe para
+   cuando una firma queda invalidada al editar/eliminar un movimiento. */
+async function crearEntregaConFirma(firmaDataUrlOrNull){
+  // revalidar stock por si cambió mientras se armaba el carrito
+  for(const c of carrito){
+    const i = insumos.find(x=>x.id===c.insumoId);
+    if(!i || Number(i.cantidad) < c.cantidad){
+      showToast(`Ya no hay stock suficiente de "${c.nombre}". Ajusta el carrito.`);
+      return false;
+    }
+  }
+
+  const fecha = todayISO();
+  const entregaId = uid();
+
+  carrito.forEach(c=>{
+    const i = insumos.find(x=>x.id===c.insumoId);
+    i.cantidad = Number(i.cantidad) - c.cantidad;
+    movimientos.push({
+      id: uid(), insumoId: c.insumoId, tipo:'salida', cantidad: c.cantidad, fecha,
+      entregadoA: entregaTrabajadorActual.nombre, motivo:'Entrega digital',
+      entregaId, createdAt: new Date().toISOString()
+    });
+  });
+  await saveInsumos();
+  await saveMovimientos();
+
+  entregas.push({
+    id: entregaId, trabajadorId: entregaTrabajadorActual.id, trabajadorNombre: entregaTrabajadorActual.nombre,
+    fecha, items: carrito.map(c=>({insumoId:c.insumoId, nombre:c.nombre, cantidad:c.cantidad, unidad:c.unidad})),
+    firma: firmaDataUrlOrNull, createdAt: new Date().toISOString()
+  });
+  await saveEntregas();
+
+  document.getElementById('firmaModalBg').classList.remove('active');
+
+  carrito = [];
+  entregaTrabajadorActual = null;
+  document.getElementById('entregaStepCart').style.display = 'none';
+  document.getElementById('entregaStepWorker').style.display = 'block';
+  return true;
+}
+
+document.getElementById('btnFirmarDespues').addEventListener('click', async ()=>{
+  // el modo "re-firmar" (completar una firma que ya faltaba) no aplica aquí:
+  // esta opción solo tiene sentido al confirmar una entrega nueva.
+  if(resignEntregaId) return;
+  if(!await customConfirm(`¿Registrar la entrega a ${entregaTrabajadorActual.nombre} sin firma por ahora? Vas a poder firmarla más tarde desde el historial.`)) return;
+  const trabajadorNombre = entregaTrabajadorActual.nombre;
+  const ok = await crearEntregaConFirma(null);
+  if(ok){
+    showToast(`Entrega a ${trabajadorNombre} registrada. Pendiente por firmar.`);
+    populateInvFilters();
+    populateMovSelects();
+    renderPanelCards();
+    renderMovimientosTable();
+    renderMovimientosAllTable();
+    renderTrabajadorTiles();
+    renderEntregasHistory();
+  }
+});
+
 document.getElementById('btnConfirmarEntrega').addEventListener('click', async ()=>{
   if(!firmaHasStroke){ showToast('Se necesita la firma para confirmar la entrega.'); return; }
 
@@ -6369,53 +6436,19 @@ document.getElementById('btnConfirmarEntrega').addEventListener('click', async (
     return;
   }
 
-  // revalidar stock por si cambió mientras se armaba el carrito
-  for(const c of carrito){
-    const i = insumos.find(x=>x.id===c.insumoId);
-    if(!i || Number(i.cantidad) < c.cantidad){
-      showToast(`Ya no hay stock suficiente de "${c.nombre}". Ajusta el carrito.`);
-      return;
-    }
-  }
-
-  const fecha = todayISO();
   const firmaDataUrl = document.getElementById('firmaCanvas').toDataURL('image/png');
-  const entregaId = uid();
-
-  carrito.forEach(c=>{
-    const i = insumos.find(x=>x.id===c.insumoId);
-    i.cantidad = Number(i.cantidad) - c.cantidad;
-    movimientos.push({
-      id: uid(), insumoId: c.insumoId, tipo:'salida', cantidad: c.cantidad, fecha,
-      entregadoA: entregaTrabajadorActual.nombre, motivo:'Entrega digital',
-      entregaId, createdAt: new Date().toISOString()
-    });
-  });
-  await saveInsumos();
-  await saveMovimientos();
-
-  entregas.push({
-    id: entregaId, trabajadorId: entregaTrabajadorActual.id, trabajadorNombre: entregaTrabajadorActual.nombre,
-    fecha, items: carrito.map(c=>({insumoId:c.insumoId, nombre:c.nombre, cantidad:c.cantidad, unidad:c.unidad})),
-    firma: firmaDataUrl, createdAt: new Date().toISOString()
-  });
-  await saveEntregas();
-
-  document.getElementById('firmaModalBg').classList.remove('active');
-  showToast(`Entrega a ${entregaTrabajadorActual.nombre} registrada correctamente.`);
-
-  carrito = [];
-  entregaTrabajadorActual = null;
-  document.getElementById('entregaStepCart').style.display = 'none';
-  document.getElementById('entregaStepWorker').style.display = 'block';
-
-  populateInvFilters();
-  populateMovSelects();
-  renderPanelCards();
-  renderMovimientosTable();
-  renderMovimientosAllTable();
-  renderTrabajadorTiles();
-  renderEntregasHistory();
+  const trabajadorNombre = entregaTrabajadorActual.nombre;
+  const ok = await crearEntregaConFirma(firmaDataUrl);
+  if(ok){
+    showToast(`Entrega a ${trabajadorNombre} registrada correctamente.`);
+    populateInvFilters();
+    populateMovSelects();
+    renderPanelCards();
+    renderMovimientosTable();
+    renderMovimientosAllTable();
+    renderTrabajadorTiles();
+    renderEntregasHistory();
+  }
 });
 
 /* --- Historial de entregas digitales --- */
@@ -6486,6 +6519,7 @@ function openResignModal(entregaId){
   const resumen = entrega.items.map(it=>`${it.cantidad} ${it.unidad||''} — ${it.nombre}`).join(', ');
   document.getElementById('firmaResumen').textContent = `${entrega.trabajadorNombre}: ${resumen}`;
   clearFirmaCanvas();
+  document.getElementById('btnFirmarDespues').style.display = 'none';
   document.getElementById('firmaModalBg').classList.add('active');
 }
 
