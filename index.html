@@ -113,6 +113,7 @@
     background:linear-gradient(135deg,var(--teal),var(--navy-2));box-shadow:0 8px 18px rgba(1,22,50,.22);
   }
   .mant-subcard.aires .mant-icon{background:linear-gradient(135deg,#F7AC4D,#D9761A);}
+  .mant-subcard.requisiciones .mant-icon{background:linear-gradient(135deg,#3DBB8A,#0F6E4A);}
   .mant-subcard span{font-family:var(--sys-font);font-size:16px;color:var(--navy);font-weight:700;line-height:1.35;letter-spacing:-.01em;}
   .mant-subcard p{margin:0;font-size:12.5px;color:var(--gray);}
   @media(max-width:520px){
@@ -546,6 +547,11 @@
         <span>Seguimiento de Aires Acondicionados</span>
         <p>Inventario de equipos, hoja de vida y mantenimientos por unidad.</p>
       </button>
+      <button class="mant-subcard requisiciones" data-mantopen="requisiciones">
+        <div class="mant-icon">🧾</div>
+        <span>Requisición de Materiales</span>
+        <p>Formato institucional de solicitud de pedidos a Compras, editable en línea.</p>
+      </button>
     </div>
   </div>
 
@@ -868,6 +874,87 @@
 
   </div>
   <!-- ===================== /SUB-MÓDULO AIRES ACONDICIONADOS ===================== -->
+
+  <!-- ===================== SUB-MÓDULO: REQUISICIÓN DE MATERIALES ===================== -->
+  <div id="mantSubRequisiciones" style="display:none;">
+
+  <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+
+  <div id="reqListaWrap">
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <h2 style="margin:0;">Requisiciones de Materiales</h2>
+        <button class="primary" id="btnNuevaRequisicion">+ Nueva requisición</button>
+      </div>
+      <p class="hint" style="margin:0 0 14px;">Formato institucional GA-LO-CO01 — Solicitud de Pedidos a Compras. Toca una fila para editarla.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Periodo</th><th>Ítems</th><th></th></tr></thead>
+          <tbody id="reqListaBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="reqEditWrap" style="display:none;">
+    <button class="ghost" id="btnVolverListaReq" style="margin-bottom:16px;">← Volver a la lista</button>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <h2 style="margin:0;" id="reqEditTitulo">Nueva requisición</h2>
+        <button class="ghost" id="btnExportarReqPDF">⬇ Exportar a PDF</button>
+      </div>
+      <p class="hint" style="margin:0 0 16px;">Los campos se editan directamente aquí. Recuerda guardar antes de salir.</p>
+      <div class="grid-2">
+        <div class="field">
+          <label>Fecha de solicitud</label>
+          <input type="date" id="reqFecha">
+        </div>
+        <div class="field"></div>
+        <div class="field">
+          <label>Área o sección</label>
+          <input type="text" id="reqArea" placeholder="Ej: Servicios Generales">
+        </div>
+        <div class="field">
+          <label>Centro de costos</label>
+          <input type="text" id="reqCentroCostos">
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Nombre del solicitante</label>
+          <input type="text" id="reqSolicitante">
+        </div>
+        <div class="field">
+          <label>Periodo de consumo — del mes</label>
+          <input type="text" id="reqPeriodoDesde" placeholder="Ej: Agosto">
+        </div>
+        <div class="field">
+          <label>Periodo de consumo — hasta el mes</label>
+          <input type="text" id="reqPeriodoHasta" placeholder="Ej: Septiembre">
+        </div>
+      </div>
+
+      <h3 style="margin:22px 0 10px;font-size:14px;color:var(--navy);">Descripción de los bienes</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:36px;">No.</th><th>Descripción de los bienes</th><th>Especificaciones</th>
+            <th style="width:100px;">Cant. Solicitada</th><th style="width:100px;">Cant. Autorizada</th><th>Uso</th><th></th>
+          </tr></thead>
+          <tbody id="reqItemsBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="justify-content:flex-start;margin-top:12px;">
+        <button class="ghost" id="btnAgregarLineaReq">+ Agregar línea</button>
+      </div>
+
+      <div class="modal-actions" style="justify-content:flex-start;margin-top:18px;border-top:1px solid var(--line);padding-top:16px;">
+        <button class="primary" id="btnGuardarRequisicion">💾 Guardar requisición</button>
+        <button class="ghost danger" id="btnEliminarRequisicion" style="display:none;">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  </div>
+  <!-- ===================== /SUB-MÓDULO REQUISICIÓN DE MATERIALES ===================== -->
 
 </div>
 </div>
@@ -2393,6 +2480,7 @@ let entregas = [];
 let airesAcondicionados = [];
 let aireHistorial = [];
 let reservasEspacios = [];
+let requisiciones = [];
 let editingAireId = null;
 let aireVencidoFiltroActivo = false;
 let carrito = [];
@@ -2520,7 +2608,7 @@ async function safeSetVersion(key, value){
 const CLAVES_A_MIGRAR = [
   'activities','bitacora','insumos','movimientos','trabajadores','entregas',
   'deletedNames','deletedInsumoNames','deletedTrabajadorNames',
-  'airesAcondicionados','aireHistorial','reservasEspacios','syncVersions'
+  'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones','syncVersions'
 ];
 
 async function migrarLocalASupabase(){
@@ -2611,6 +2699,10 @@ async function loadAll(){
     const re = await storageAPI.get('reservasEspacios');
     reservasEspacios = JSON.parse(re.value);
   }catch(e){ reservasEspacios = []; }
+  try{
+    const rq = await storageAPI.get('requisiciones');
+    requisiciones = JSON.parse(rq.value);
+  }catch(e){ requisiciones = []; }
 }
 async function saveAiresAcondicionados(){
   try{ await storageAPI.set('airesAcondicionados', JSON.stringify(airesAcondicionados)); }
@@ -2623,6 +2715,10 @@ async function saveAireHistorial(){
 async function saveReservasEspacios(){
   try{ await storageAPI.set('reservasEspacios', JSON.stringify(reservasEspacios)); }
   catch(e){ showToast('No se pudo guardar (reservas de espacios). Intenta de nuevo.'); }
+}
+async function saveRequisiciones(){
+  try{ await storageAPI.set('requisiciones', JSON.stringify(requisiciones)); }
+  catch(e){ showToast('No se pudo guardar (requisiciones). Intenta de nuevo.'); }
 }
 async function saveDeletedTrabajadorNames(){
   try{ await storageAPI.set('deletedTrabajadorNames', JSON.stringify(deletedTrabajadorNames)); }
@@ -4645,6 +4741,276 @@ document.querySelectorAll('[data-espback]').forEach(btn=>{
 });
 
 /* ============================================================
+   REQUISICIÓN DE MATERIALES — formato institucional GA-LO-CO01,
+   editable en línea, con exportación a PDF fiel al formato original.
+   ============================================================ */
+let currentReqId = null;
+let currentReqItems = [];
+
+function showReqLista(){
+  document.getElementById('reqListaWrap').style.display = 'block';
+  document.getElementById('reqEditWrap').style.display = 'none';
+  renderReqLista();
+}
+document.getElementById('btnNuevaRequisicion').addEventListener('click', ()=>openReqEditor(null));
+
+function renderReqLista(){
+  const tbody = document.getElementById('reqListaBody');
+  const filas = [...requisiciones].sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
+  tbody.innerHTML = filas.length ? filas.map(r=>{
+    const periodo = (r.periodoDesde||r.periodoHasta) ? `${esc(r.periodoDesde)||'—'} a ${esc(r.periodoHasta)||'—'}` : '—';
+    return `<tr data-verreq="${r.id}" style="cursor:pointer;">
+      <td>${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
+      <td><strong>${esc(r.areaSeccion)||'—'}</strong></td>
+      <td>${esc(r.nombreSolicitante)||'—'}</td>
+      <td>${periodo}</td>
+      <td>${(r.items||[]).filter(it=>it.descripcion).length}</td>
+      <td><div class="row-actions">
+        <button class="ghost" data-editreq="${r.id}">Editar</button>
+        <button class="ghost danger" data-delreq="${r.id}">Eliminar</button>
+      </div></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" class="empty">Aún no has creado ninguna requisición.</td></tr>`;
+
+  tbody.querySelectorAll('[data-verreq]').forEach(tr=>{
+    tr.addEventListener('click', (e)=>{
+      if(e.target.closest('[data-delreq]')) return;
+      openReqEditor(tr.dataset.verreq);
+    });
+  });
+  tbody.querySelectorAll('[data-editreq]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); openReqEditor(btn.dataset.editreq); });
+  });
+  tbody.querySelectorAll('[data-delreq]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      if(!await customConfirm('¿Eliminar esta requisición? Esta acción no se puede deshacer.')) return;
+      requisiciones = requisiciones.filter(r=>r.id!==btn.dataset.delreq);
+      await saveRequisiciones();
+      renderReqLista();
+      showToast('Requisición eliminada.');
+    });
+  });
+}
+
+const REQ_ITEM_VACIO = ()=>({descripcion:'', especificaciones:'', cantidadSolicitada:'', cantidadAutorizada:'', uso:''});
+
+function openReqEditor(reqId){
+  const r = reqId ? requisiciones.find(x=>x.id===reqId) : null;
+  currentReqId = reqId || null;
+
+  document.getElementById('reqEditTitulo').textContent = r ? 'Editar requisición' : 'Nueva requisición';
+  document.getElementById('reqFecha').value = r?.fechaSolicitud || todayISO();
+  document.getElementById('reqArea').value = r?.areaSeccion || '';
+  document.getElementById('reqCentroCostos').value = r?.centroCostos || '';
+  document.getElementById('reqSolicitante').value = r?.nombreSolicitante || '';
+  document.getElementById('reqPeriodoDesde').value = r?.periodoDesde || '';
+  document.getElementById('reqPeriodoHasta').value = r?.periodoHasta || '';
+  document.getElementById('btnEliminarRequisicion').style.display = r ? 'inline-block' : 'none';
+
+  currentReqItems = r ? JSON.parse(JSON.stringify(r.items||[])) : Array.from({length:5}, REQ_ITEM_VACIO);
+  if(!currentReqItems.length) currentReqItems = Array.from({length:5}, REQ_ITEM_VACIO);
+  renderReqItemsTable();
+
+  document.getElementById('reqListaWrap').style.display = 'none';
+  document.getElementById('reqEditWrap').style.display = 'block';
+  window.scrollTo({top:0, behavior:'instant'});
+}
+
+/* Lee lo que haya escrito en la tabla de líneas (inputs reales, editables
+   directamente) y lo vuelca a currentReqItems — se llama antes de agregar
+   o quitar una línea, y antes de guardar/exportar, para no perder nada de
+   lo que ya se había escrito al volver a dibujar la tabla. */
+function syncReqItemsFromDOM(){
+  const filas = [...document.querySelectorAll('#reqItemsBody tr')];
+  currentReqItems = filas.map(tr=>({
+    descripcion: tr.querySelector('[data-reqf="descripcion"]').value.trim(),
+    especificaciones: tr.querySelector('[data-reqf="especificaciones"]').value.trim(),
+    cantidadSolicitada: tr.querySelector('[data-reqf="cantidadSolicitada"]').value.trim(),
+    cantidadAutorizada: tr.querySelector('[data-reqf="cantidadAutorizada"]').value.trim(),
+    uso: tr.querySelector('[data-reqf="uso"]').value.trim(),
+  }));
+}
+
+function renderReqItemsTable(){
+  const tbody = document.getElementById('reqItemsBody');
+  tbody.innerHTML = currentReqItems.map((it,idx)=>`
+    <tr>
+      <td style="text-align:center;color:var(--gray);">${idx+1}</td>
+      <td><input type="text" data-reqf="descripcion" value="${esc(it.descripcion)}" placeholder="Ej: Resma de papel carta"></td>
+      <td><input type="text" data-reqf="especificaciones" value="${esc(it.especificaciones)}" placeholder="Ej: 75 gr, blanca"></td>
+      <td><input type="text" data-reqf="cantidadSolicitada" value="${esc(it.cantidadSolicitada)}" style="text-align:center;"></td>
+      <td><input type="text" data-reqf="cantidadAutorizada" value="${esc(it.cantidadAutorizada)}" style="text-align:center;"></td>
+      <td><input type="text" data-reqf="uso" value="${esc(it.uso)}"></td>
+      <td><span class="entry-del" data-delreqitem="${idx}" title="Quitar línea" style="cursor:pointer;">✕</span></td>
+    </tr>`).join('');
+  tbody.querySelectorAll('[data-delreqitem]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      syncReqItemsFromDOM();
+      currentReqItems.splice(Number(el.dataset.delreqitem), 1);
+      if(!currentReqItems.length) currentReqItems.push(REQ_ITEM_VACIO());
+      renderReqItemsTable();
+    });
+  });
+}
+
+document.getElementById('btnAgregarLineaReq').addEventListener('click', ()=>{
+  syncReqItemsFromDOM();
+  currentReqItems.push(REQ_ITEM_VACIO());
+  renderReqItemsTable();
+});
+
+document.getElementById('btnVolverListaReq').addEventListener('click', showReqLista);
+
+document.getElementById('btnGuardarRequisicion').addEventListener('click', async ()=>{
+  syncReqItemsFromDOM();
+  const areaSeccion = document.getElementById('reqArea').value.trim();
+  const nombreSolicitante = document.getElementById('reqSolicitante').value.trim();
+  if(!areaSeccion || !nombreSolicitante){ showToast('El área/sección y el nombre del solicitante son obligatorios.'); return; }
+
+  const itemsConDatos = currentReqItems.filter(it=>it.descripcion || it.especificaciones || it.cantidadSolicitada || it.cantidadAutorizada || it.uso);
+
+  const data = {
+    fechaSolicitud: document.getElementById('reqFecha').value || todayISO(),
+    areaSeccion,
+    centroCostos: document.getElementById('reqCentroCostos').value.trim(),
+    nombreSolicitante,
+    periodoDesde: document.getElementById('reqPeriodoDesde').value.trim(),
+    periodoHasta: document.getElementById('reqPeriodoHasta').value.trim(),
+    items: itemsConDatos
+  };
+
+  if(currentReqId){
+    const idx = requisiciones.findIndex(r=>r.id===currentReqId);
+    requisiciones[idx] = {...requisiciones[idx], ...data};
+  }else{
+    currentReqId = uid();
+    requisiciones.push({id: currentReqId, ...data, createdAt: new Date().toISOString()});
+  }
+  await saveRequisiciones();
+  showToast('Requisición guardada correctamente.');
+  document.getElementById('btnEliminarRequisicion').style.display = 'inline-block';
+  document.getElementById('reqEditTitulo').textContent = 'Editar requisición';
+});
+
+document.getElementById('btnEliminarRequisicion').addEventListener('click', async ()=>{
+  if(!currentReqId) return;
+  if(!await customConfirm('¿Eliminar esta requisición? Esta acción no se puede deshacer.')) return;
+  requisiciones = requisiciones.filter(r=>r.id!==currentReqId);
+  await saveRequisiciones();
+  showToast('Requisición eliminada.');
+  showReqLista();
+});
+
+/* Exportar a PDF replicando el formato institucional GA-LO-CO01 (mismo
+   encabezado con escudo, título, código y versión que el .docx original),
+   con el mismo mecanismo de pestaña nueva + impresión que el resto de la
+   app — nada de librerías externas de las que depender. */
+function construirRequisicionHTML(){
+  syncReqItemsFromDOM();
+  const fecha = document.getElementById('reqFecha').value;
+  const area = document.getElementById('reqArea').value.trim();
+  const centroCostos = document.getElementById('reqCentroCostos').value.trim();
+  const solicitante = document.getElementById('reqSolicitante').value.trim();
+  const desde = document.getElementById('reqPeriodoDesde').value.trim();
+  const hasta = document.getElementById('reqPeriodoHasta').value.trim();
+
+  const filasBase = currentReqItems.length ? currentReqItems : [];
+  const totalFilas = Math.max(12, filasBase.length);
+  let filasHtml = '';
+  for(let i=0;i<totalFilas;i++){
+    const it = filasBase[i] || REQ_ITEM_VACIO();
+    filasHtml += `<tr>
+      <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${i+1}</td>
+      <td style="border:1px solid #000;padding:5px 6px;">${esc(it.descripcion)}</td>
+      <td style="border:1px solid #000;padding:5px 6px;">${esc(it.especificaciones)}</td>
+      <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${esc(it.cantidadSolicitada)}</td>
+      <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${esc(it.cantidadAutorizada)}</td>
+      <td style="border:1px solid #000;padding:5px 6px;">${esc(it.uso)}</td>
+    </tr>`;
+  }
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Requisición de Materiales — ${esc(solicitante)||'Sin nombre'}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:14mm 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:12px;}
+  table{width:100%;border-collapse:collapse;}
+  @media print{ body{margin:8mm 10mm;} }
+  .hdrtable td{border:1px solid #000;padding:6px 10px;vertical-align:middle;}
+</style></head><body>
+
+  <table class="hdrtable" style="margin-bottom:14px;">
+    <tr>
+      <td rowspan="3" style="width:110px;text-align:center;">
+        <img src="https://www.colegioamericano.edu.co/wp-content/uploads/2025/11/Escudo-Colegio-Americano.jpg" style="width:80px;height:80px;object-fit:contain;" onerror="this.style.display='none'">
+      </td>
+      <td rowspan="2" style="text-align:center;font-weight:700;font-size:14px;">FORMATO SOLICITUD DE PEDIDOS A COMPRAS</td>
+      <td style="font-weight:700;">CÓDIGO: GA-LO-CO01</td>
+    </tr>
+    <tr><td style="font-weight:700;">VERSIÓN: 01</td></tr>
+    <tr>
+      <td style="text-align:center;font-weight:700;">PROCEDIMIENTO: GESTIÓN ADMINISTRATIVA</td>
+      <td style="font-weight:700;">PÁGINAS: Página 1 de 1</td>
+    </tr>
+  </table>
+
+  <table class="hdrtable" style="margin-bottom:16px;">
+    <tr>
+      <td style="background:#BDD7EE;font-weight:700;width:22%;">Fecha Solicitud</td>
+      <td colspan="3">${fecha?fmtDate(fecha):''}</td>
+    </tr>
+    <tr>
+      <td style="background:#BDD7EE;font-weight:700;">Área o sección</td>
+      <td style="width:28%;">${esc(area)}</td>
+      <td style="background:#BDD7EE;font-weight:700;width:20%;">Centro de Costos</td>
+      <td>${esc(centroCostos)}</td>
+    </tr>
+    <tr>
+      <td style="background:#BDD7EE;font-weight:700;">Nombre del Solicitante</td>
+      <td colspan="3">${esc(solicitante)}</td>
+    </tr>
+    <tr>
+      <td style="background:#BDD7EE;font-weight:700;">Periodo de consumo</td>
+      <td>Del mes: ${esc(desde)}</td>
+      <td style="background:#BDD7EE;font-weight:700;">Hasta el mes</td>
+      <td>${esc(hasta)}</td>
+    </tr>
+  </table>
+
+  <table>
+    <thead>
+      <tr style="background:#BDD7EE;font-weight:700;">
+        <th style="border:1px solid #000;padding:6px;width:32px;">No.</th>
+        <th style="border:1px solid #000;padding:6px;">Descripción de los bienes</th>
+        <th style="border:1px solid #000;padding:6px;">Especificaciones</th>
+        <th style="border:1px solid #000;padding:6px;width:90px;">Cantidad Solicitada</th>
+        <th style="border:1px solid #000;padding:6px;width:90px;">Cantidad Autorizada</th>
+        <th style="border:1px solid #000;padding:6px;">Uso</th>
+      </tr>
+    </thead>
+    <tbody>${filasHtml}</tbody>
+  </table>
+
+  <div style="display:flex;justify-content:space-between;margin-top:60px;font-size:10.5px;color:#555;">
+    <div>COLEGIO AMERICANO DE BARRANQUILLA</div>
+    <div>COPIA CONTROLADA</div>
+  </div>
+
+  <script>
+    window.addEventListener('load', function(){ setTimeout(function(){ window.focus(); window.print(); }, 300); });
+  <\/script>
+</body></html>`;
+}
+document.getElementById('btnExportarReqPDF').addEventListener('click', ()=>{
+  const win = window.open('', '_blank');
+  if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
+  win.document.open();
+  win.document.write(construirRequisicionHTML());
+  win.document.close();
+  showToast('Se abrió una pestaña nueva con el formato. Ahí elige "Guardar como PDF" o imprímelo.');
+});
+
+/* ============================================================
    GESTIÓN DE ESPACIOS — calendario, reservas internas y externas
    ============================================================ */
 const DIAS_SEMANA_CAL = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
@@ -5148,11 +5514,14 @@ function showMantSelector(){
   document.getElementById('mantSelector').style.display = 'block';
   document.getElementById('mantSubActividades').style.display = 'none';
   document.getElementById('mantSubAires').style.display = 'none';
+  document.getElementById('mantSubRequisiciones').style.display = 'none';
 }
 function openMantSub(name){
   document.getElementById('mantSelector').style.display = 'none';
   document.getElementById('mantSubActividades').style.display = name==='actividades' ? 'block' : 'none';
   document.getElementById('mantSubAires').style.display = name==='aires' ? 'block' : 'none';
+  document.getElementById('mantSubRequisiciones').style.display = name==='requisiciones' ? 'block' : 'none';
+  if(name==='requisiciones'){ showReqLista(); }
 }
 document.querySelectorAll('[data-mantopen]').forEach(card=>{
   card.addEventListener('click', ()=> openMantSub(card.dataset.mantopen));
