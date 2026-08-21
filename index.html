@@ -882,6 +882,19 @@
 
   <div id="reqListaWrap">
     <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <h2 style="margin:0;">Solicitudes recibidas del personal</h2>
+        <button class="ghost" id="btnRefrescarSolicitudes">↻ Actualizar</button>
+      </div>
+      <p class="hint" style="margin:0 0 14px;">Lo que llega desde el formulario público. Toca "Convertir" para pasarla a una requisición formal editable, con la posibilidad de autorizar cantidades antes de exportarla.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Recibida</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="solicitudesBody"><tr><td colspan="6" class="empty">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
         <h2 style="margin:0;">Requisiciones de Materiales</h2>
         <button class="primary" id="btnNuevaRequisicion">+ Nueva requisición</button>
@@ -4751,8 +4764,89 @@ function showReqLista(){
   document.getElementById('reqListaWrap').style.display = 'block';
   document.getElementById('reqEditWrap').style.display = 'none';
   renderReqLista();
+  cargarSolicitudesRecibidas();
 }
 document.getElementById('btnNuevaRequisicion').addEventListener('click', ()=>openReqEditor(null));
+
+/* Solicitudes que llegan desde el formulario público (solicitud.html) —
+   viven en su PROPIA tabla de Supabase (una fila por solicitud), no en el
+   mismo "cajón" json que el resto de los datos de la app. Así, si dos
+   personas del personal envían una solicitud casi al mismo tiempo, nunca
+   se pisan entre sí (cada INSERT es independiente). */
+let solicitudesRecibidas = [];
+
+async function cargarSolicitudesRecibidas(){
+  const tbody = document.getElementById('solicitudesBody');
+  if(!supabaseAPI){
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Sin conexión a Supabase en este momento.</td></tr>`;
+    return;
+  }
+  try{
+    const { data, error } = await supabaseAPI.from('solicitudes_requisicion').select('*').order('created_at', {ascending:false});
+    if(error) throw error;
+    solicitudesRecibidas = data || [];
+    renderSolicitudesRecibidas();
+  }catch(e){
+    console.error(e);
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">No se pudo cargar (¿ya creaste la tabla "solicitudes_requisicion" en Supabase?).</td></tr>`;
+  }
+}
+
+function renderSolicitudesRecibidas(){
+  const tbody = document.getElementById('solicitudesBody');
+  const pendientes = solicitudesRecibidas.filter(s=>s.estado!=='Descartada');
+  tbody.innerHTML = pendientes.length ? pendientes.map(s=>{
+    const fechaRecibida = s.created_at ? new Date(s.created_at).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+    const nItems = Array.isArray(s.items) ? s.items.length : 0;
+    return `<tr>
+      <td>${fechaRecibida}</td>
+      <td><strong>${esc(s.area_seccion)}</strong></td>
+      <td>${esc(s.nombre_solicitante)}</td>
+      <td>${nItems}</td>
+      <td><span class="pill pill-${s.estado==='Convertida'?'Finalizado':'Pendiente'}">${esc(s.estado)||'Pendiente'}</span></td>
+      <td><div class="row-actions">
+        ${s.estado!=='Convertida' ? `<button class="ghost" data-convertir="${s.id}">Convertir</button><button class="ghost danger" data-descartar="${s.id}">Descartar</button>` : `<span class="hint" style="margin:0;">Ya convertida</span>`}
+      </div></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" class="empty">No has recibido solicitudes del personal todavía.</td></tr>`;
+
+  tbody.querySelectorAll('[data-convertir]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const s = solicitudesRecibidas.find(x=>x.id===btn.dataset.convertir);
+      if(!s) return;
+      openReqEditor(null);
+      document.getElementById('reqFecha').value = s.fecha_solicitud || todayISO();
+      document.getElementById('reqArea').value = s.area_seccion || '';
+      document.getElementById('reqCentroCostos').value = s.centro_costos || '';
+      document.getElementById('reqSolicitante').value = s.nombre_solicitante || '';
+      document.getElementById('reqPeriodoDesde').value = s.periodo_desde || '';
+      document.getElementById('reqPeriodoHasta').value = s.periodo_hasta || '';
+      currentReqItems = (Array.isArray(s.items) && s.items.length) ? s.items.map(it=>({
+        descripcion: it.descripcion||'', especificaciones: it.especificaciones||'',
+        cantidadSolicitada: it.cantidad||'', cantidadAutorizada: '', uso: it.uso||''
+      })) : Array.from({length:5}, REQ_ITEM_VACIO);
+      renderReqItemsTable();
+      showToast('Solicitud cargada en el formulario. Revisa las cantidades, autoriza lo que corresponda y guarda.');
+
+      try{
+        await supabaseAPI.from('solicitudes_requisicion').update({estado:'Convertida'}).eq('id', s.id);
+        s.estado = 'Convertida';
+      }catch(e){ console.error(e); }
+    });
+  });
+  tbody.querySelectorAll('[data-descartar]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!await customConfirm('¿Descartar esta solicitud? Ya no se va a mostrar en la lista.')) return;
+      try{
+        await supabaseAPI.from('solicitudes_requisicion').update({estado:'Descartada'}).eq('id', btn.dataset.descartar);
+        const s = solicitudesRecibidas.find(x=>x.id===btn.dataset.descartar);
+        if(s) s.estado = 'Descartada';
+        renderSolicitudesRecibidas();
+      }catch(e){ console.error(e); showToast('No se pudo descartar. Intenta de nuevo.'); }
+    });
+  });
+}
+document.getElementById('btnRefrescarSolicitudes').addEventListener('click', cargarSolicitudesRecibidas);
 
 function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
