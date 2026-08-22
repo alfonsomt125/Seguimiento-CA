@@ -4862,7 +4862,8 @@ function renderSolicitudesRecibidas(){
       <td><span class="pill pill-${s.estado==='Convertida'?'Finalizado':'Pendiente'}">${esc(s.estado)||'Pendiente'}</span></td>
       <td><div class="row-actions">
         <button class="ghost" data-revisar="${s.id}">🔍 Revisar</button>
-        ${s.estado!=='Convertida' ? `<button class="ghost" data-convertir="${s.id}">Convertir</button><button class="ghost danger" data-descartar="${s.id}">Descartar</button>` : `<span class="hint" style="margin:0;">Ya convertida</span>`}
+        <button class="ghost" data-convertir="${s.id}">${s.estado==='Convertida'?'Convertir de nuevo':'Convertir'}</button>
+        <button class="ghost danger" data-descartar="${s.id}">Descartar</button>
       </div></td>
     </tr>`;
   }).join('') : `<tr><td colspan="6" class="empty">No has recibido solicitudes del personal todavía.</td></tr>`;
