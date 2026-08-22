@@ -969,6 +969,62 @@
   </div>
   <!-- ===================== /SUB-MÓDULO REQUISICIÓN DE MATERIALES ===================== -->
 
+  <!-- Modal: revisar/editar una solicitud recibida del formulario público, y exportarla a PDF -->
+  <div class="modal-bg" id="revisarSolModalBg">
+    <div class="modal" style="max-width:860px;">
+      <h3>Revisar solicitud</h3>
+      <p class="hint" id="revisarSolInfo" style="margin:0 0 16px;"></p>
+      <div class="grid-2">
+        <div class="field">
+          <label>Fecha de solicitud</label>
+          <input type="date" id="revFecha">
+        </div>
+        <div class="field">
+          <label>Nombre del solicitante</label>
+          <input type="text" id="revSolicitante">
+        </div>
+        <div class="field">
+          <label>Área o sección</label>
+          <input type="text" id="revArea" placeholder="Complétalo si hace falta para el formato">
+        </div>
+        <div class="field">
+          <label>Centro de costos</label>
+          <input type="text" id="revCentroCostos">
+        </div>
+        <div class="field">
+          <label>Periodo — del mes</label>
+          <input type="text" id="revPeriodoDesde" placeholder="Ej: Agosto">
+        </div>
+        <div class="field">
+          <label>Periodo — hasta el mes</label>
+          <input type="text" id="revPeriodoHasta" placeholder="Ej: Septiembre">
+        </div>
+      </div>
+
+      <h3 style="margin:20px 0 10px;font-size:14px;color:var(--navy);">Materiales solicitados</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:32px;">No.</th><th>Descripción de los bienes</th><th>Especificaciones</th>
+            <th style="width:100px;">Cant. Solicitada</th><th style="width:100px;">Cant. Autorizada</th><th>Uso</th><th></th>
+          </tr></thead>
+          <tbody id="revItemsBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="justify-content:flex-start;margin-top:10px;">
+        <button class="ghost" id="btnAgregarLineaRev">+ Agregar línea</button>
+      </div>
+
+      <div class="modal-actions" style="flex-wrap:wrap;gap:10px;margin-top:18px;border-top:1px solid var(--line);padding-top:16px;">
+        <button class="ghost" id="btnCerrarRevisarSol">Cerrar</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="ghost" id="btnGuardarRevisarSol">💾 Guardar cambios</button>
+          <button class="primary" id="btnExportarRevisarSolPDF">⬇ Exportar a PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 </div>
 <!-- ===================== /MÓDULO MANTENIMIENTO ===================== -->
@@ -4800,16 +4856,20 @@ function renderSolicitudesRecibidas(){
     const nItems = Array.isArray(s.items) ? s.items.length : 0;
     return `<tr>
       <td>${fechaRecibida}</td>
-      <td><strong>${esc(s.area_seccion)}</strong></td>
+      <td><strong>${esc(s.area_seccion)||'—'}</strong></td>
       <td>${esc(s.nombre_solicitante)}</td>
       <td>${nItems}</td>
       <td><span class="pill pill-${s.estado==='Convertida'?'Finalizado':'Pendiente'}">${esc(s.estado)||'Pendiente'}</span></td>
       <td><div class="row-actions">
+        <button class="ghost" data-revisar="${s.id}">🔍 Revisar</button>
         ${s.estado!=='Convertida' ? `<button class="ghost" data-convertir="${s.id}">Convertir</button><button class="ghost danger" data-descartar="${s.id}">Descartar</button>` : `<span class="hint" style="margin:0;">Ya convertida</span>`}
       </div></td>
     </tr>`;
   }).join('') : `<tr><td colspan="6" class="empty">No has recibido solicitudes del personal todavía.</td></tr>`;
 
+  tbody.querySelectorAll('[data-revisar]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openRevisarSolicitud(btn.dataset.revisar));
+  });
   tbody.querySelectorAll('[data-convertir]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const s = solicitudesRecibidas.find(x=>x.id===btn.dataset.convertir);
@@ -4847,6 +4907,208 @@ function renderSolicitudesRecibidas(){
   });
 }
 document.getElementById('btnRefrescarSolicitudes').addEventListener('click', cargarSolicitudesRecibidas);
+
+/* --- Modal "Revisar solicitud": editar en el momento lo que llegó del
+   formulario público (incluyendo completar Área/Centro de Costos/Periodo,
+   que el formulario público ya no pide), guardar los cambios directo en la
+   solicitud, y exportarla a PDF con el formato institucional para enviar
+   a Compras — todo sin tener que "convertirla" antes en una requisición
+   aparte. --- */
+let revisarSolId = null;
+let revisarSolItems = [];
+
+function syncRevisarSolItemsFromDOM(){
+  const filas = [...document.querySelectorAll('#revItemsBody tr')];
+  revisarSolItems = filas.map(tr=>({
+    descripcion: tr.querySelector('[data-revf="descripcion"]').value.trim(),
+    especificaciones: tr.querySelector('[data-revf="especificaciones"]').value.trim(),
+    cantidad: tr.querySelector('[data-revf="cantidadSolicitada"]').value.trim(),
+    cantidadAutorizada: tr.querySelector('[data-revf="cantidadAutorizada"]').value.trim(),
+    uso: tr.querySelector('[data-revf="uso"]').value.trim(),
+  }));
+}
+function renderRevisarSolItems(){
+  const tbody = document.getElementById('revItemsBody');
+  tbody.innerHTML = revisarSolItems.map((it,idx)=>`
+    <tr>
+      <td style="text-align:center;color:var(--gray);">${idx+1}</td>
+      <td><input type="text" data-revf="descripcion" value="${esc(it.descripcion)}"></td>
+      <td><input type="text" data-revf="especificaciones" value="${esc(it.especificaciones)}"></td>
+      <td><input type="text" data-revf="cantidadSolicitada" value="${esc(it.cantidad)}" style="text-align:center;"></td>
+      <td><input type="text" data-revf="cantidadAutorizada" value="${esc(it.cantidadAutorizada)}" style="text-align:center;"></td>
+      <td><input type="text" data-revf="uso" value="${esc(it.uso)}"></td>
+      <td><span class="entry-del" data-delrevitem="${idx}" title="Quitar línea" style="cursor:pointer;">✕</span></td>
+    </tr>`).join('');
+  tbody.querySelectorAll('[data-delrevitem]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      syncRevisarSolItemsFromDOM();
+      revisarSolItems.splice(Number(el.dataset.delrevitem), 1);
+      if(!revisarSolItems.length) revisarSolItems.push({descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:''});
+      renderRevisarSolItems();
+    });
+  });
+}
+document.getElementById('btnAgregarLineaRev').addEventListener('click', ()=>{
+  syncRevisarSolItemsFromDOM();
+  revisarSolItems.push({descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:''});
+  renderRevisarSolItems();
+});
+
+function openRevisarSolicitud(id){
+  const s = solicitudesRecibidas.find(x=>x.id===id);
+  if(!s) return;
+  revisarSolId = id;
+
+  const recibida = s.created_at ? new Date(s.created_at).toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  document.getElementById('revisarSolInfo').textContent = `Recibida el ${recibida} a través del formulario público.`;
+
+  document.getElementById('revFecha').value = s.fecha_solicitud || todayISO();
+  document.getElementById('revSolicitante').value = s.nombre_solicitante || '';
+  document.getElementById('revArea').value = s.area_seccion || '';
+  document.getElementById('revCentroCostos').value = s.centro_costos || '';
+  document.getElementById('revPeriodoDesde').value = s.periodo_desde || '';
+  document.getElementById('revPeriodoHasta').value = s.periodo_hasta || '';
+
+  revisarSolItems = (Array.isArray(s.items) && s.items.length) ? s.items.map(it=>({
+    descripcion: it.descripcion||'', especificaciones: it.especificaciones||'',
+    cantidad: it.cantidad||'', cantidadAutorizada: it.cantidadAutorizada||'', uso: it.uso||''
+  })) : [{descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:''}];
+  renderRevisarSolItems();
+
+  document.getElementById('revisarSolModalBg').classList.add('active');
+}
+document.getElementById('btnCerrarRevisarSol').addEventListener('click', ()=>{
+  document.getElementById('revisarSolModalBg').classList.remove('active');
+  revisarSolId = null;
+});
+
+function leerCamposRevisar(){
+  syncRevisarSolItemsFromDOM();
+  return {
+    fecha_solicitud: document.getElementById('revFecha').value || todayISO(),
+    nombre_solicitante: document.getElementById('revSolicitante').value.trim(),
+    area_seccion: document.getElementById('revArea').value.trim(),
+    centro_costos: document.getElementById('revCentroCostos').value.trim(),
+    periodo_desde: document.getElementById('revPeriodoDesde').value.trim(),
+    periodo_hasta: document.getElementById('revPeriodoHasta').value.trim(),
+    items: revisarSolItems.filter(it=>it.descripcion || it.especificaciones || it.cantidad || it.cantidadAutorizada || it.uso)
+  };
+}
+
+document.getElementById('btnGuardarRevisarSol').addEventListener('click', async ()=>{
+  if(!revisarSolId) return;
+  const cambios = leerCamposRevisar();
+  try{
+    await supabaseAPI.from('solicitudes_requisicion').update(cambios).eq('id', revisarSolId);
+    const s = solicitudesRecibidas.find(x=>x.id===revisarSolId);
+    if(s) Object.assign(s, cambios);
+    renderSolicitudesRecibidas();
+    showToast('Cambios guardados en la solicitud.');
+  }catch(e){
+    console.error(e);
+    showToast('No se pudo guardar. Intenta de nuevo.');
+  }
+});
+
+function construirSolicitudRevisadaHTML(datos){
+  const totalFilas = Math.max(12, datos.items.length);
+  let filasHtml = '';
+  for(let i=0;i<totalFilas;i++){
+    const it = datos.items[i] || {descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:''};
+    filasHtml += `<tr>
+      <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${i+1}</td>
+      <td style="border:1px solid #000;padding:5px 6px;">${esc(it.descripcion)}</td>
+      <td style="border:1px solid #000;padding:5px 6px;">${esc(it.especificaciones)}</td>
+      <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${esc(it.cantidad)}</td>
+      <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${esc(it.cantidadAutorizada)}</td>
+      <td style="border:1px solid #000;padding:5px 6px;">${esc(it.uso)}</td>
+    </tr>`;
+  }
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Requisición de Materiales — ${esc(datos.nombre_solicitante)||'Sin nombre'}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:14mm 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:12px;}
+  table{width:100%;border-collapse:collapse;}
+  @media print{ body{margin:8mm 10mm;} }
+  .hdrtable td{border:1px solid #000;padding:6px 10px;vertical-align:middle;}
+</style></head><body>
+  <table class="hdrtable" style="margin-bottom:14px;">
+    <tr>
+      <td rowspan="3" style="width:110px;text-align:center;">
+        <img src="https://www.colegioamericano.edu.co/wp-content/uploads/2025/11/Escudo-Colegio-Americano.jpg" style="width:80px;height:80px;object-fit:contain;" onerror="this.style.display='none'">
+      </td>
+      <td rowspan="2" style="text-align:center;font-weight:700;font-size:14px;">FORMATO SOLICITUD DE PEDIDOS A COMPRAS</td>
+      <td style="font-weight:700;">CÓDIGO: GA-LO-CO01</td>
+    </tr>
+    <tr><td style="font-weight:700;">VERSIÓN: 01</td></tr>
+    <tr>
+      <td style="text-align:center;font-weight:700;">PROCEDIMIENTO: GESTIÓN ADMINISTRATIVA</td>
+      <td style="font-weight:700;">PÁGINAS: Página 1 de 1</td>
+    </tr>
+  </table>
+  <table class="hdrtable" style="margin-bottom:16px;">
+    <tr>
+      <td style="background:#BDD7EE;font-weight:700;width:22%;">Fecha Solicitud</td>
+      <td colspan="3">${datos.fecha_solicitud?fmtDate(datos.fecha_solicitud):''}</td>
+    </tr>
+    <tr>
+      <td style="background:#BDD7EE;font-weight:700;">Área o sección</td>
+      <td style="width:28%;">${esc(datos.area_seccion)}</td>
+      <td style="background:#BDD7EE;font-weight:700;width:20%;">Centro de Costos</td>
+      <td>${esc(datos.centro_costos)}</td>
+    </tr>
+    <tr>
+      <td style="background:#BDD7EE;font-weight:700;">Nombre del Solicitante</td>
+      <td colspan="3">${esc(datos.nombre_solicitante)}</td>
+    </tr>
+    <tr>
+      <td style="background:#BDD7EE;font-weight:700;">Periodo de consumo</td>
+      <td>Del mes: ${esc(datos.periodo_desde)}</td>
+      <td style="background:#BDD7EE;font-weight:700;">Hasta el mes</td>
+      <td>${esc(datos.periodo_hasta)}</td>
+    </tr>
+  </table>
+  <table>
+    <thead>
+      <tr style="background:#BDD7EE;font-weight:700;">
+        <th style="border:1px solid #000;padding:6px;width:32px;">No.</th>
+        <th style="border:1px solid #000;padding:6px;">Descripción de los bienes</th>
+        <th style="border:1px solid #000;padding:6px;">Especificaciones</th>
+        <th style="border:1px solid #000;padding:6px;width:90px;">Cantidad Solicitada</th>
+        <th style="border:1px solid #000;padding:6px;width:90px;">Cantidad Autorizada</th>
+        <th style="border:1px solid #000;padding:6px;">Uso</th>
+      </tr>
+    </thead>
+    <tbody>${filasHtml}</tbody>
+  </table>
+  <div style="display:flex;justify-content:space-between;margin-top:60px;font-size:10.5px;color:#555;">
+    <div>COLEGIO AMERICANO DE BARRANQUILLA</div>
+    <div>COPIA CONTROLADA</div>
+  </div>
+  <script>
+    window.addEventListener('load', function(){ setTimeout(function(){ window.focus(); window.print(); }, 300); });
+  <\/script>
+</body></html>`;
+}
+document.getElementById('btnExportarRevisarSolPDF').addEventListener('click', async ()=>{
+  const datos = leerCamposRevisar();
+  if(!datos.items.length){ showToast('Agrega al menos un material antes de exportar.'); return; }
+  const win = window.open('', '_blank');
+  if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
+  win.document.open();
+  win.document.write(construirSolicitudRevisadaHTML(datos));
+  win.document.close();
+  showToast('Se abrió una pestaña nueva con el formato para Compras. Ahí elige "Guardar como PDF".');
+
+  // guarda de una vez lo que se acaba de exportar, para no perder los ajustes
+  if(revisarSolId){
+    try{
+      await supabaseAPI.from('solicitudes_requisicion').update(datos).eq('id', revisarSolId);
+      const s = solicitudesRecibidas.find(x=>x.id===revisarSolId);
+      if(s) Object.assign(s, datos);
+    }catch(e){ console.error(e); }
+  }
+});
 
 function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
@@ -7211,7 +7473,8 @@ const BOTON_CIERRE_POR_MODAL = {
   firmaModalBg: 'btnCancelFirma',
   confirmModalBg: 'btnConfirmCancel',
   aireMesDetalleModalBg: 'btnCloseAireMesDetalle',
-  reservaModalBg: 'btnCancelReserva'
+  reservaModalBg: 'btnCancelReserva',
+  revisarSolModalBg: 'btnCerrarRevisarSol'
 };
 function cerrarModalPorId(modalId){
   const btnId = BOTON_CIERRE_POR_MODAL[modalId];
