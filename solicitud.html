@@ -78,7 +78,7 @@
     <div>
       <p class="brand-eyebrow">Colegio Americano de Barranquilla · Servicios Generales</p>
       <h1>Solicitud de Requisición de Materiales</h1>
-      <p class="subtitle">Formato GA-LO-CO01 — Llena este formulario y tu solicitud llega directo a Servicios Generales.</p>
+      <p class="subtitle">Insumos para reparaciones y mantenimiento — llena este formulario y tu solicitud llega directo a Servicios Generales.</p>
     </div>
   </header>
 
@@ -90,26 +90,9 @@
           <label>Fecha de solicitud</label>
           <input type="date" id="fFecha">
         </div>
-        <div class="field"></div>
-        <div class="field">
-          <label>Área o sección *</label>
-          <input type="text" id="fArea" placeholder="Ej: Coordinación de Primaria">
-        </div>
-        <div class="field">
-          <label>Centro de costos</label>
-          <input type="text" id="fCentroCostos">
-        </div>
         <div class="field" style="grid-column:1/-1;">
           <label>Nombre del solicitante *</label>
           <input type="text" id="fSolicitante" placeholder="Tu nombre completo">
-        </div>
-        <div class="field">
-          <label>Periodo de consumo — del mes</label>
-          <input type="text" id="fPeriodoDesde" placeholder="Ej: Agosto">
-        </div>
-        <div class="field">
-          <label>Periodo de consumo — hasta el mes</label>
-          <input type="text" id="fPeriodoHasta" placeholder="Ej: Septiembre">
         </div>
       </div>
     </div>
@@ -221,9 +204,7 @@ document.getElementById('btnAgregarLinea').addEventListener('click', ()=>{
 });
 
 document.getElementById('btnEnviar').addEventListener('click', async ()=>{
-  const area = document.getElementById('fArea').value.trim();
   const solicitante = document.getElementById('fSolicitante').value.trim();
-  if(!area){ showToast('Por favor indica el área o sección.'); return; }
   if(!solicitante){ showToast('Por favor indica tu nombre.'); return; }
 
   syncItemsFromDOM();
@@ -239,11 +220,7 @@ document.getElementById('btnEnviar').addEventListener('click', async ()=>{
   try{
     const { error } = await supabaseAPI.from('solicitudes_requisicion').insert({
       fecha_solicitud: document.getElementById('fFecha').value || todayISO(),
-      area_seccion: area,
-      centro_costos: document.getElementById('fCentroCostos').value.trim(),
       nombre_solicitante: solicitante,
-      periodo_desde: document.getElementById('fPeriodoDesde').value.trim(),
-      periodo_hasta: document.getElementById('fPeriodoHasta').value.trim(),
       items: itemsConDatos,
       estado: 'Pendiente'
     });
@@ -262,11 +239,7 @@ document.getElementById('btnEnviar').addEventListener('click', async ()=>{
 });
 
 document.getElementById('btnOtraSolicitud').addEventListener('click', ()=>{
-  document.getElementById('fArea').value = '';
-  document.getElementById('fCentroCostos').value = '';
   document.getElementById('fSolicitante').value = '';
-  document.getElementById('fPeriodoDesde').value = '';
-  document.getElementById('fPeriodoHasta').value = '';
   document.getElementById('fFecha').value = todayISO();
   items = Array.from({length:4}, ITEM_VACIO);
   renderItems();
