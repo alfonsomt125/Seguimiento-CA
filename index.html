@@ -902,7 +902,7 @@
       <p class="hint" style="margin:0 0 14px;">Formato institucional GA-LO-CO01 — Solicitud de Pedidos a Compras. Toca una fila para editarla.</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Periodo</th><th>Ítems</th><th></th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th></th></tr></thead>
           <tbody id="reqListaBody"></tbody>
         </table>
       </div>
@@ -934,14 +934,6 @@
         <div class="field" style="grid-column:1/-1;">
           <label>Nombre del solicitante</label>
           <input type="text" id="reqSolicitante">
-        </div>
-        <div class="field">
-          <label>Periodo de consumo — del mes</label>
-          <input type="text" id="reqPeriodoDesde" placeholder="Ej: Agosto">
-        </div>
-        <div class="field">
-          <label>Periodo de consumo — hasta el mes</label>
-          <input type="text" id="reqPeriodoHasta" placeholder="Ej: Septiembre">
         </div>
       </div>
 
@@ -990,14 +982,6 @@
         <div class="field">
           <label>Centro de costos</label>
           <input type="text" id="revCentroCostos">
-        </div>
-        <div class="field">
-          <label>Periodo — del mes</label>
-          <input type="text" id="revPeriodoDesde" placeholder="Ej: Agosto">
-        </div>
-        <div class="field">
-          <label>Periodo — hasta el mes</label>
-          <input type="text" id="revPeriodoHasta" placeholder="Ej: Septiembre">
         </div>
       </div>
 
@@ -4880,8 +4864,6 @@ function renderSolicitudesRecibidas(){
       document.getElementById('reqArea').value = s.area_seccion || '';
       document.getElementById('reqCentroCostos').value = s.centro_costos || '';
       document.getElementById('reqSolicitante').value = s.nombre_solicitante || '';
-      document.getElementById('reqPeriodoDesde').value = s.periodo_desde || '';
-      document.getElementById('reqPeriodoHasta').value = s.periodo_hasta || '';
       currentReqItems = (Array.isArray(s.items) && s.items.length) ? s.items.map(it=>({
         descripcion: it.descripcion||'', especificaciones: it.especificaciones||'',
         cantidadSolicitada: it.cantidad||'', cantidadAutorizada: '', uso: it.uso||''
@@ -4967,8 +4949,6 @@ function openRevisarSolicitud(id){
   document.getElementById('revSolicitante').value = s.nombre_solicitante || '';
   document.getElementById('revArea').value = s.area_seccion || '';
   document.getElementById('revCentroCostos').value = s.centro_costos || '';
-  document.getElementById('revPeriodoDesde').value = s.periodo_desde || '';
-  document.getElementById('revPeriodoHasta').value = s.periodo_hasta || '';
 
   revisarSolItems = (Array.isArray(s.items) && s.items.length) ? s.items.map(it=>({
     descripcion: it.descripcion||'', especificaciones: it.especificaciones||'',
@@ -4990,8 +4970,6 @@ function leerCamposRevisar(){
     nombre_solicitante: document.getElementById('revSolicitante').value.trim(),
     area_seccion: document.getElementById('revArea').value.trim(),
     centro_costos: document.getElementById('revCentroCostos').value.trim(),
-    periodo_desde: document.getElementById('revPeriodoDesde').value.trim(),
-    periodo_hasta: document.getElementById('revPeriodoHasta').value.trim(),
     items: revisarSolItems.filter(it=>it.descripcion || it.especificaciones || it.cantidad || it.cantidadAutorizada || it.uso)
   };
 }
@@ -5062,12 +5040,6 @@ function construirSolicitudRevisadaHTML(datos){
       <td style="background:#BDD7EE;font-weight:700;">Nombre del Solicitante</td>
       <td colspan="3">${esc(datos.nombre_solicitante)}</td>
     </tr>
-    <tr>
-      <td style="background:#BDD7EE;font-weight:700;">Periodo de consumo</td>
-      <td>Del mes: ${esc(datos.periodo_desde)}</td>
-      <td style="background:#BDD7EE;font-weight:700;">Hasta el mes</td>
-      <td>${esc(datos.periodo_hasta)}</td>
-    </tr>
   </table>
   <table>
     <thead>
@@ -5115,19 +5087,17 @@ function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
   const filas = [...requisiciones].sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
   tbody.innerHTML = filas.length ? filas.map(r=>{
-    const periodo = (r.periodoDesde||r.periodoHasta) ? `${esc(r.periodoDesde)||'—'} a ${esc(r.periodoHasta)||'—'}` : '—';
     return `<tr data-verreq="${r.id}" style="cursor:pointer;">
       <td>${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
       <td><strong>${esc(r.areaSeccion)||'—'}</strong></td>
       <td>${esc(r.nombreSolicitante)||'—'}</td>
-      <td>${periodo}</td>
       <td>${(r.items||[]).filter(it=>it.descripcion).length}</td>
       <td><div class="row-actions">
         <button class="ghost" data-editreq="${r.id}">Editar</button>
         <button class="ghost danger" data-delreq="${r.id}">Eliminar</button>
       </div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="6" class="empty">Aún no has creado ninguna requisición.</td></tr>`;
+  }).join('') : `<tr><td colspan="5" class="empty">Aún no has creado ninguna requisición.</td></tr>`;
 
   tbody.querySelectorAll('[data-verreq]').forEach(tr=>{
     tr.addEventListener('click', (e)=>{
@@ -5161,8 +5131,6 @@ function openReqEditor(reqId){
   document.getElementById('reqArea').value = r?.areaSeccion || '';
   document.getElementById('reqCentroCostos').value = r?.centroCostos || '';
   document.getElementById('reqSolicitante').value = r?.nombreSolicitante || '';
-  document.getElementById('reqPeriodoDesde').value = r?.periodoDesde || '';
-  document.getElementById('reqPeriodoHasta').value = r?.periodoHasta || '';
   document.getElementById('btnEliminarRequisicion').style.display = r ? 'inline-block' : 'none';
 
   currentReqItems = r ? JSON.parse(JSON.stringify(r.items||[])) : Array.from({length:5}, REQ_ITEM_VACIO);
@@ -5232,8 +5200,6 @@ document.getElementById('btnGuardarRequisicion').addEventListener('click', async
     areaSeccion,
     centroCostos: document.getElementById('reqCentroCostos').value.trim(),
     nombreSolicitante,
-    periodoDesde: document.getElementById('reqPeriodoDesde').value.trim(),
-    periodoHasta: document.getElementById('reqPeriodoHasta').value.trim(),
     items: itemsConDatos
   };
 
@@ -5269,8 +5235,6 @@ function construirRequisicionHTML(){
   const area = document.getElementById('reqArea').value.trim();
   const centroCostos = document.getElementById('reqCentroCostos').value.trim();
   const solicitante = document.getElementById('reqSolicitante').value.trim();
-  const desde = document.getElementById('reqPeriodoDesde').value.trim();
-  const hasta = document.getElementById('reqPeriodoHasta').value.trim();
 
   const filasBase = currentReqItems.length ? currentReqItems : [];
   const totalFilas = Math.max(12, filasBase.length);
@@ -5325,12 +5289,6 @@ function construirRequisicionHTML(){
     <tr>
       <td style="background:#BDD7EE;font-weight:700;">Nombre del Solicitante</td>
       <td colspan="3">${esc(solicitante)}</td>
-    </tr>
-    <tr>
-      <td style="background:#BDD7EE;font-weight:700;">Periodo de consumo</td>
-      <td>Del mes: ${esc(desde)}</td>
-      <td style="background:#BDD7EE;font-weight:700;">Hasta el mes</td>
-      <td>${esc(hasta)}</td>
     </tr>
   </table>
 
