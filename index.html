@@ -457,9 +457,10 @@
 
   .loading-screen{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--gray);font-family:'IBM Plex Mono',monospace;font-size:13px;}
   #app{display:none;}
-</style>
-</head>
-<body>
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
+</style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
 
 <div class="loading-screen" id="loadingScreen">Cargando bitácora…</div>
 
@@ -4044,7 +4045,10 @@ function construirAireReportesHTML(){
   body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:16mm 14mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   table{width:100%;border-collapse:collapse;font-size:10px;}
   @media print{ body{margin:10mm 12mm;} }
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
 </style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
   <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Reportes de Mantenimiento — Aires Acondicionados</div>
   <div style="font-size:11px;color:#6B7280;margin-bottom:12px;">Generado el ${fechaStr}.</div>
@@ -4554,9 +4558,10 @@ function construirHojaVidaHTML(aireId){
   body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:16mm 14mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   table{width:100%;border-collapse:collapse;font-size:10.5px;}
   @media print{ body{margin:10mm 12mm;} }
-</style>
-</head>
-<body>
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
+</style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
   <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Hoja de Vida — Aire Acondicionado</div>
   <div style="font-size:11px;color:#64748B;margin-bottom:12px;">Generado el ${fechaStr}.</div>
@@ -4643,9 +4648,10 @@ function construirVencidosHTML(){
   body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:16mm 14mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   table{width:100%;border-collapse:collapse;font-size:11px;}
   @media print{ body{margin:10mm 12mm;} }
-</style>
-</head>
-<body>
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
+</style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
   <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Mantenimientos Preventivos Vencidos — Aires Acondicionados</div>
   <div style="font-size:11px;color:#64748B;margin-bottom:12px;">Generado el ${fechaStr}. Ordenados del más urgente al menos urgente.</div>
@@ -5010,7 +5016,10 @@ function construirSolicitudRevisadaHTML(datos){
   table{width:100%;border-collapse:collapse;}
   @media print{ body{margin:8mm 10mm;} }
   .hdrtable td{border:1px solid #000;padding:6px 10px;vertical-align:middle;}
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
 </style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <table class="hdrtable" style="margin-bottom:14px;">
     <tr>
       <td rowspan="3" style="width:110px;text-align:center;">
@@ -5258,7 +5267,10 @@ function construirRequisicionHTML(){
   table{width:100%;border-collapse:collapse;}
   @media print{ body{margin:8mm 10mm;} }
   .hdrtable td{border:1px solid #000;padding:6px 10px;vertical-align:middle;}
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
 </style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
 
   <table class="hdrtable" style="margin-bottom:14px;">
     <tr>
@@ -5725,8 +5737,10 @@ function construirListadoReservasHTML(tipo){
   body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:16mm 14mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   table{width:100%;border-collapse:collapse;font-size:10.5px;}
   @media print{ body{margin:10mm 12mm;} }
-</style></head>
-<body>
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
+</style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
   <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Reservas de Espacios — Actividades ${tipo}</div>
   <div style="font-size:11px;color:#64748B;margin-bottom:12px;text-transform:capitalize;">${mesLabel}. Generado el ${fechaStr}.</div>
@@ -5783,8 +5797,10 @@ function construirComprobanteHTML(reserva){
   body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:16mm 14mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   table{width:100%;border-collapse:collapse;font-size:11px;}
   @media print{ body{margin:10mm 12mm;} }
-</style></head>
-<body>
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
+</style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
   <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Comprobante de Reserva de Espacio</div>
   <div style="font-size:11px;color:#64748B;margin-bottom:12px;">Generado el ${fechaStr}. Actividad ${r.tipo}.</div>
@@ -6305,9 +6321,10 @@ function construirPedidoHTML(pedido){
   body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:16mm 14mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   table{width:100%;border-collapse:collapse;font-size:11px;}
   @media print{ body{margin:10mm 12mm;} }
-</style>
-</head>
-<body>
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
+</style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
   <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Pedido Sugerido a Compras — Insumos</div>
   <div style="font-size:11px;color:#64748B;margin-bottom:12px;">Generado el ${fechaStr}. Cantidad a pedir = consumo mensual del personal − stock disponible actual.</div>
@@ -6405,7 +6422,10 @@ function construirInventarioDisponibleHTML(){
   body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:16mm 14mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   table{width:100%;border-collapse:collapse;font-size:11px;}
   @media print{ body{margin:10mm 12mm;} }
+.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} }
 </style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
   <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Inventario Disponible${filtroLabel}</div>
   <div style="font-size:11px;color:#6B7280;margin-bottom:12px;">Generado el ${fechaStr}. Para comparar contra el conteo físico de bodega — la última columna queda en blanco para anotar a mano.</div>
