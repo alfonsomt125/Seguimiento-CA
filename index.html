@@ -457,10 +457,7 @@
 
   .loading-screen{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--gray);font-family:'IBM Plex Mono',monospace;font-size:13px;}
   #app{display:none;}
-.btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
-  @media print{ .btn-volver-noprint{display:none !important;} }
 </style></head><body>
-  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
 
 <div class="loading-screen" id="loadingScreen">Cargando bitácora…</div>
 
@@ -885,9 +882,12 @@
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
         <h2 style="margin:0;">Solicitudes recibidas del personal</h2>
-        <button class="ghost" id="btnRefrescarSolicitudes">↻ Actualizar</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="ghost" id="btnRefrescarSolicitudes">↻ Actualizar</button>
+          <button class="primary" id="btnNuevaSolicitud">+ Nueva solicitud</button>
+        </div>
       </div>
-      <p class="hint" style="margin:0 0 14px;">Lo que llega desde el formulario público. Toca "Convertir" para pasarla a una requisición formal editable, con la posibilidad de autorizar cantidades antes de exportarla.</p>
+      <p class="hint" style="margin:0 0 14px;">Lo que llega desde el formulario público, más las que registres tú mismo con "+ Nueva solicitud". Toca "Revisar" para editarla, o "Convertir" para pasarla a una requisición formal con cantidades autorizadas.</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Recibida</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th>Estado</th><th></th></tr></thead>
@@ -965,7 +965,7 @@
   <!-- Modal: revisar/editar una solicitud recibida del formulario público, y exportarla a PDF -->
   <div class="modal-bg" id="revisarSolModalBg">
     <div class="modal" style="max-width:860px;">
-      <h3>Revisar solicitud</h3>
+      <h3 id="revisarSolTitulo">Revisar solicitud</h3>
       <p class="hint" id="revisarSolInfo" style="margin:0 0 16px;"></p>
       <div class="grid-2">
         <div class="field">
@@ -4944,19 +4944,24 @@ document.getElementById('btnAgregarLineaRev').addEventListener('click', ()=>{
 });
 
 function openRevisarSolicitud(id){
-  const s = solicitudesRecibidas.find(x=>x.id===id);
-  if(!s) return;
-  revisarSolId = id;
+  const s = id ? solicitudesRecibidas.find(x=>x.id===id) : null;
+  if(id && !s) return;
+  revisarSolId = id || null;
 
-  const recibida = s.created_at ? new Date(s.created_at).toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-  document.getElementById('revisarSolInfo').textContent = `Recibida el ${recibida} a través del formulario público.`;
+  document.getElementById('revisarSolTitulo').textContent = s ? 'Revisar solicitud' : 'Nueva solicitud';
+  if(s){
+    const recibida = s.created_at ? new Date(s.created_at).toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    document.getElementById('revisarSolInfo').textContent = `Recibida el ${recibida} a través del formulario público.`;
+  }else{
+    document.getElementById('revisarSolInfo').textContent = 'Regístrala tú mismo — por ejemplo, si alguien te la pidió en persona o por teléfono.';
+  }
 
-  document.getElementById('revFecha').value = s.fecha_solicitud || todayISO();
-  document.getElementById('revSolicitante').value = s.nombre_solicitante || '';
-  document.getElementById('revArea').value = s.area_seccion || '';
-  document.getElementById('revCentroCostos').value = s.centro_costos || '';
+  document.getElementById('revFecha').value = s?.fecha_solicitud || todayISO();
+  document.getElementById('revSolicitante').value = s?.nombre_solicitante || '';
+  document.getElementById('revArea').value = s?.area_seccion || '';
+  document.getElementById('revCentroCostos').value = s?.centro_costos || '';
 
-  revisarSolItems = (Array.isArray(s.items) && s.items.length) ? s.items.map(it=>({
+  revisarSolItems = (s && Array.isArray(s.items) && s.items.length) ? s.items.map(it=>({
     descripcion: it.descripcion||'', especificaciones: it.especificaciones||'',
     cantidad: it.cantidad||'', cantidadAutorizada: it.cantidadAutorizada||'', uso: it.uso||''
   })) : [{descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:''}];
@@ -4964,6 +4969,7 @@ function openRevisarSolicitud(id){
 
   document.getElementById('revisarSolModalBg').classList.add('active');
 }
+document.getElementById('btnNuevaSolicitud').addEventListener('click', ()=>openRevisarSolicitud(null));
 document.getElementById('btnCerrarRevisarSol').addEventListener('click', ()=>{
   document.getElementById('revisarSolModalBg').classList.remove('active');
   revisarSolId = null;
@@ -4981,14 +4987,24 @@ function leerCamposRevisar(){
 }
 
 document.getElementById('btnGuardarRevisarSol').addEventListener('click', async ()=>{
-  if(!revisarSolId) return;
   const cambios = leerCamposRevisar();
+  if(!cambios.nombre_solicitante){ showToast('El nombre del solicitante es obligatorio.'); return; }
+  if(!cambios.items.length){ showToast('Agrega al menos un material.'); return; }
+
   try{
-    await supabaseAPI.from('solicitudes_requisicion').update(cambios).eq('id', revisarSolId);
-    const s = solicitudesRecibidas.find(x=>x.id===revisarSolId);
-    if(s) Object.assign(s, cambios);
+    if(revisarSolId){
+      await supabaseAPI.from('solicitudes_requisicion').update(cambios).eq('id', revisarSolId);
+      const s = solicitudesRecibidas.find(x=>x.id===revisarSolId);
+      if(s) Object.assign(s, cambios);
+      showToast('Cambios guardados en la solicitud.');
+    }else{
+      const { data, error } = await supabaseAPI.from('solicitudes_requisicion').insert({...cambios, estado:'Pendiente'}).select().single();
+      if(error) throw error;
+      solicitudesRecibidas.unshift(data);
+      revisarSolId = data.id;
+      showToast('Solicitud registrada correctamente.');
+    }
     renderSolicitudesRecibidas();
-    showToast('Cambios guardados en la solicitud.');
   }catch(e){
     console.error(e);
     showToast('No se pudo guardar. Intenta de nuevo.');
