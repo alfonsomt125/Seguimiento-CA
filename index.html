@@ -898,13 +898,29 @@
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
         <h2 style="margin:0;">Requisiciones de Materiales</h2>
-        <button class="primary" id="btnNuevaRequisicion">+ Nueva requisición</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="ghost" id="btnVerPapeleraReq">🗑️ Papelera (<span id="reqPapeleraCount">0</span>)</button>
+          <button class="primary" id="btnNuevaRequisicion">+ Nueva requisición</button>
+        </div>
       </div>
       <p class="hint" style="margin:0 0 14px;">Formato institucional GA-LO-CO01 — Solicitud de Pedidos a Compras. Toca una fila para editarla.</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th>Compras</th><th></th></tr></thead>
           <tbody id="reqListaBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel" id="reqPapeleraWrap" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <h2 style="margin:0;">Papelera de requisiciones</h2>
+        <button class="ghost" id="btnCerrarPapeleraReq">Cerrar</button>
+      </div>
+      <p class="hint" style="margin:0 0 14px;">Las eliminadas quedan aquí. Puedes recuperarlas o borrarlas definitivamente.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Eliminada</th><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th></th></tr></thead>
+          <tbody id="reqPapeleraBody"></tbody>
         </table>
       </div>
     </div>
@@ -5128,7 +5144,7 @@ document.getElementById('btnExportarRevisarSolPDF').addEventListener('click', as
 
 function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
-  const filas = [...requisiciones].sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
+  const filas = requisiciones.filter(r=>!r.eliminada).sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
   tbody.innerHTML = filas.length ? filas.map(r=>{
     const estado = r.estadoCompras || 'Pendiente';
     const pillClase = estado==='Entregado' ? 'pill-Finalizado' : estado==='Solicitado' ? 'pill-En_proceso' : 'pill-Pendiente';
@@ -5145,6 +5161,8 @@ function renderReqLista(){
     </tr>`;
   }).join('') : `<tr><td colspan="6" class="empty">Aún no has creado ninguna requisición.</td></tr>`;
 
+  document.getElementById('reqPapeleraCount').textContent = requisiciones.filter(r=>r.eliminada).length;
+
   tbody.querySelectorAll('[data-verreq]').forEach(tr=>{
     tr.addEventListener('click', (e)=>{
       if(e.target.closest('[data-delreq]')) return;
@@ -5157,14 +5175,66 @@ function renderReqLista(){
   tbody.querySelectorAll('[data-delreq]').forEach(btn=>{
     btn.addEventListener('click', async (e)=>{
       e.stopPropagation();
-      if(!await customConfirm('¿Eliminar esta requisición? Esta acción no se puede deshacer.')) return;
-      requisiciones = requisiciones.filter(r=>r.id!==btn.dataset.delreq);
+      if(!await customConfirm('¿Eliminar esta requisición? Queda en la papelera por si necesitas recuperarla.')) return;
+      const idx = requisiciones.findIndex(r=>r.id===btn.dataset.delreq);
+      if(idx!==-1) requisiciones[idx] = {...requisiciones[idx], eliminada:true, eliminadaEn:new Date().toISOString()};
       await saveRequisiciones();
       renderReqLista();
-      showToast('Requisición eliminada.');
+      showToast('Requisición movida a la papelera.');
     });
   });
 }
+
+/* Papelera: las requisiciones "eliminadas" no se borran de verdad, solo se
+   marcan con eliminada:true y se ocultan de la lista normal — así siempre
+   se pueden recuperar si hizo falta. */
+function renderReqPapelera(){
+  const tbody = document.getElementById('reqPapeleraBody');
+  const filas = requisiciones.filter(r=>r.eliminada).sort((a,b)=>(b.eliminadaEn||'').localeCompare(a.eliminadaEn||''));
+  tbody.innerHTML = filas.length ? filas.map(r=>{
+    const eliminadaStr = r.eliminadaEn ? new Date(r.eliminadaEn).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+    return `<tr>
+      <td>${eliminadaStr}</td>
+      <td>${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
+      <td><strong>${esc(r.areaSeccion)||'—'}</strong></td>
+      <td>${esc(r.nombreSolicitante)||'—'}</td>
+      <td>${(r.items||[]).filter(it=>it.descripcion).length}</td>
+      <td><div class="row-actions">
+        <button class="ghost" data-restaurarreq="${r.id}">↺ Restaurar</button>
+        <button class="ghost danger" data-borrarreq="${r.id}">Eliminar definitivamente</button>
+      </div></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" class="empty">La papelera está vacía.</td></tr>`;
+
+  tbody.querySelectorAll('[data-restaurarreq]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const idx = requisiciones.findIndex(r=>r.id===btn.dataset.restaurarreq);
+      if(idx!==-1){ requisiciones[idx] = {...requisiciones[idx], eliminada:false, eliminadaEn:null}; }
+      await saveRequisiciones();
+      renderReqPapelera();
+      renderReqLista();
+      showToast('Requisición restaurada.');
+    });
+  });
+  tbody.querySelectorAll('[data-borrarreq]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!await customConfirm('¿Eliminar esta requisición para siempre? Esta vez sí es definitivo, no se puede deshacer.')) return;
+      requisiciones = requisiciones.filter(r=>r.id!==btn.dataset.borrarreq);
+      await saveRequisiciones();
+      renderReqPapelera();
+      renderReqLista();
+      showToast('Requisición eliminada definitivamente.');
+    });
+  });
+}
+document.getElementById('btnVerPapeleraReq').addEventListener('click', ()=>{
+  renderReqPapelera();
+  document.getElementById('reqPapeleraWrap').style.display = 'block';
+  document.getElementById('reqPapeleraWrap').scrollIntoView({behavior:'smooth', block:'start'});
+});
+document.getElementById('btnCerrarPapeleraReq').addEventListener('click', ()=>{
+  document.getElementById('reqPapeleraWrap').style.display = 'none';
+});
 
 const REQ_ITEM_VACIO = ()=>({descripcion:'', especificaciones:'', cantidadSolicitada:'', cantidadAutorizada:'', uso:''});
 
@@ -5339,10 +5409,11 @@ document.getElementById('btnGuardarRequisicion').addEventListener('click', async
 
 document.getElementById('btnEliminarRequisicion').addEventListener('click', async ()=>{
   if(!currentReqId) return;
-  if(!await customConfirm('¿Eliminar esta requisición? Esta acción no se puede deshacer.')) return;
-  requisiciones = requisiciones.filter(r=>r.id!==currentReqId);
+  if(!await customConfirm('¿Eliminar esta requisición? Queda en la papelera por si necesitas recuperarla.')) return;
+  const idx = requisiciones.findIndex(r=>r.id===currentReqId);
+  if(idx!==-1) requisiciones[idx] = {...requisiciones[idx], eliminada:true, eliminadaEn:new Date().toISOString()};
   await saveRequisiciones();
-  showToast('Requisición eliminada.');
+  showToast('Requisición movida a la papelera.');
   showReqLista();
 });
 
