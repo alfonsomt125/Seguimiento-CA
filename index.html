@@ -903,7 +903,7 @@
       <p class="hint" style="margin:0 0 14px;">Formato institucional GA-LO-CO01 — Solicitud de Pedidos a Compras. Toca una fila para editarla.</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th></th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th>Compras</th><th></th></tr></thead>
           <tbody id="reqListaBody"></tbody>
         </table>
       </div>
@@ -950,6 +950,24 @@
       </div>
       <div class="modal-actions" style="justify-content:flex-start;margin-top:12px;">
         <button class="ghost" id="btnAgregarLineaReq">+ Agregar línea</button>
+      </div>
+
+      <div id="reqComprasWrap" style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px;">
+        <h3 style="margin:0 0 8px;font-size:14px;color:var(--navy);">Seguimiento con Compras</h3>
+        <p class="hint" id="reqComprasEstadoTexto" style="margin:0 0 12px;">Guarda la requisición primero para poder darle seguimiento.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <button class="ghost" id="btnMarcarSolicitadoCompras" style="display:none;">📤 Marcar como solicitado a Compras</button>
+          <button class="ghost" id="btnMarcarEntregadoCompras" style="display:none;">✅ Registrar entrega de Compras</button>
+          <button class="ghost" id="btnReabrirCompras" style="display:none;">↺ Deshacer</button>
+        </div>
+        <div id="reqEntregaCamposWrap" style="display:none;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:12px;">
+          <div class="field" style="max-width:200px;">
+            <label>Fecha en que Compras entregó</label>
+            <input type="date" id="reqFechaEntregaCompras">
+          </div>
+          <button class="primary" id="btnConfirmarEntregaCompras">Confirmar entrega</button>
+          <button class="ghost" id="btnCancelarEntregaCompras">Cancelar</button>
+        </div>
       </div>
 
       <div class="modal-actions" style="justify-content:flex-start;margin-top:18px;border-top:1px solid var(--line);padding-top:16px;">
@@ -5112,17 +5130,20 @@ function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
   const filas = [...requisiciones].sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
   tbody.innerHTML = filas.length ? filas.map(r=>{
+    const estado = r.estadoCompras || 'Pendiente';
+    const pillClase = estado==='Entregado' ? 'pill-Finalizado' : estado==='Solicitado' ? 'pill-En_proceso' : 'pill-Pendiente';
     return `<tr data-verreq="${r.id}" style="cursor:pointer;">
       <td>${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
       <td><strong>${esc(r.areaSeccion)||'—'}</strong></td>
       <td>${esc(r.nombreSolicitante)||'—'}</td>
       <td>${(r.items||[]).filter(it=>it.descripcion).length}</td>
+      <td><span class="pill ${pillClase}">${esc(estado)}</span></td>
       <td><div class="row-actions">
         <button class="ghost" data-editreq="${r.id}">Editar</button>
         <button class="ghost danger" data-delreq="${r.id}">Eliminar</button>
       </div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="5" class="empty">Aún no has creado ninguna requisición.</td></tr>`;
+  }).join('') : `<tr><td colspan="6" class="empty">Aún no has creado ninguna requisición.</td></tr>`;
 
   tbody.querySelectorAll('[data-verreq]').forEach(tr=>{
     tr.addEventListener('click', (e)=>{
@@ -5162,10 +5183,85 @@ function openReqEditor(reqId){
   if(!currentReqItems.length) currentReqItems = Array.from({length:5}, REQ_ITEM_VACIO);
   renderReqItemsTable();
 
+  document.getElementById('reqEntregaCamposWrap').style.display = 'none';
+  actualizarUIComprasSeguimiento(r);
+
   document.getElementById('reqListaWrap').style.display = 'none';
   document.getElementById('reqEditWrap').style.display = 'block';
   window.scrollTo({top:0, behavior:'instant'});
 }
+
+/* Seguimiento con Compras: Pendiente -> Solicitado -> Entregado. La fecha
+   de entrega se escribe a mano (Compras no siempre avisa el mismo día),
+   las demás quedan solas. Cada botón guarda de inmediato en Supabase, sin
+   necesidad de tocar "Guardar requisición" aparte. */
+function actualizarUIComprasSeguimiento(r){
+  const texto = document.getElementById('reqComprasEstadoTexto');
+  const btnSolicitado = document.getElementById('btnMarcarSolicitadoCompras');
+  const btnEntregado = document.getElementById('btnMarcarEntregadoCompras');
+  const btnReabrir = document.getElementById('btnReabrirCompras');
+
+  if(!r){
+    texto.textContent = 'Guarda la requisición primero para poder darle seguimiento.';
+    btnSolicitado.style.display = 'none';
+    btnEntregado.style.display = 'none';
+    btnReabrir.style.display = 'none';
+    return;
+  }
+
+  const estado = r.estadoCompras || 'Pendiente';
+  if(estado==='Entregado'){
+    texto.innerHTML = `<span class="pill pill-Finalizado">Entregado</span> Solicitado a Compras el ${r.fechaSolicitadoCompras?fmtDate(r.fechaSolicitadoCompras):'—'}. Compras entregó el <strong>${fmtDate(r.fechaEntregaCompras)}</strong>.`;
+    btnSolicitado.style.display = 'none';
+    btnEntregado.style.display = 'none';
+    btnReabrir.style.display = 'inline-block';
+  }else if(estado==='Solicitado'){
+    texto.innerHTML = `<span class="pill pill-En_proceso">Solicitado a Compras</span> El ${fmtDate(r.fechaSolicitadoCompras)}. Aún no se ha registrado la entrega.`;
+    btnSolicitado.style.display = 'none';
+    btnEntregado.style.display = 'inline-block';
+    btnReabrir.style.display = 'inline-block';
+  }else{
+    texto.innerHTML = `<span class="pill pill-Pendiente">Pendiente</span> Todavía no se ha enviado a Compras.`;
+    btnSolicitado.style.display = 'inline-block';
+    btnEntregado.style.display = 'none';
+    btnReabrir.style.display = 'none';
+  }
+}
+
+async function guardarSeguimientoCompras(cambios){
+  if(!currentReqId) return;
+  const idx = requisiciones.findIndex(x=>x.id===currentReqId);
+  if(idx===-1) return;
+  requisiciones[idx] = {...requisiciones[idx], ...cambios};
+  await saveRequisiciones();
+  actualizarUIComprasSeguimiento(requisiciones[idx]);
+  renderReqLista();
+}
+
+document.getElementById('btnMarcarSolicitadoCompras').addEventListener('click', async ()=>{
+  await guardarSeguimientoCompras({estadoCompras:'Solicitado', fechaSolicitadoCompras: todayISO()});
+  showToast('Marcada como solicitada a Compras.');
+});
+document.getElementById('btnMarcarEntregadoCompras').addEventListener('click', ()=>{
+  document.getElementById('reqFechaEntregaCompras').value = todayISO();
+  document.getElementById('reqEntregaCamposWrap').style.display = 'flex';
+});
+document.getElementById('btnCancelarEntregaCompras').addEventListener('click', ()=>{
+  document.getElementById('reqEntregaCamposWrap').style.display = 'none';
+});
+document.getElementById('btnConfirmarEntregaCompras').addEventListener('click', async ()=>{
+  const fecha = document.getElementById('reqFechaEntregaCompras').value;
+  if(!fecha){ showToast('Indica la fecha en que Compras entregó.'); return; }
+  await guardarSeguimientoCompras({estadoCompras:'Entregado', fechaEntregaCompras: fecha});
+  document.getElementById('reqEntregaCamposWrap').style.display = 'none';
+  showToast('Entrega de Compras registrada.');
+});
+document.getElementById('btnReabrirCompras').addEventListener('click', async ()=>{
+  if(!await customConfirm('¿Deshacer el seguimiento con Compras y volver a "Pendiente"?')) return;
+  await guardarSeguimientoCompras({estadoCompras:'Pendiente', fechaSolicitadoCompras:null, fechaEntregaCompras:null});
+  document.getElementById('reqEntregaCamposWrap').style.display = 'none';
+  showToast('Seguimiento reiniciado.');
+});
 
 /* Lee lo que haya escrito en la tabla de líneas (inputs reales, editables
    directamente) y lo vuelca a currentReqItems — se llama antes de agregar
