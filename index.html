@@ -948,7 +948,10 @@
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
         <h2 style="margin:0;" id="reqEditTitulo">Nueva requisición</h2>
-        <button class="ghost" id="btnExportarReqPDF">⬇ Exportar a PDF</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="ghost" id="btnEnviarReqCorreo">✉️ Enviar por correo</button>
+          <button class="ghost" id="btnExportarReqPDF">⬇ Exportar a PDF</button>
+        </div>
       </div>
       <p class="hint" style="margin:0 0 16px;">Los campos se editan directamente aquí. Recuerda guardar antes de salir.</p>
       <div class="grid-2">
@@ -1055,6 +1058,7 @@
         <button class="ghost" id="btnCerrarRevisarSol">Cerrar</button>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="ghost" id="btnGuardarRevisarSol">💾 Guardar cambios</button>
+          <button class="ghost" id="btnEnviarRevisarSolCorreo">✉️ Enviar por correo</button>
           <button class="primary" id="btnExportarRevisarSolPDF">⬇ Exportar a PDF</button>
         </div>
       </div>
@@ -5158,6 +5162,27 @@ document.getElementById('btnExportarRevisarSolPDF').addEventListener('click', as
     }catch(e){ console.error(e); }
   }
 });
+document.getElementById('btnEnviarRevisarSolCorreo').addEventListener('click', ()=>{
+  const datos = leerCamposRevisar();
+  if(!datos.items.length){ showToast('Agrega al menos un material antes de enviar el correo.'); return; }
+
+  const asunto = `Requisición de Materiales${datos.area_seccion?' — '+datos.area_seccion:''}`;
+  const lineas = [
+    `Solicitud de pedido a Compras — Colegio Americano de Barranquilla`,
+    ``,
+    `Fecha: ${datos.fecha_solicitud?fmtDate(datos.fecha_solicitud):'—'}`,
+    `Área o sección: ${datos.area_seccion||'—'}`,
+    `Solicitante: ${datos.nombre_solicitante||'—'}`,
+    ``,
+    `Materiales solicitados:`,
+    ...datos.items.map((it,i)=>`${i+1}. ${it.descripcion}${it.especificaciones?' ('+it.especificaciones+')':''} — Cantidad: ${it.cantidad||'—'}${it.uso?' — Uso: '+it.uso:''}`),
+    ``,
+    `Recuerda adjuntar el PDF del formato GA-LO-CO01 (expórtalo con el botón "Exportar a PDF" y adjúntalo aquí antes de enviar).`
+  ];
+  const mailtoUrl = `mailto:?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(lineas.join('\n'))}`;
+  window.location.href = mailtoUrl;
+  showToast('Se abrió tu programa de correo (Outlook, si es el predeterminado). No olvides adjuntar el PDF.');
+});
 
 function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
@@ -5576,6 +5601,41 @@ document.getElementById('btnExportarReqPDF').addEventListener('click', ()=>{
   win.document.write(construirRequisicionHTML());
   win.document.close();
   showToast('Se abrió una pestaña nueva con el formato. Ahí elige "Guardar como PDF" o imprímelo.');
+});
+
+/* "Enviar por correo": abre el programa de correo predeterminado del
+   computador (Outlook, si es el que tienen configurado) con el asunto y el
+   cuerpo ya redactados — el navegador no puede enviar el correo solo ni
+   adjuntar el PDF automáticamente (restricción de seguridad de cualquier
+   navegador, no una limitación nuestra), así que se avisa para que adjunten
+   el PDF ya exportado antes de darle enviar en Outlook. */
+document.getElementById('btnEnviarReqCorreo').addEventListener('click', ()=>{
+  syncReqItemsFromDOM();
+  const area = document.getElementById('reqArea').value.trim();
+  const solicitante = document.getElementById('reqSolicitante').value.trim();
+  const fecha = document.getElementById('reqFecha').value;
+  const itemsConDatos = currentReqItems.filter(it=>it.descripcion || it.cantidadSolicitada);
+
+  if(!itemsConDatos.length){ showToast('Agrega al menos un material antes de enviar el correo.'); return; }
+
+  const asunto = `Requisición de Materiales${area?' — '+area:''}`;
+  const lineas = [
+    `Solicitud de pedido a Compras — Colegio Americano de Barranquilla`,
+    ``,
+    `Fecha: ${fecha?fmtDate(fecha):'—'}`,
+    `Área o sección: ${area||'—'}`,
+    `Solicitante: ${solicitante||'—'}`,
+    ``,
+    `Materiales solicitados:`,
+    ...itemsConDatos.map((it,i)=>`${i+1}. ${it.descripcion}${it.especificaciones?' ('+it.especificaciones+')':''} — Cantidad: ${it.cantidadSolicitada||'—'}${it.uso?' — Uso: '+it.uso:''}`),
+    ``,
+    `Recuerda adjuntar el PDF del formato GA-LO-CO01 (expórtalo con el botón "Exportar a PDF" y adjúntalo aquí antes de enviar).`
+  ];
+  const cuerpo = lineas.join('\n');
+
+  const mailtoUrl = `mailto:?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+  window.location.href = mailtoUrl;
+  showToast('Se abrió tu programa de correo (Outlook, si es el predeterminado). No olvides adjuntar el PDF.');
 });
 
 /* ============================================================
