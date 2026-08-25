@@ -114,6 +114,7 @@
   }
   .mant-subcard.aires .mant-icon{background:linear-gradient(135deg,#F7AC4D,#D9761A);}
   .mant-subcard.requisiciones .mant-icon{background:linear-gradient(135deg,#3DBB8A,#0F6E4A);}
+  .mant-subcard.reportes .mant-icon{background:linear-gradient(135deg,#E0575A,#A8262A);}
   .mant-subcard span{font-family:var(--sys-font);font-size:16px;color:var(--navy);font-weight:700;line-height:1.35;letter-spacing:-.01em;}
   .mant-subcard p{margin:0;font-size:12.5px;color:var(--gray);}
   @media(max-width:520px){
@@ -549,6 +550,11 @@
         <div class="mant-icon">🧾</div>
         <span>Requisición de Materiales</span>
         <p>Formato institucional de solicitud de pedidos a Compras, editable en línea.</p>
+      </button>
+      <button class="mant-subcard reportes" data-mantopen="reportes">
+        <div class="mant-icon">📋</div>
+        <span>Reportes del Personal</span>
+        <p>Daños de mobiliario, fallas de aires acondicionados y reportes de seguridad, con fotos.</p>
       </button>
     </div>
   </div>
@@ -1023,6 +1029,39 @@
 
   </div>
   <!-- ===================== /SUB-MÓDULO REQUISICIÓN DE MATERIALES ===================== -->
+
+  <!-- ===================== SUB-MÓDULO: REPORTES DEL PERSONAL ===================== -->
+  <div id="mantSubReportes" style="display:none;">
+    <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <h2 style="margin:0;">Reportes del personal</h2>
+        <button class="ghost" id="btnRefrescarReportes">↻ Actualizar</button>
+      </div>
+      <p class="hint" style="margin:0 0 14px;">Daños de mobiliario, fallas de aires acondicionados y reportes de seguridad, enviados desde el portal público.</p>
+      <div class="filters" style="margin-bottom:14px;">
+        <div class="field">
+          <label>Tipo</label>
+          <select id="repFiltroTipo">
+            <option value="">Todos</option>
+            <option value="Mobiliario">Mobiliario</option>
+            <option value="Aires">Aires acondicionados</option>
+            <option value="Seguridad">Seguridad</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Estado</label>
+          <select id="repFiltroEstado">
+            <option value="">Todos</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Atendido">Atendido</option>
+          </select>
+        </div>
+      </div>
+      <div id="reportesListaWrap"></div>
+    </div>
+  </div>
+  <!-- ===================== /SUB-MÓDULO REPORTES DEL PERSONAL ===================== -->
 
   <!-- Modal: revisar/editar una solicitud recibida del formulario público, y exportarla a PDF -->
   <div class="modal-bg" id="revisarSolModalBg">
@@ -5207,6 +5246,103 @@ document.getElementById('btnEnviarRevisarSolCorreo').addEventListener('click', (
   }
 });
 
+/* ============================================================
+   REPORTES DEL PERSONAL — daños de mobiliario, aires acondicionados y
+   seguridad, enviados desde el portal público (con fotos de evidencia).
+   ============================================================ */
+let reportesRecibidos = [];
+const REPORTE_TIPO_LABEL = {Mobiliario:'🪑 Mobiliario', Aires:'❄️ Aires acondicionados', Seguridad:'🛡️ Seguridad'};
+
+async function cargarReportesRecibidos(){
+  const wrap = document.getElementById('reportesListaWrap');
+  if(!supabaseAPI){
+    wrap.innerHTML = '<p class="empty">Sin conexión a Supabase en este momento.</p>';
+    return;
+  }
+  try{
+    const { data, error } = await supabaseAPI.from('reportes').select('*').order('created_at', {ascending:false});
+    if(error) throw error;
+    reportesRecibidos = data || [];
+    renderReportesLista();
+  }catch(e){
+    console.error(e);
+    wrap.innerHTML = '<p class="empty">No se pudo cargar (¿ya creaste la tabla "reportes" en Supabase?).</p>';
+  }
+}
+
+function renderReportesLista(){
+  const wrap = document.getElementById('reportesListaWrap');
+  const tipoF = document.getElementById('repFiltroTipo').value;
+  const estadoF = document.getElementById('repFiltroEstado').value;
+  const filas = reportesRecibidos.filter(r=>{
+    if(tipoF && r.tipo!==tipoF) return false;
+    if(estadoF && (r.estado||'Pendiente')!==estadoF) return false;
+    return true;
+  });
+
+  if(!filas.length){
+    wrap.innerHTML = '<p class="empty">No hay reportes que coincidan.</p>';
+    return;
+  }
+
+  wrap.innerHTML = filas.map(r=>{
+    const fecha = r.fecha ? fmtDate(r.fecha) : '—';
+    const recibido = r.created_at ? new Date(r.created_at).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+    const estado = r.estado || 'Pendiente';
+    const fotos = Array.isArray(r.fotos) ? r.fotos : [];
+    return `
+    <div class="panel" style="margin-bottom:14px;border:1px solid var(--line);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+        <div>
+          <strong style="color:var(--navy);font-size:15px;">${REPORTE_TIPO_LABEL[r.tipo]||r.tipo}</strong>
+          <p class="hint" style="margin:4px 0 0;">${esc(r.nombre_reporta)} — ${fecha}${r.ubicacion?' — '+esc(r.ubicacion):''} · Recibido el ${recibido}</p>
+        </div>
+        <span class="pill pill-${estado==='Atendido'?'Finalizado':'Pendiente'}">${esc(estado)}</span>
+      </div>
+      <p style="margin:12px 0 0;font-size:13.5px;color:var(--ink);">${esc(r.descripcion)}</p>
+      ${fotos.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${fotos.map(url=>`<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" style="width:76px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--line);"></a>`).join('')}</div>` : ''}
+      <div class="row-actions" style="margin-top:14px;">
+        ${estado!=='Atendido' ? `<button class="ghost" data-atenderrep="${r.id}" style="color:var(--green);border-color:var(--green);">✔ Marcar como atendido</button>` : `<button class="ghost" data-reabrirrep="${r.id}">↺ Reabrir</button>`}
+        <button class="ghost danger" data-delrep="${r.id}">Eliminar</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('[data-atenderrep]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      await actualizarEstadoReporte(btn.dataset.atenderrep, 'Atendido');
+    });
+  });
+  wrap.querySelectorAll('[data-reabrirrep]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      await actualizarEstadoReporte(btn.dataset.reabrirrep, 'Pendiente');
+    });
+  });
+  wrap.querySelectorAll('[data-delrep]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!await customConfirm('¿Eliminar este reporte? Esta acción no se puede deshacer.')) return;
+      try{
+        await supabaseAPI.from('reportes').delete().eq('id', btn.dataset.delrep);
+        reportesRecibidos = reportesRecibidos.filter(r=>r.id!==btn.dataset.delrep);
+        renderReportesLista();
+        showToast('Reporte eliminado.');
+      }catch(e){ console.error(e); showToast('No se pudo eliminar. Intenta de nuevo.'); }
+    });
+  });
+}
+async function actualizarEstadoReporte(id, estado){
+  try{
+    await supabaseAPI.from('reportes').update({estado}).eq('id', id);
+    const r = reportesRecibidos.find(x=>x.id===id);
+    if(r) r.estado = estado;
+    renderReportesLista();
+    showToast(estado==='Atendido' ? 'Marcado como atendido.' : 'Reporte reabierto.');
+  }catch(e){ console.error(e); showToast('No se pudo actualizar. Intenta de nuevo.'); }
+}
+document.getElementById('btnRefrescarReportes').addEventListener('click', cargarReportesRecibidos);
+document.getElementById('repFiltroTipo').addEventListener('change', renderReportesLista);
+document.getElementById('repFiltroEstado').addEventListener('change', renderReportesLista);
+
 function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
   const filas = requisiciones.filter(r=>!r.eliminada).sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
@@ -6186,13 +6322,16 @@ function showMantSelector(){
   document.getElementById('mantSubActividades').style.display = 'none';
   document.getElementById('mantSubAires').style.display = 'none';
   document.getElementById('mantSubRequisiciones').style.display = 'none';
+  document.getElementById('mantSubReportes').style.display = 'none';
 }
 function openMantSub(name){
   document.getElementById('mantSelector').style.display = 'none';
   document.getElementById('mantSubActividades').style.display = name==='actividades' ? 'block' : 'none';
   document.getElementById('mantSubAires').style.display = name==='aires' ? 'block' : 'none';
   document.getElementById('mantSubRequisiciones').style.display = name==='requisiciones' ? 'block' : 'none';
+  document.getElementById('mantSubReportes').style.display = name==='reportes' ? 'block' : 'none';
   if(name==='requisiciones'){ showReqLista(); }
+  if(name==='reportes'){ cargarReportesRecibidos(); }
 }
 document.querySelectorAll('[data-mantopen]').forEach(card=>{
   card.addEventListener('click', ()=> openMantSub(card.dataset.mantopen));
