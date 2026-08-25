@@ -5179,9 +5179,9 @@ document.getElementById('btnEnviarRevisarSolCorreo').addEventListener('click', (
     ``,
     `Recuerda adjuntar el PDF del formato GA-LO-CO01 (expórtalo con el botón "Exportar a PDF" y adjúntalo aquí antes de enviar).`
   ];
-  const mailtoUrl = `mailto:?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(lineas.join('\n'))}`;
-  window.location.href = mailtoUrl;
-  showToast('Se abrió tu programa de correo (Outlook, si es el predeterminado). No olvides adjuntar el PDF.');
+  if(abrirOutlookCompose('', asunto, lineas.join('\n'))){
+    showToast('Se abrió Outlook con el correo redactado. No olvides adjuntar el PDF.');
+  }
 });
 
 function renderReqLista(){
@@ -5594,6 +5594,25 @@ function construirRequisicionHTML(){
   <\/script>
 </body></html>`;
 }
+/* Abre específicamente Outlook (la versión web, outlook.office.com) con el
+   correo ya redactado — a diferencia de un enlace "mailto:" normal, esto no
+   depende de cuál programa de correo tengas configurado por defecto en el
+   computador: siempre abre Outlook. Si ya iniciaste sesión con tu cuenta de
+   Microsoft/Office 365 en el navegador, se abre directo con el mensaje
+   listo; si no, primero te pide iniciar sesión. El navegador sigue sin
+   poder adjuntar el PDF automáticamente (ninguna página web puede hacer
+   eso), así que se recuerda adjuntarlo a mano. */
+function abrirOutlookCompose(destino, asunto, cuerpo){
+  const params = new URLSearchParams();
+  if(destino) params.set('to', destino);
+  params.set('subject', asunto);
+  params.set('body', cuerpo);
+  const url = `https://outlook.office.com/mail/deeplink/compose?${params.toString()}`;
+  const win = window.open(url, '_blank');
+  if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return false; }
+  return true;
+}
+
 document.getElementById('btnExportarReqPDF').addEventListener('click', ()=>{
   const win = window.open('', '_blank');
   if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
@@ -5603,12 +5622,9 @@ document.getElementById('btnExportarReqPDF').addEventListener('click', ()=>{
   showToast('Se abrió una pestaña nueva con el formato. Ahí elige "Guardar como PDF" o imprímelo.');
 });
 
-/* "Enviar por correo": abre el programa de correo predeterminado del
-   computador (Outlook, si es el que tienen configurado) con el asunto y el
-   cuerpo ya redactados — el navegador no puede enviar el correo solo ni
-   adjuntar el PDF automáticamente (restricción de seguridad de cualquier
-   navegador, no una limitación nuestra), así que se avisa para que adjunten
-   el PDF ya exportado antes de darle enviar en Outlook. */
+/* "Enviar por correo": abre Outlook (outlook.office.com) con el asunto y el
+   cuerpo ya redactados. Recuerda adjuntar el PDF a mano — ninguna página
+   web puede adjuntar archivos automáticamente por seguridad del navegador. */
 document.getElementById('btnEnviarReqCorreo').addEventListener('click', ()=>{
   syncReqItemsFromDOM();
   const area = document.getElementById('reqArea').value.trim();
@@ -5633,9 +5649,9 @@ document.getElementById('btnEnviarReqCorreo').addEventListener('click', ()=>{
   ];
   const cuerpo = lineas.join('\n');
 
-  const mailtoUrl = `mailto:?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
-  window.location.href = mailtoUrl;
-  showToast('Se abrió tu programa de correo (Outlook, si es el predeterminado). No olvides adjuntar el PDF.');
+  if(abrirOutlookCompose('', asunto, cuerpo)){
+    showToast('Se abrió Outlook con el correo redactado. No olvides adjuntar el PDF.');
+  }
 });
 
 /* ============================================================
@@ -6772,9 +6788,11 @@ function enviarPedidoCompras(){
 
   const asunto = `Pedido de insumos — Servicios Generales (${todayISO()})`;
   const cuerpo = `Buen día,\n\nAdjunto el listado de insumos sugerido para reposición, calculado según el consumo mensual del personal y el inventario actual.\n\nTotal de productos a pedir: ${pedido.length}.\n\n(Guarda como PDF desde la pestaña que se acaba de abrir y adjúntalo aquí antes de enviar.)\n\nQuedo atento(a).\n\nServicios Generales\nColegio Americano de Barranquilla`;
-  const mailto = `mailto:${destino}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
-  setTimeout(()=>{ window.location.href = mailto; }, 600);
-  if(win) showToast(`Guarda el PDF desde la pestaña nueva y adjúntalo al correo hacia ${destino}.`);
+  // se abre en el mismo instante del clic (sin setTimeout): si se retrasa,
+  // el navegador la trata como ventana emergente no solicitada y la bloquea
+  if(abrirOutlookCompose(destino, asunto, cuerpo)){
+    showToast(`Se abrió Outlook y el PDF del pedido en pestañas nuevas. Guarda el PDF y adjúntalo al correo hacia ${destino}.`);
+  }
 }
 document.getElementById('btnEnviarPedidoCompras').addEventListener('click', enviarPedidoCompras);
 
