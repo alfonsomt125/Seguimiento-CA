@@ -737,9 +737,15 @@
       </div>
       <div class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:2px;">
-          <h2 style="margin:0;">Mantenimientos por mes (últimos 6 meses)</h2>
+          <h2 style="margin:0;" id="aireDashBarsTitulo">Mantenimientos por mes</h2>
         </div>
-        <p class="hint" style="margin:0 0 8px;">Toca una barra para ver el detalle de ese mes. Filtra por quién los hizo:</p>
+        <p class="hint" style="margin:0 0 8px;">Toca una barra para ver el detalle. Agrupa por:</p>
+        <div class="year-pills" id="aireFiltroPeriodo" data-value="mes" style="margin-bottom:8px;">
+          <button class="year-pill active" data-periodo="mes">Mes</button>
+          <button class="year-pill" data-periodo="trimestre">Trimestre</button>
+          <button class="year-pill" data-periodo="semestre">Semestre</button>
+        </div>
+        <p class="hint" style="margin:0 0 8px;">Filtra por quién los hizo:</p>
         <div class="year-pills" id="aireFiltroResponsable" data-value="" style="margin-bottom:12px;">
           <button class="year-pill active" data-resp="">Todos</button>
           <button class="year-pill" data-resp="CA">CA</button>
@@ -748,11 +754,6 @@
         </div>
         <div id="aireDashBarsMes"></div>
       </div>
-    </div>
-
-    <div class="panel">
-      <h2>Mantenimientos por semestre</h2>
-      <div id="aireDashBarsSemestre"></div>
     </div>
 
     <div class="panel">
@@ -1387,6 +1388,11 @@
         <h2>Consumido este mes vs. stock</h2>
         <div id="invConsumoPie" class="pie-wrap"></div>
       </div>
+    </div>
+    <div class="panel">
+      <h2>Consumo semanal (últimas 8 semanas)</h2>
+      <p class="hint" style="margin:0 0 10px;">Lo entregado (salidas de insumos) dentro de cada semana, de lunes a domingo.</p>
+      <div id="invConsumoSemanalBars"></div>
     </div>
     <div class="panel">
       <h2>Productos faltantes vs. disponibles</h2>
@@ -4198,10 +4204,18 @@ function getEstadoMantenimiento(a){
 }
 
 let aireDashRespFiltro = '';
+let aireDashPeriodo = 'mes';
 document.querySelectorAll('#aireFiltroResponsable [data-resp]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     aireDashRespFiltro = btn.dataset.resp;
     document.querySelectorAll('#aireFiltroResponsable [data-resp]').forEach(b=>b.classList.toggle('active', b===btn));
+    renderAireDashboardCompleto();
+  });
+});
+document.querySelectorAll('#aireFiltroPeriodo [data-periodo]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    aireDashPeriodo = btn.dataset.periodo;
+    document.querySelectorAll('#aireFiltroPeriodo [data-periodo]').forEach(b=>b.classList.toggle('active', b===btn));
     renderAireDashboardCompleto();
   });
 });
@@ -4235,64 +4249,80 @@ function renderAireDashboardCompleto(){
     document.getElementById('aireDashPieChart').addEventListener('click', ()=>openAirePieDetalle('Vencido'));
   }
 
-  /* --- Barras: mantenimientos por mes (últimos 6 meses), clicable,
-     filtrables por quién los hizo (CA/CUR/CON) --- */
+  /* --- Barras: mantenimientos agrupados por Mes / Trimestre / Semestre
+     (según lo elegido arriba), filtrables por quién los hizo (CA/CUR/CON).
+     Un solo gráfico adaptable, en vez de paneles fijos separados. */
   const historialFiltrado = aireDashRespFiltro
     ? aireHistorial.filter(h=>(h.responsable||'')===aireDashRespFiltro)
     : aireHistorial;
 
   const hoy = new Date();
-  const meses = [];
-  for(let i=5;i>=0;i--){
-    const d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
-    meses.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, label:MESES_CORTOS[d.getMonth()]});
+  let buckets = [];
+  let tituloPeriodo = '';
+  let clicable = false;
+
+  if(aireDashPeriodo==='trimestre'){
+    tituloPeriodo = 'Mantenimientos por trimestre (últimos 4 trimestres)';
+    for(let i=3;i>=0;i--){
+      const d = new Date(hoy.getFullYear(), hoy.getMonth()-i*3, 1);
+      const t = Math.floor(d.getMonth()/3)+1;
+      buckets.push({key:`${d.getFullYear()}-T${t}`, label:`T${t} ${d.getFullYear()}`, anio:String(d.getFullYear()), t});
+    }
+    buckets = [...new Map(buckets.map(b=>[b.key,b])).values()];
+    buckets = buckets.map(b=>{
+      const total = historialFiltrado.filter(h=>{
+        if(!h.fecha) return false;
+        const mes = Number(h.fecha.slice(5,7));
+        const y = h.fecha.slice(0,4);
+        const tH = Math.floor((mes-1)/3)+1;
+        return y===b.anio && tH===b.t;
+      }).length;
+      return {...b, total};
+    });
+  }else if(aireDashPeriodo==='semestre'){
+    tituloPeriodo = 'Mantenimientos por semestre (últimos 4 semestres)';
+    for(let i=3;i>=0;i--){
+      const d = new Date(hoy.getFullYear(), hoy.getMonth()-i*6, 1);
+      const s = d.getMonth()<6 ? 1 : 2;
+      buckets.push({key:`${d.getFullYear()}-S${s}`, label:`${s===1?'Ene-Jun':'Jul-Dic'} ${d.getFullYear()}`, anio:String(d.getFullYear()), s:String(s)});
+    }
+    buckets = [...new Map(buckets.map(b=>[b.key,b])).values()];
+    buckets = buckets.map(b=>{
+      const total = historialFiltrado.filter(h=>{
+        if(!h.fecha) return false;
+        const mes = Number(h.fecha.slice(5,7));
+        const y = h.fecha.slice(0,4);
+        const semH = mes<=6 ? '1' : '2';
+        return y===b.anio && semH===b.s;
+      }).length;
+      return {...b, total};
+    });
+  }else{
+    tituloPeriodo = 'Mantenimientos por mes (últimos 6 meses)';
+    clicable = true;
+    for(let i=5;i>=0;i--){
+      const d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
+      buckets.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, label:MESES_CORTOS[d.getMonth()]});
+    }
+    buckets = buckets.map(m=>({...m, total: historialFiltrado.filter(h=>h.fecha && h.fecha.slice(0,7)===m.key).length}));
   }
-  const porMes = meses.map(m=>({...m, total: historialFiltrado.filter(h=>h.fecha && h.fecha.slice(0,7)===m.key).length}));
-  const maxMes = Math.max(1, ...porMes.map(m=>m.total));
+
+  document.getElementById('aireDashBarsTitulo').textContent = tituloPeriodo;
+  const maxVal = Math.max(1, ...buckets.map(b=>b.total));
   document.getElementById('aireDashBarsMes').innerHTML = `
     <div class="vbar-chart">
-      ${porMes.map(m=>`
-        <div class="vbar-col" data-airemeskey="${m.key}" data-airemeslabel="${esc(m.label)} ${m.key.slice(0,4)}" title="Ver detalle de ${m.label}">
-          <span class="vbar-value">${m.total}</span>
-          <div class="vbar-fill" style="height:${Math.max(3, m.total/maxMes*120)}px;"></div>
-          <span class="vbar-label">${m.label}</span>
+      ${buckets.map(b=>`
+        <div class="vbar-col" ${clicable?`data-airemeskey="${b.key}" data-airemeslabel="${esc(b.label)} ${b.key.slice(0,4)}" style="cursor:pointer;" title="Ver detalle de ${b.label}"`:''}>
+          <span class="vbar-value">${b.total}</span>
+          <div class="vbar-fill" style="height:${Math.max(3, b.total/maxVal*120)}px;"></div>
+          <span class="vbar-label" style="text-transform:none;">${b.label}</span>
         </div>`).join('')}
     </div>`;
-  document.querySelectorAll('#aireDashBarsMes .vbar-col').forEach(col=>{
-    col.addEventListener('click', ()=>openAireMesDetalle(col.dataset.airemeskey, col.dataset.airemeslabel));
-  });
-
-  /* --- Barras: mantenimientos por semestre (últimos 4 semestres), mismo
-     filtro por responsable --- */
-  const semestres = [];
-  for(let i=3;i>=0;i--){
-    const d = new Date(hoy.getFullYear(), hoy.getMonth()-i*6, 1);
-    const s = d.getMonth()<6 ? 1 : 2;
-    semestres.push({key:`${d.getFullYear()}-S${s}`, label:`${s===1?'Ene-Jun':'Jul-Dic'} ${d.getFullYear()}`});
+  if(clicable){
+    document.querySelectorAll('#aireDashBarsMes .vbar-col').forEach(col=>{
+      col.addEventListener('click', ()=>openAireMesDetalle(col.dataset.airemeskey, col.dataset.airemeslabel));
+    });
   }
-  // por si dos meses de la ventana caen en el mismo semestre, dedup por key
-  const semestresUnicos = [...new Map(semestres.map(s=>[s.key,s])).values()];
-  const porSemestre = semestresUnicos.map(s=>{
-    const [anio, sem] = s.key.split('-S');
-    const total = historialFiltrado.filter(h=>{
-      if(!h.fecha) return false;
-      const mes = Number(h.fecha.slice(5,7));
-      const y = h.fecha.slice(0,4);
-      const semH = mes<=6 ? '1' : '2';
-      return y===anio && semH===sem;
-    }).length;
-    return {...s, total};
-  });
-  const maxSem = Math.max(1, ...porSemestre.map(s=>s.total));
-  document.getElementById('aireDashBarsSemestre').innerHTML = `
-    <div class="vbar-chart" style="height:140px;">
-      ${porSemestre.map(s=>`
-        <div class="vbar-col">
-          <span class="vbar-value">${s.total}</span>
-          <div class="vbar-fill" style="height:${Math.max(3, s.total/maxSem*100)}px;"></div>
-          <span class="vbar-label" style="text-transform:none;">${s.label}</span>
-        </div>`).join('')}
-    </div>`;
 
   /* --- Equipos con más reportes correctivos (candidatos a reemplazo) --- */
   const conteoCorrectivos = {};
@@ -6596,6 +6626,46 @@ function renderInvDashboard(){
   document.querySelectorAll('#invConsumoBars .vbar-col').forEach(col=>{
     col.addEventListener('click', ()=>openMesDetalle(col.dataset.mesKey, col.dataset.mesLabel));
   });
+
+  // --- Barras: consumo (salidas) de las últimas 8 semanas, lunes a domingo ---
+  function inicioSemanaLunes(fecha){
+    const d = new Date(fecha);
+    const dow = d.getDay(); // 0=domingo..6=sabado
+    const diff = (dow===0 ? -6 : 1-dow); // retrocede hasta el lunes de esa semana
+    d.setDate(d.getDate()+diff);
+    d.setHours(0,0,0,0);
+    return d;
+  }
+  function isoLocal(d){
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  const lunesEstaSemana = inicioSemanaLunes(hoy);
+  const semanas = [];
+  for(let i=7;i>=0;i--){
+    const inicio = new Date(lunesEstaSemana);
+    inicio.setDate(inicio.getDate()-i*7);
+    const fin = new Date(inicio);
+    fin.setDate(fin.getDate()+6);
+    semanas.push({
+      inicio: isoLocal(inicio), fin: isoLocal(fin),
+      label: `${String(inicio.getDate()).padStart(2,'0')}/${String(inicio.getMonth()+1).padStart(2,'0')}`
+    });
+  }
+  const consumoPorSemana = semanas.map(s=>({
+    ...s,
+    total: movimientos.filter(mv=>mv.tipo==='salida' && mv.fecha && mv.fecha>=s.inicio && mv.fecha<=s.fin)
+      .reduce((acc,mv)=>acc+Number(mv.cantidad||0),0)
+  }));
+  const maxSemana = Math.max(1, ...consumoPorSemana.map(s=>s.total));
+  document.getElementById('invConsumoSemanalBars').innerHTML = `
+    <div class="vbar-chart">
+      ${consumoPorSemana.map(s=>`
+        <div class="vbar-col" title="Semana del ${fmtDate(s.inicio)} al ${fmtDate(s.fin)}">
+          <span class="vbar-value">${s.total}</span>
+          <div class="vbar-fill" style="height:${Math.max(3, s.total/maxSemana*120)}px;"></div>
+          <span class="vbar-label" style="text-transform:none;">${s.label}</span>
+        </div>`).join('')}
+    </div>`;
 
   // --- Torta: consumido este mes vs. disponible actual (interactiva) ---
   const pieEl = document.getElementById('invConsumoPie');
