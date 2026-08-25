@@ -180,9 +180,21 @@
           <label>Nombre de quien reporta *</label>
           <input type="text" id="repNombre" placeholder="Tu nombre completo">
         </div>
-        <div class="field" style="grid-column:1/-1;">
+        <div class="field" style="grid-column:1/-1;" id="repUbicacionLibreWrap">
           <label>Ubicación / Salón</label>
           <input type="text" id="repUbicacion" placeholder="Ej: Salón 5A, Bloque C, Paraninfo...">
+        </div>
+        <div class="field" id="repBloqueWrap" style="display:none;">
+          <label>Bloque *</label>
+          <select id="repBloque">
+            <option value="">Selecciona un bloque...</option>
+          </select>
+        </div>
+        <div class="field" id="repEquipoWrap" style="display:none;">
+          <label>Equipo *</label>
+          <select id="repEquipo">
+            <option value="">Primero elige un bloque...</option>
+          </select>
         </div>
         <div class="field" style="grid-column:1/-1;">
           <label>Descripción breve *</label>
@@ -326,9 +338,46 @@ const REPORTE_INFO = {
 };
 let tipoReporteActual = null;
 let repFotosData = []; // {file, previewUrl}
+let listaAiresCache = null; // se carga una sola vez desde Supabase
+
+/* La lista de equipos de aires vive en la misma tabla "app_storage" que usa
+   la Bitácora completa (clave "airesAcondicionados") — así el desplegable
+   del portal público siempre queda igual de actualizado que la app, sin
+   tener que mantener una copia aparte. */
+async function cargarListaAires(){
+  if(listaAiresCache) return listaAiresCache;
+  if(!supabaseAPI) return [];
+  try{
+    const { data, error } = await supabaseAPI.from('app_storage').select('value').eq('key','airesAcondicionados').maybeSingle();
+    if(error || !data) return [];
+    listaAiresCache = JSON.parse(data.value);
+    return listaAiresCache;
+  }catch(e){ console.error(e); return []; }
+}
+
+function poblarBloques(aires){
+  const select = document.getElementById('repBloque');
+  const bloques = [...new Set(aires.map(a=>a.bloque).filter(Boolean))].sort();
+  select.innerHTML = '<option value="">Selecciona un bloque...</option>' + bloques.map(b=>`<option value="${esc(b)}">${esc(b)}</option>`).join('');
+}
+function poblarEquiposPorBloque(aires, bloque){
+  const select = document.getElementById('repEquipo');
+  if(!bloque){
+    select.innerHTML = '<option value="">Primero elige un bloque...</option>';
+    return;
+  }
+  const filtrados = aires.filter(a=>a.bloque===bloque).sort((a,b)=>(a.ubicacion||'').localeCompare(b.ubicacion||''));
+  select.innerHTML = filtrados.length
+    ? '<option value="">Selecciona un equipo...</option>' + filtrados.map(a=>`<option value="${esc(a.id)}">${esc(a.ubicacion)}${a.marca?' — '+esc(a.marca):''}</option>`).join('')
+    : '<option value="">No hay equipos registrados en este bloque</option>';
+}
+document.getElementById('repBloque').addEventListener('change', async (e)=>{
+  const aires = await cargarListaAires();
+  poblarEquiposPorBloque(aires, e.target.value);
+});
 
 document.querySelectorAll('[data-tiporeporte]').forEach(card=>{
-  card.addEventListener('click', ()=>{
+  card.addEventListener('click', async ()=>{
     tipoReporteActual = card.dataset.tiporeporte;
     const info = REPORTE_INFO[tipoReporteActual];
     document.getElementById('reporteFormTitulo').textContent = info.titulo;
@@ -339,6 +388,18 @@ document.querySelectorAll('[data-tiporeporte]').forEach(card=>{
     document.getElementById('repDescripcion').value = '';
     repFotosData = [];
     renderRepFotoThumbs();
+
+    const esAires = tipoReporteActual === 'Aires';
+    document.getElementById('repUbicacionLibreWrap').style.display = esAires ? 'none' : 'block';
+    document.getElementById('repBloqueWrap').style.display = esAires ? 'block' : 'none';
+    document.getElementById('repEquipoWrap').style.display = esAires ? 'block' : 'none';
+    if(esAires){
+      document.getElementById('repBloque').value = '';
+      poblarEquiposPorBloque([], '');
+      const aires = await cargarListaAires();
+      poblarBloques(aires);
+    }
+
     document.getElementById('tituloPagina').textContent = info.titulo;
     document.getElementById('subtituloPagina').textContent = 'Servicios Generales — Colegio Americano de Barranquilla';
     mostrarPantalla('screenReporteForm');
@@ -374,6 +435,19 @@ document.getElementById('btnEnviarReporte').addEventListener('click', async ()=>
   const descripcion = document.getElementById('repDescripcion').value.trim();
   if(!nombre){ showToast('Por favor indica tu nombre.'); return; }
   if(!descripcion){ showToast('Por favor describe brevemente el reporte.'); return; }
+
+  const esAires = tipoReporteActual === 'Aires';
+  let aireId = '', ubicacionFinal = '';
+  if(esAires){
+    aireId = document.getElementById('repEquipo').value;
+    if(!document.getElementById('repBloque').value){ showToast('Por favor elige el bloque.'); return; }
+    if(!aireId){ showToast('Por favor elige el equipo.'); return; }
+    const equipoTexto = document.getElementById('repEquipo').selectedOptions[0]?.textContent || '';
+    ubicacionFinal = `${document.getElementById('repBloque').value} — ${equipoTexto}`;
+  }else{
+    ubicacionFinal = document.getElementById('repUbicacion').value.trim();
+  }
+
   if(!supabaseAPI){ showToast('No se pudo conectar. Revisa tu conexión a internet e intenta de nuevo.'); return; }
 
   const btn = document.getElementById('btnEnviarReporte');
@@ -395,7 +469,8 @@ document.getElementById('btnEnviarReporte').addEventListener('click', async ()=>
       tipo: tipoReporteActual,
       nombre_reporta: nombre,
       fecha: document.getElementById('repFecha').value || todayISO(),
-      ubicacion: document.getElementById('repUbicacion').value.trim(),
+      ubicacion: ubicacionFinal,
+      aire_id: aireId || null,
       descripcion,
       fotos: urlsFotos,
       estado: 'Pendiente'
