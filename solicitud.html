@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Solicitud de Requisición de Materiales — Colegio Americano de Barranquilla</title>
+<title>Portal de Servicios Generales — Colegio Americano de Barranquilla</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -41,6 +41,7 @@
     transition:border-color .15s, box-shadow .15s;
   }
   input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy-2);box-shadow:0 0 0 3px rgba(3,69,155,.14);}
+  textarea{min-height:90px;resize:vertical;}
   h2{margin:0;font-size:16px;font-weight:800;color:var(--navy);letter-spacing:-.01em;}
   .hint{font-size:13px;color:var(--gray);margin:6px 0 0;}
   .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:14px;}
@@ -59,7 +60,6 @@
   .btn.ghost:hover{border-color:var(--navy-2);color:var(--navy-2);background:var(--paper-2);}
   .entry-del{color:var(--red);font-weight:700;cursor:pointer;padding:4px 8px;}
   .actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
-  #successPanel{display:none;text-align:center;padding:48px 24px;}
   #successPanel .check{font-size:52px;margin-bottom:12px;}
   #successPanel h2{font-size:20px;margin-bottom:8px;}
   #successPanel p{color:var(--gray);font-size:14px;}
@@ -69,6 +69,36 @@
     box-shadow:0 10px 28px rgba(1,22,50,.3);display:none;z-index:999;max-width:90vw;text-align:center;
   }
   @media(max-width:640px){ .grid-2{grid-template-columns:1fr;} }
+
+  /* Tarjetas grandes del inicio y de la lista de reportes */
+  .modulo-cards, .reporte-cards{display:flex;flex-direction:column;gap:14px;}
+  .modulo-card, .reporte-card{
+    display:flex;align-items:center;gap:16px;text-align:left;width:100%;
+    background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;cursor:pointer;
+    box-shadow:var(--shadow);transition:transform .15s ease, box-shadow .15s ease;font-family:var(--sys-font);
+  }
+  .modulo-card:hover, .reporte-card:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(1,22,50,.16);}
+  .modulo-icono, .reporte-icono{
+    width:56px;height:56px;border-radius:16px;flex-shrink:0;font-size:26px;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(1,22,50,.20);
+  }
+  .modulo-texto, .reporte-texto{flex:1;}
+  .modulo-texto strong, .reporte-texto strong{display:block;font-size:16px;color:var(--navy);margin-bottom:3px;}
+  .modulo-texto span, .reporte-texto span{font-size:13px;color:var(--gray);line-height:1.4;}
+  .modulo-flecha{font-size:20px;color:var(--gray);flex-shrink:0;}
+
+  /* Fotos adjuntas */
+  .foto-thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+  .foto-thumb{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;border:1px solid var(--line);}
+  .foto-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .foto-thumb .foto-del{
+    position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;
+    width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;
+  }
+  .file-btn{
+    display:inline-flex;align-items:center;gap:8px;border:1.5px dashed var(--line);border-radius:12px;
+    padding:12px 16px;cursor:pointer;font-size:13.5px;color:var(--navy-2);font-weight:600;background:var(--paper-2);
+  }
 </style>
 </head>
 <body>
@@ -77,12 +107,103 @@
     <img class="escudo" src="https://www.colegioamericano.edu.co/wp-content/uploads/2025/11/Escudo-Colegio-Americano.jpg" alt="Escudo" onerror="this.style.display='none'">
     <div>
       <p class="brand-eyebrow">Colegio Americano de Barranquilla · Servicios Generales</p>
-      <h1>Solicitud de Requisición de Materiales</h1>
-      <p class="subtitle">Insumos para reparaciones y mantenimiento — llena este formulario y tu solicitud llega directo a Servicios Generales.</p>
+      <h1 id="tituloPagina">Portal de Servicios Generales</h1>
+      <p class="subtitle" id="subtituloPagina">Elige qué necesitas hacer.</p>
     </div>
   </header>
 
-  <div id="formPanel">
+  <!-- ===== PANTALLA 1: INICIO — elegir módulo ===== -->
+  <div id="screenInicio">
+    <div class="modulo-cards">
+      <button class="modulo-card" id="btnIrReportes">
+        <div class="modulo-icono" style="background:linear-gradient(135deg,#F7AC4D,#D9761A);">📋</div>
+        <div class="modulo-texto">
+          <strong>Hacer un reporte</strong>
+          <span>Daños de mobiliario, fallas de aires acondicionados, o situaciones de seguridad.</span>
+        </div>
+        <div class="modulo-flecha">›</div>
+      </button>
+      <button class="modulo-card" id="btnIrPedido">
+        <div class="modulo-icono" style="background:linear-gradient(135deg,#7EA6E8,#03459B);">📦</div>
+        <div class="modulo-texto">
+          <strong>Pedido de materiales</strong>
+          <span>Solicita insumos para reparaciones y mantenimiento.</span>
+        </div>
+        <div class="modulo-flecha">›</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== PANTALLA 2: LISTA DE TIPOS DE REPORTE ===== -->
+  <div id="screenReportesLista" style="display:none;">
+    <button class="btn ghost" id="btnVolverInicio1" style="margin-bottom:16px;">← Volver</button>
+    <div class="reporte-cards">
+      <button class="reporte-card" data-tiporeporte="Mobiliario">
+        <div class="reporte-icono" style="background:linear-gradient(135deg,#3DBB8A,#0F6E4A);">🪑</div>
+        <div class="reporte-texto">
+          <strong>Daño de mobiliario</strong>
+          <span>Sillas, mesas, puertas, ventanas u otro mobiliario dañado. Puedes adjuntar fotos como evidencia.</span>
+        </div>
+        <div class="modulo-flecha">›</div>
+      </button>
+      <button class="reporte-card" data-tiporeporte="Aires">
+        <div class="reporte-icono" style="background:linear-gradient(135deg,#F7AC4D,#D9761A);">❄️</div>
+        <div class="reporte-texto">
+          <strong>Aires acondicionados</strong>
+          <span>Un aire que no enfría, hace ruido, gotea, o tiene alguna otra falla.</span>
+        </div>
+        <div class="modulo-flecha">›</div>
+      </button>
+      <button class="reporte-card" data-tiporeporte="Seguridad">
+        <div class="reporte-icono" style="background:linear-gradient(135deg,#E0575A,#A8262A);">🛡️</div>
+        <div class="reporte-texto">
+          <strong>Seguridad</strong>
+          <span>Algo inseguro, sospechoso, o que necesita atención inmediata.</span>
+        </div>
+        <div class="modulo-flecha">›</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== PANTALLA 3: FORMULARIO DE REPORTE ===== -->
+  <div id="screenReporteForm" style="display:none;">
+    <button class="btn ghost" id="btnVolverReportesLista" style="margin-bottom:16px;">← Volver</button>
+    <div class="panel">
+      <h2 id="reporteFormTitulo">Reporte</h2>
+      <p class="hint" id="reporteFormSubtitulo" style="margin:6px 0 16px;"></p>
+      <div class="grid-2">
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date" id="repFecha">
+        </div>
+        <div class="field">
+          <label>Nombre de quien reporta *</label>
+          <input type="text" id="repNombre" placeholder="Tu nombre completo">
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Ubicación / Salón</label>
+          <input type="text" id="repUbicacion" placeholder="Ej: Salón 5A, Bloque C, Paraninfo...">
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Descripción breve *</label>
+          <textarea id="repDescripcion" placeholder="Cuéntanos qué pasó, con el mayor detalle posible."></textarea>
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Fotos (evidencia) — opcional</label>
+          <label class="file-btn" for="repFotos">📷 Elegir o tomar fotos</label>
+          <input type="file" id="repFotos" accept="image/*" multiple capture="environment" style="display:none;">
+          <div class="foto-thumbs" id="repFotoThumbs"></div>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn primary" id="btnEnviarReporte">Enviar reporte</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PANTALLA 4: PEDIDO DE MATERIALES ===== -->
+  <div id="screenPedido" style="display:none;">
+    <button class="btn ghost" id="btnVolverInicio2" style="margin-bottom:16px;">← Volver</button>
     <div class="panel">
       <h2>Datos de la solicitud</h2>
       <div class="grid-2" style="margin-top:14px;">
@@ -119,12 +240,13 @@
     </div>
   </div>
 
-  <div id="successPanel" class="panel">
+  <!-- ===== PANTALLA 5: ÉXITO (compartida) ===== -->
+  <div id="successPanel" class="panel" style="display:none;">
     <div class="check">✅</div>
-    <h2>Solicitud enviada correctamente</h2>
-    <p>Servicios Generales la recibió y la va a revisar. Gracias.</p>
+    <h2 id="successTitulo">Enviado correctamente</h2>
+    <p id="successTexto">Servicios Generales lo recibió y lo va a revisar. Gracias.</p>
     <div class="actions-row" style="justify-content:center;">
-      <button class="btn ghost" id="btnOtraSolicitud">Enviar otra solicitud</button>
+      <button class="btn ghost" id="btnVolverInicioExito">Volver al inicio</button>
     </div>
   </div>
 </div>
@@ -161,6 +283,140 @@ function showToast(msg){
   toastTimer = setTimeout(()=>{ t.style.display = 'none'; }, 3200);
 }
 
+/* ============================================================
+   NAVEGACIÓN ENTRE PANTALLAS
+   ============================================================ */
+const PANTALLAS = ['screenInicio','screenReportesLista','screenReporteForm','screenPedido','successPanel'];
+function mostrarPantalla(id){
+  PANTALLAS.forEach(p=>{ document.getElementById(p).style.display = (p===id) ? 'block' : 'none'; });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+document.getElementById('btnIrReportes').addEventListener('click', ()=>{
+  document.getElementById('tituloPagina').textContent = 'Hacer un reporte';
+  document.getElementById('subtituloPagina').textContent = 'Elige qué tipo de reporte quieres hacer.';
+  mostrarPantalla('screenReportesLista');
+});
+document.getElementById('btnIrPedido').addEventListener('click', ()=>{
+  document.getElementById('tituloPagina').textContent = 'Pedido de Materiales';
+  document.getElementById('subtituloPagina').textContent = 'Insumos para reparaciones y mantenimiento.';
+  mostrarPantalla('screenPedido');
+});
+function volverInicio(){
+  document.getElementById('tituloPagina').textContent = 'Portal de Servicios Generales';
+  document.getElementById('subtituloPagina').textContent = 'Elige qué necesitas hacer.';
+  mostrarPantalla('screenInicio');
+}
+document.getElementById('btnVolverInicio1').addEventListener('click', volverInicio);
+document.getElementById('btnVolverInicio2').addEventListener('click', volverInicio);
+document.getElementById('btnVolverInicioExito').addEventListener('click', volverInicio);
+document.getElementById('btnVolverReportesLista').addEventListener('click', ()=>{
+  document.getElementById('tituloPagina').textContent = 'Hacer un reporte';
+  document.getElementById('subtituloPagina').textContent = 'Elige qué tipo de reporte quieres hacer.';
+  mostrarPantalla('screenReportesLista');
+});
+
+/* ============================================================
+   MÓDULO: REPORTES (Mobiliario / Aires / Seguridad)
+   ============================================================ */
+const REPORTE_INFO = {
+  Mobiliario: {titulo:'Reporte de daño de mobiliario', sub:'Cuéntanos qué se dañó — entre más detalle y fotos, más rápido lo podemos atender.'},
+  Aires: {titulo:'Reporte de aire acondicionado', sub:'Describe la falla del equipo (no enfría, hace ruido, gotea, etc.).'},
+  Seguridad: {titulo:'Reporte de seguridad', sub:'Describe la situación — si es una emergencia en curso, contacta directamente a Seguridad o Coordinación además de este reporte.'}
+};
+let tipoReporteActual = null;
+let repFotosData = []; // {file, previewUrl}
+
+document.querySelectorAll('[data-tiporeporte]').forEach(card=>{
+  card.addEventListener('click', ()=>{
+    tipoReporteActual = card.dataset.tiporeporte;
+    const info = REPORTE_INFO[tipoReporteActual];
+    document.getElementById('reporteFormTitulo').textContent = info.titulo;
+    document.getElementById('reporteFormSubtitulo').textContent = info.sub;
+    document.getElementById('repFecha').value = todayISO();
+    document.getElementById('repNombre').value = '';
+    document.getElementById('repUbicacion').value = '';
+    document.getElementById('repDescripcion').value = '';
+    repFotosData = [];
+    renderRepFotoThumbs();
+    document.getElementById('tituloPagina').textContent = info.titulo;
+    document.getElementById('subtituloPagina').textContent = 'Servicios Generales — Colegio Americano de Barranquilla';
+    mostrarPantalla('screenReporteForm');
+  });
+});
+
+document.getElementById('repFotos').addEventListener('change', (e)=>{
+  const archivos = Array.from(e.target.files || []);
+  archivos.forEach(file=>{
+    if(!file.type.startsWith('image/')) return;
+    repFotosData.push({file, previewUrl: URL.createObjectURL(file)});
+  });
+  e.target.value = '';
+  renderRepFotoThumbs();
+});
+function renderRepFotoThumbs(){
+  const wrap = document.getElementById('repFotoThumbs');
+  wrap.innerHTML = repFotosData.map((f,idx)=>`
+    <div class="foto-thumb">
+      <img src="${f.previewUrl}">
+      <div class="foto-del" data-delfoto="${idx}">✕</div>
+    </div>`).join('');
+  wrap.querySelectorAll('[data-delfoto]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      repFotosData.splice(Number(el.dataset.delfoto), 1);
+      renderRepFotoThumbs();
+    });
+  });
+}
+
+document.getElementById('btnEnviarReporte').addEventListener('click', async ()=>{
+  const nombre = document.getElementById('repNombre').value.trim();
+  const descripcion = document.getElementById('repDescripcion').value.trim();
+  if(!nombre){ showToast('Por favor indica tu nombre.'); return; }
+  if(!descripcion){ showToast('Por favor describe brevemente el reporte.'); return; }
+  if(!supabaseAPI){ showToast('No se pudo conectar. Revisa tu conexión a internet e intenta de nuevo.'); return; }
+
+  const btn = document.getElementById('btnEnviarReporte');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try{
+    // sube cada foto al bucket "reportes-fotos" y junta las URLs públicas
+    const urlsFotos = [];
+    for(const f of repFotosData){
+      const nombreArchivo = `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${f.file.name}`;
+      const { error: errorSubida } = await supabaseAPI.storage.from('reportes-fotos').upload(nombreArchivo, f.file);
+      if(errorSubida){ console.error(errorSubida); continue; }
+      const { data: pub } = supabaseAPI.storage.from('reportes-fotos').getPublicUrl(nombreArchivo);
+      if(pub?.publicUrl) urlsFotos.push(pub.publicUrl);
+    }
+
+    const { error } = await supabaseAPI.from('reportes').insert({
+      tipo: tipoReporteActual,
+      nombre_reporta: nombre,
+      fecha: document.getElementById('repFecha').value || todayISO(),
+      ubicacion: document.getElementById('repUbicacion').value.trim(),
+      descripcion,
+      fotos: urlsFotos,
+      estado: 'Pendiente'
+    });
+    if(error) throw error;
+
+    document.getElementById('successTitulo').textContent = 'Reporte enviado correctamente';
+    document.getElementById('successTexto').textContent = 'Servicios Generales lo recibió y lo va a revisar. Gracias.';
+    mostrarPantalla('successPanel');
+  }catch(e){
+    console.error(e);
+    showToast('No se pudo enviar el reporte. Intenta de nuevo en un momento.');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Enviar reporte';
+  }
+});
+
+/* ============================================================
+   MÓDULO: PEDIDO DE MATERIALES (igual que antes)
+   ============================================================ */
 document.getElementById('fFecha').value = todayISO();
 
 const ITEM_VACIO = ()=>({descripcion:'', especificaciones:'', cantidad:'', uso:''});
@@ -226,9 +482,9 @@ document.getElementById('btnEnviar').addEventListener('click', async ()=>{
     });
     if(error) throw error;
 
-    document.getElementById('formPanel').style.display = 'none';
-    document.getElementById('successPanel').style.display = 'block';
-    window.scrollTo({top:0, behavior:'smooth'});
+    document.getElementById('successTitulo').textContent = 'Solicitud enviada correctamente';
+    document.getElementById('successTexto').textContent = 'Servicios Generales la recibió y la va a revisar. Gracias.';
+    mostrarPantalla('successPanel');
   }catch(e){
     console.error(e);
     showToast('No se pudo enviar la solicitud. Intenta de nuevo en un momento.');
@@ -236,16 +492,6 @@ document.getElementById('btnEnviar').addEventListener('click', async ()=>{
     btn.disabled = false;
     btn.textContent = 'Enviar solicitud';
   }
-});
-
-document.getElementById('btnOtraSolicitud').addEventListener('click', ()=>{
-  document.getElementById('fSolicitante').value = '';
-  document.getElementById('fFecha').value = todayISO();
-  items = Array.from({length:4}, ITEM_VACIO);
-  renderItems();
-  document.getElementById('successPanel').style.display = 'none';
-  document.getElementById('formPanel').style.display = 'block';
-  window.scrollTo({top:0, behavior:'smooth'});
 });
 </script>
 </body>
