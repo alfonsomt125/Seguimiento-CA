@@ -926,6 +926,23 @@
     </div>
   </div>
 
+  <!-- Modal: marcar rápido un pedido como recibido, sin abrir el editor completo -->
+  <div class="modal-bg" id="marcarRecibidoModalBg">
+    <div class="modal" style="max-width:380px;">
+      <h3>Marcar como recibido</h3>
+      <p class="hint" id="marcarRecibidoInfo" style="margin:0 0 14px;"></p>
+      <div class="field">
+        <label>Fecha en que recibiste el material</label>
+        <input type="date" id="recibidoFecha">
+      </div>
+      <div class="modal-actions">
+        <button class="ghost" id="btnCancelarRecibido">Cancelar</button>
+        <button class="primary" id="btnConfirmarRecibidoLista">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+
   <div id="reqEditWrap" style="display:none;">
     <button class="ghost" id="btnVolverListaReq" style="margin-bottom:16px;">← Volver a la lista</button>
     <div class="panel">
@@ -5155,6 +5172,7 @@ function renderReqLista(){
       <td>${(r.items||[]).filter(it=>it.descripcion).length}</td>
       <td><span class="pill ${pillClase}">${esc(estado)}</span></td>
       <td><div class="row-actions">
+        ${estado!=='Entregado' ? `<button class="ghost" data-recibido="${r.id}" style="color:var(--green);border-color:var(--green);">✅ Recibido</button>` : ''}
         <button class="ghost" data-editreq="${r.id}">Editar</button>
         <button class="ghost danger" data-delreq="${r.id}">Eliminar</button>
       </div></td>
@@ -5165,12 +5183,15 @@ function renderReqLista(){
 
   tbody.querySelectorAll('[data-verreq]').forEach(tr=>{
     tr.addEventListener('click', (e)=>{
-      if(e.target.closest('[data-delreq]')) return;
+      if(e.target.closest('[data-delreq]') || e.target.closest('[data-recibido]')) return;
       openReqEditor(tr.dataset.verreq);
     });
   });
   tbody.querySelectorAll('[data-editreq]').forEach(btn=>{
     btn.addEventListener('click', (e)=>{ e.stopPropagation(); openReqEditor(btn.dataset.editreq); });
+  });
+  tbody.querySelectorAll('[data-recibido]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); abrirMarcarRecibido(btn.dataset.recibido); });
   });
   tbody.querySelectorAll('[data-delreq]').forEach(btn=>{
     btn.addEventListener('click', async (e)=>{
@@ -5184,6 +5205,43 @@ function renderReqLista(){
     });
   });
 }
+
+/* Marcar rápido como recibido, directo desde la lista, sin tener que abrir
+   el editor completo — útil cuando solo quieres registrar la fecha en que
+   te llegó el material. Actualiza el mismo campo que el seguimiento con
+   Compras dentro del editor, así todo queda consistente en un solo lugar. */
+let recibidoReqId = null;
+function abrirMarcarRecibido(id){
+  const r = requisiciones.find(x=>x.id===id);
+  if(!r) return;
+  recibidoReqId = id;
+  document.getElementById('marcarRecibidoInfo').textContent = `${r.areaSeccion||r.nombreSolicitante||''} — ${(r.items||[]).filter(it=>it.descripcion).length} ítem(s).`;
+  document.getElementById('recibidoFecha').value = todayISO();
+  document.getElementById('marcarRecibidoModalBg').classList.add('active');
+}
+document.getElementById('btnCancelarRecibido').addEventListener('click', ()=>{
+  document.getElementById('marcarRecibidoModalBg').classList.remove('active');
+  recibidoReqId = null;
+});
+document.getElementById('btnConfirmarRecibidoLista').addEventListener('click', async ()=>{
+  const fecha = document.getElementById('recibidoFecha').value;
+  if(!fecha){ showToast('Indica la fecha en que recibiste el material.'); return; }
+  const idx = requisiciones.findIndex(r=>r.id===recibidoReqId);
+  if(idx!==-1){
+    const r = requisiciones[idx];
+    requisiciones[idx] = {
+      ...r,
+      estadoCompras: 'Entregado',
+      fechaSolicitadoCompras: r.fechaSolicitadoCompras || fecha,
+      fechaEntregaCompras: fecha
+    };
+    await saveRequisiciones();
+  }
+  document.getElementById('marcarRecibidoModalBg').classList.remove('active');
+  recibidoReqId = null;
+  renderReqLista();
+  showToast('Marcado como recibido.');
+});
 
 /* Papelera: las requisiciones "eliminadas" no se borran de verdad, solo se
    marcan con eliminada:true y se ocultan de la lista normal — así siempre
@@ -7636,7 +7694,8 @@ const BOTON_CIERRE_POR_MODAL = {
   confirmModalBg: 'btnConfirmCancel',
   aireMesDetalleModalBg: 'btnCloseAireMesDetalle',
   reservaModalBg: 'btnCancelReserva',
-  revisarSolModalBg: 'btnCerrarRevisarSol'
+  revisarSolModalBg: 'btnCerrarRevisarSol',
+  marcarRecibidoModalBg: 'btnCancelarRecibido'
 };
 function cerrarModalPorId(modalId){
   const btnId = BOTON_CIERRE_POR_MODAL[modalId];
