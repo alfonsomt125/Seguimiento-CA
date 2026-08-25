@@ -6660,12 +6660,18 @@ function renderInvDashboard(){
   document.getElementById('invConsumoSemanalBars').innerHTML = `
     <div class="vbar-chart">
       ${consumoPorSemana.map(s=>`
-        <div class="vbar-col" title="Semana del ${fmtDate(s.inicio)} al ${fmtDate(s.fin)}">
+        <div class="vbar-col" data-sem-inicio="${s.inicio}" data-sem-fin="${s.fin}" style="cursor:pointer;" title="Ver detalle de la semana del ${fmtDate(s.inicio)} al ${fmtDate(s.fin)}">
           <span class="vbar-value">${s.total}</span>
           <div class="vbar-fill" style="height:${Math.max(3, s.total/maxSemana*120)}px;"></div>
           <span class="vbar-label" style="text-transform:none;">${s.label}</span>
         </div>`).join('')}
     </div>`;
+  document.querySelectorAll('#invConsumoSemanalBars .vbar-col').forEach(col=>{
+    col.addEventListener('click', ()=>{
+      const label = `${fmtDate(col.dataset.semInicio)} al ${fmtDate(col.dataset.semFin)}`;
+      openSemanaDetalle(col.dataset.semInicio, col.dataset.semFin, label);
+    });
+  });
 
   // --- Torta: consumido este mes vs. disponible actual (interactiva) ---
   const pieEl = document.getElementById('invConsumoPie');
@@ -6735,8 +6741,11 @@ function renderInvDashboard(){
 /* Al tocar la barra de un mes en "Consumo mensual", abre el detalle de ese
    mes: qué productos se entregaron más (ranking por cantidad total), útil
    para quien hace las entregas semanales y quiere ver patrones por mes. */
-function openMesDetalle(mesKey, mesLabel){
-  const movs = movimientos.filter(m=>m.tipo==='salida' && m.fecha && m.fecha.slice(0,7)===mesKey);
+/* Lógica compartida: arma el ranking de productos entregados dentro de un
+   rango de fechas (desde/hasta inclusive) y lo pinta en el modal de detalle.
+   La usan tanto "Consumo mensual" como "Consumo semanal". */
+function abrirDetalleProductosPorRango(desde, hasta, titulo){
+  const movs = movimientos.filter(m=>m.tipo==='salida' && m.fecha && m.fecha>=desde && m.fecha<=hasta);
 
   const porProducto = {};
   movs.forEach(m=>{
@@ -6749,13 +6758,13 @@ function openMesDetalle(mesKey, mesLabel){
   });
   const ranking = Object.values(porProducto).sort((a,b)=>b.total-a.total);
   const totalUnidades = ranking.reduce((s,p)=>s+p.total,0);
-  const entregasDelMes = new Set(movs.filter(m=>m.entregaId).map(m=>m.entregaId)).size;
+  const entregasDelRango = new Set(movs.filter(m=>m.entregaId).map(m=>m.entregaId)).size;
 
-  document.getElementById('mesDetalleTitle').textContent = `Detalle de ${mesLabel}`;
+  document.getElementById('mesDetalleTitle').textContent = titulo;
   document.getElementById('mesDetalleKpis').innerHTML = `
     <div class="kpi"><div class="num">${totalUnidades}</div><div class="lbl">Unidades entregadas</div></div>
     <div class="kpi"><div class="num">${ranking.length}</div><div class="lbl">Productos distintos</div></div>
-    <div class="kpi"><div class="num">${entregasDelMes}</div><div class="lbl">Entregas digitales</div></div>
+    <div class="kpi"><div class="num">${entregasDelRango}</div><div class="lbl">Entregas digitales</div></div>
   `;
 
   const maxTotal = Math.max(1, ...ranking.map(p=>p.total));
@@ -6765,9 +6774,17 @@ function openMesDetalle(mesKey, mesLabel){
       <span class="name" title="${esc(p.nombre)}">${esc(p.nombre)}</span>
       <div class="bar-track"><div class="bar-fill" style="width:${(p.total/maxTotal*100)}%;background:${paletaBarras[i%paletaBarras.length]}"></div></div>
       <span class="count">${p.total} ${esc(p.unidad)}</span>
-    </div>`).join('') : '<p class="empty">No hubo salidas registradas ese mes.</p>';
+    </div>`).join('') : '<p class="empty">No hubo salidas registradas en ese periodo.</p>';
 
   document.getElementById('mesDetalleModalBg').classList.add('active');
+}
+function openMesDetalle(mesKey, mesLabel){
+  const desde = `${mesKey}-01`;
+  const hasta = `${mesKey}-31`; // fechas ISO comparan bien como texto aunque el mes tenga menos días
+  abrirDetalleProductosPorRango(desde, hasta, `Detalle de ${mesLabel}`);
+}
+function openSemanaDetalle(desde, hasta, label){
+  abrirDetalleProductosPorRango(desde, hasta, `Detalle de la semana — ${label}`);
 }
 document.getElementById('btnCloseMesDetalle').addEventListener('click', ()=>document.getElementById('mesDetalleModalBg').classList.remove('active'));
 
