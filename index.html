@@ -5290,6 +5290,7 @@ function renderReportesLista(){
     const recibido = r.created_at ? new Date(r.created_at).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
     const estado = r.estado || 'Pendiente';
     const fotos = Array.isArray(r.fotos) ? r.fotos : [];
+    const equipoVinculado = (r.tipo==='Aires' && r.aire_id) ? airesAcondicionados.find(a=>a.id===r.aire_id) : null;
     return `
     <div class="panel" style="margin-bottom:14px;border:1px solid var(--line);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
@@ -5301,13 +5302,32 @@ function renderReportesLista(){
       </div>
       <p style="margin:12px 0 0;font-size:13.5px;color:var(--ink);">${esc(r.descripcion)}</p>
       ${fotos.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${fotos.map(url=>`<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" style="width:76px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--line);"></a>`).join('')}</div>` : ''}
+      ${r.tipo==='Aires' && r.aire_id && !equipoVinculado ? `<p class="hint" style="color:var(--red);margin-top:10px;">⚠ El equipo vinculado ya no existe en el inventario.</p>` : ''}
       <div class="row-actions" style="margin-top:14px;">
+        ${equipoVinculado ? `<button class="ghost" data-registrarrevision="${r.id}" style="color:var(--navy-2);border-color:var(--navy-2);">📋 Registrar como Revisión en la hoja de vida</button>` : ''}
         ${estado!=='Atendido' ? `<button class="ghost" data-atenderrep="${r.id}" style="color:var(--green);border-color:var(--green);">✔ Marcar como atendido</button>` : `<button class="ghost" data-reabrirrep="${r.id}">↺ Reabrir</button>`}
         <button class="ghost danger" data-delrep="${r.id}">Eliminar</button>
       </div>
     </div>`;
   }).join('');
 
+  wrap.querySelectorAll('[data-registrarrevision]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const r = reportesRecibidos.find(x=>x.id===btn.dataset.registrarrevision);
+      if(!r) return;
+      const equipo = airesAcondicionados.find(a=>a.id===r.aire_id);
+      if(!equipo){ showToast('El equipo vinculado ya no existe en el inventario.'); return; }
+      aireHistorial.push({
+        id: uid(), aireId: equipo.id, fecha: r.fecha || todayISO(), fechaFin: r.fecha || todayISO(),
+        tipo: 'Revisión', responsable: '',
+        descripcion: `Reportado por ${r.nombre_reporta} desde el portal: ${r.descripcion}`,
+        createdAt: new Date().toISOString()
+      });
+      await saveAireHistorial();
+      await actualizarEstadoReporte(r.id, 'Atendido');
+      showToast(`Revisión registrada en la hoja de vida de "${equipo.ubicacion}".`);
+    });
+  });
   wrap.querySelectorAll('[data-atenderrep]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       await actualizarEstadoReporte(btn.dataset.atenderrep, 'Atendido');
