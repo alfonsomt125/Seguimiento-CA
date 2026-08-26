@@ -287,6 +287,7 @@
   .mapa-zoom-controls button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow);font-size:17px;font-weight:700;cursor:pointer;color:var(--navy);line-height:1;}
   .mapa-zoom-controls button:hover{background:var(--paper-2);}
   .mapa-marker{position:absolute;width:28px;height:28px;border-radius:50%;transform:translate(-50%,-50%);border:3.5px solid var(--navy,#011632);box-shadow:0 0 0 2px #fff, 0 3px 8px rgba(0,0,0,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:2;}
+  .mapa-marker-icono{background:#fff;border-width:2px;padding:1px;}
   .mapa-marker:hover{transform:translate(-50%,-50%) scale(1.15);}
   @keyframes fade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
 
@@ -5702,16 +5703,29 @@ const COLOR_FONDO_PILL_EXTINTOR = {
 let filtroTipoExtintorActual = '';
 let marcadorEnEdicion = null; // {tipo:'extintor'|'trampa', id: string|null, x, y}
 
+/* Ícono de extintor en SVG (no un emoji): así sí se puede pintar del color
+   exacto de cada tipo con CSS/JS, cosa que un emoji nunca permite porque
+   trae sus colores fijos de fábrica. */
+function iconoExtintorSVG(color){
+  return `<svg viewBox="0 0 32 32" width="19" height="19" style="display:block;">
+    <path d="M11 15 C4 15 4 22 4 26" stroke="#011632" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <circle cx="4" cy="27" r="1.7" fill="#011632"/>
+    <rect x="11" y="12" width="10" height="17" rx="3" fill="${color}" stroke="#011632" stroke-width="1.8"/>
+    <rect x="11" y="18.5" width="10" height="2" fill="#011632" opacity=".45"/>
+    <rect x="13.5" y="7" width="5" height="5" rx="1" fill="${color}" stroke="#011632" stroke-width="1.6"/>
+    <path d="M9 4.5 L23 4.5 M12.5 7 L9 4.5 M19.5 7 L23 4.5" stroke="#011632" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
 function renderMarcadoresExtintores(){
   const wrap = document.getElementById('mapaExtintoresInner');
   wrap.querySelectorAll('.mapa-marker').forEach(m=>m.remove());
   const filtrados = filtroTipoExtintorActual ? extintores.filter(e=>e.tipo===filtroTipoExtintorActual) : extintores;
   filtrados.forEach(e=>{
     const dot = document.createElement('div');
-    dot.className = 'mapa-marker';
+    dot.className = 'mapa-marker mapa-marker-icono';
     dot.style.left = e.x+'%';
     dot.style.top = e.y+'%';
-    dot.style.background = COLOR_TIPO_EXTINTOR[e.tipo] || '#64748B';
+    dot.innerHTML = iconoExtintorSVG(COLOR_TIPO_EXTINTOR[e.tipo] || '#64748B');
     dot.title = e.tipo + (e.fecha ? ' — vence/recarga: '+fmtDate(e.fecha) : '') + (e.notas ? ' — '+e.notas : '');
     dot.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirMarcadorExistente('extintor', e); });
     wrap.appendChild(dot);
@@ -5985,8 +5999,11 @@ function construirMapaExportHTML(tipoMapa){
   const titulo = esExtintores ? 'Plano de Extintores' : 'Plano de Trampas de Ratones';
 
   const marcadoresHtml = items.map(it=>{
-    const color = esExtintores ? (COLOR_TIPO_EXTINTOR[it.tipo]||'#64748B') : '#8E6FD6';
-    return `<div style="position:absolute;left:${it.x}%;top:${it.y}%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:${color};border:3px solid #011632;box-shadow:0 0 0 2px #fff;"></div>`;
+    if(esExtintores){
+      const color = COLOR_TIPO_EXTINTOR[it.tipo]||'#64748B';
+      return `<div style="position:absolute;left:${it.x}%;top:${it.y}%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #011632;box-shadow:0 0 0 2px #fff, 0 2px 5px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;">${iconoExtintorSVG(color)}</div>`;
+    }
+    return `<div style="position:absolute;left:${it.x}%;top:${it.y}%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#8E6FD6;border:3px solid #011632;box-shadow:0 0 0 2px #fff;"></div>`;
   }).join('');
 
   const filasTabla = esExtintores
