@@ -265,14 +265,17 @@
   }
   .view.active{display:block;animation:fade .18s ease;}
   .mapa-outer{position:relative;}
-  .mapa-outer.mapa-fullscreen{
-    position:fixed;inset:0;z-index:300;background:#fff;padding:16px;
-    display:flex;flex-direction:column;
+  .mapa-outer.mapa-fs-animando{
+    z-index:300;background:#fff;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);
+    display:flex;flex-direction:column;border-radius:16px;box-sizing:border-box;
+    transition:top .32s cubic-bezier(.2,.8,.2,1), left .32s cubic-bezier(.2,.8,.2,1),
+               width .32s cubic-bezier(.2,.8,.2,1), height .32s cubic-bezier(.2,.8,.2,1),
+               border-radius .32s ease;
   }
-  .mapa-outer.mapa-fullscreen .mapa-wrap{flex:1;max-height:none;}
+  .mapa-outer.mapa-fs-animando .mapa-wrap{flex:1;max-height:none;}
   .mapa-fs-cerrar{display:none;}
-  .mapa-outer.mapa-fullscreen .mapa-fs-cerrar{
-    display:flex;align-items:center;gap:8px;align-self:flex-end;margin-bottom:10px;
+  .mapa-outer.mapa-fs-animando .mapa-fs-cerrar{
+    display:flex;align-items:center;gap:8px;align-self:flex-end;margin-bottom:10px;flex-shrink:0;
     background:var(--navy);color:#fff;border:none;border-radius:10px;padding:9px 16px;
     font-family:var(--sys-font,inherit);font-weight:700;font-size:13.5px;cursor:pointer;
   }
@@ -5758,7 +5761,7 @@ function cerrarMarcadorModal(){
 document.getElementById('btnCancelarMarcador').addEventListener('click', cerrarMarcadorModal);
 
 document.getElementById('imgMapaExtintores').closest('.mapa-inner').addEventListener('click', (ev)=>{
-  if(!document.getElementById('mapaExtintoresOuter').classList.contains('mapa-fullscreen')){
+  if(!document.getElementById('mapaExtintoresOuter').classList.contains('mapa-fs-animando')){
     abrirMapaFullscreen('Extintores');
     return;
   }
@@ -5768,7 +5771,7 @@ document.getElementById('imgMapaExtintores').closest('.mapa-inner').addEventList
   abrirMarcadorNuevo('extintor', Number(x), Number(y));
 });
 document.getElementById('imgMapaTrampas').closest('.mapa-inner').addEventListener('click', (ev)=>{
-  if(!document.getElementById('mapaTrampasOuter').classList.contains('mapa-fullscreen')){
+  if(!document.getElementById('mapaTrampasOuter').classList.contains('mapa-fs-animando')){
     abrirMapaFullscreen('Trampas');
     return;
   }
@@ -5802,13 +5805,53 @@ document.querySelectorAll('[data-zoombtn]').forEach(btn=>{
   btn.addEventListener('click', ()=> aplicarZoomMapa(btn.dataset.mapaid, btn.dataset.zoombtn));
 });
 
+/* Animación de "expandir": se guarda la posición y tamaño exactos de donde
+   está el mapa en la página normal, se fija el elemento ahí mismo (sin que
+   se note ningún salto), y en el siguiente frame se anima hacia el tamaño
+   de pantalla completa — así de verdad se ve crecer, no aparece de golpe.
+   Al cerrar, se hace lo mismo pero al revés. */
+const mapaFsRectOriginal = {};
 function abrirMapaFullscreen(mapaId){
-  document.getElementById('mapa'+mapaId+'Outer').classList.add('mapa-fullscreen');
+  const outer = document.getElementById('mapa'+mapaId+'Outer');
+  if(outer.classList.contains('mapa-fs-animando')) return;
+  const r = outer.getBoundingClientRect();
+  mapaFsRectOriginal[mapaId] = r;
+
+  outer.style.position = 'fixed';
+  outer.style.margin = '0';
+  outer.style.top = r.top+'px';
+  outer.style.left = r.left+'px';
+  outer.style.width = r.width+'px';
+  outer.style.height = r.height+'px';
+  outer.classList.add('mapa-fs-animando');
   document.body.classList.add('mapa-fullscreen-activo');
+
+  outer.getBoundingClientRect(); // fuerza a que el navegador aplique lo de arriba antes de animar
+  requestAnimationFrame(()=>{
+    outer.style.top = '14px';
+    outer.style.left = '14px';
+    outer.style.width = 'calc(100vw - 28px)';
+    outer.style.height = 'calc(100vh - 28px)';
+  });
 }
 function cerrarMapaFullscreen(mapaId){
-  document.getElementById('mapa'+mapaId+'Outer').classList.remove('mapa-fullscreen');
-  document.body.classList.remove('mapa-fullscreen-activo');
+  const outer = document.getElementById('mapa'+mapaId+'Outer');
+  if(!outer.classList.contains('mapa-fs-animando')) return;
+  const r = mapaFsRectOriginal[mapaId];
+
+  const terminar = ()=>{
+    outer.classList.remove('mapa-fs-animando');
+    outer.removeAttribute('style');
+    document.body.classList.remove('mapa-fullscreen-activo');
+    outer.removeEventListener('transitionend', terminar);
+  };
+  if(!r){ terminar(); return; }
+
+  outer.addEventListener('transitionend', terminar);
+  outer.style.top = r.top+'px';
+  outer.style.left = r.left+'px';
+  outer.style.width = r.width+'px';
+  outer.style.height = r.height+'px';
 }
 document.querySelectorAll('[data-cerrarfs]').forEach(btn=>{
   btn.addEventListener('click', ()=> cerrarMapaFullscreen(btn.dataset.cerrarfs));
