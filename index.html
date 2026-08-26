@@ -263,8 +263,13 @@
     .view{margin-left:0;}
   }
   .view.active{display:block;animation:fade .18s ease;}
-  .mapa-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--line);cursor:crosshair;-webkit-user-select:none;user-select:none;background:#fff;}
-  .mapa-wrap img{width:100%;display:block;pointer-events:none;}
+  .mapa-outer{position:relative;}
+  .mapa-wrap{position:relative;width:100%;max-height:560px;overflow:auto;border-radius:12px;border:1px solid var(--line);background:#f2f3f6;-webkit-user-select:none;user-select:none;}
+  .mapa-inner{position:relative;cursor:crosshair;width:100%;transition:width .15s ease;}
+  .mapa-inner img{width:100%;display:block;pointer-events:none;}
+  .mapa-zoom-controls{position:absolute;top:10px;right:10px;z-index:6;display:flex;flex-direction:column;gap:6px;}
+  .mapa-zoom-controls button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow);font-size:17px;font-weight:700;cursor:pointer;color:var(--navy);line-height:1;}
+  .mapa-zoom-controls button:hover{background:var(--paper-2);}
   .mapa-marker{position:absolute;width:26px;height:26px;border-radius:50%;transform:translate(-50%,-50%);border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:2;}
   .mapa-marker:hover{transform:translate(-50%,-50%) scale(1.15);}
   @keyframes fade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
@@ -1097,8 +1102,17 @@
           <button class="year-pill" data-tipoext="Multipropósito">🔴 Multipropósito</button>
           <button class="year-pill" data-tipoext="Dióxido de Carbono">⚫ Dióxido de Carbono</button>
         </div>
-        <div class="mapa-wrap" id="mapaExtintoresWrap">
-          <img src="plano-colegio.jpg" id="imgMapaExtintores" draggable="false" alt="Plano del colegio">
+        <div class="mapa-outer">
+          <div class="mapa-zoom-controls">
+            <button data-zoombtn="in" data-mapaid="Extintores" title="Acercar">+</button>
+            <button data-zoombtn="out" data-mapaid="Extintores" title="Alejar">−</button>
+            <button data-zoombtn="reset" data-mapaid="Extintores" title="Restablecer">↺</button>
+          </div>
+          <div class="mapa-wrap" id="mapaExtintoresWrap">
+            <div class="mapa-inner" id="mapaExtintoresInner">
+              <img src="plano-colegio.png" id="imgMapaExtintores" draggable="false" alt="Plano del colegio">
+            </div>
+          </div>
         </div>
       </div>
       <div class="panel">
@@ -1116,8 +1130,17 @@
       <div class="panel">
         <h2>Trampas de ratones</h2>
         <p class="hint" style="margin:0 0 10px;">Toca cualquier punto del plano para marcar una trampa nueva. Toca un marcador ya puesto para editarlo o quitarlo.</p>
-        <div class="mapa-wrap" id="mapaTrampasWrap">
-          <img src="plano-colegio.jpg" id="imgMapaTrampas" draggable="false" alt="Plano del colegio">
+        <div class="mapa-outer">
+          <div class="mapa-zoom-controls">
+            <button data-zoombtn="in" data-mapaid="Trampas" title="Acercar">+</button>
+            <button data-zoombtn="out" data-mapaid="Trampas" title="Alejar">−</button>
+            <button data-zoombtn="reset" data-mapaid="Trampas" title="Restablecer">↺</button>
+          </div>
+          <div class="mapa-wrap" id="mapaTrampasWrap">
+            <div class="mapa-inner" id="mapaTrampasInner">
+              <img src="plano-colegio.png" id="imgMapaTrampas" draggable="false" alt="Plano del colegio">
+            </div>
+          </div>
         </div>
       </div>
       <div class="panel">
@@ -5526,7 +5549,7 @@ let filtroTipoExtintorActual = '';
 let marcadorEnEdicion = null; // {tipo:'extintor'|'trampa', id: string|null, x, y}
 
 function renderMarcadoresExtintores(){
-  const wrap = document.getElementById('mapaExtintoresWrap');
+  const wrap = document.getElementById('mapaExtintoresInner');
   wrap.querySelectorAll('.mapa-marker').forEach(m=>m.remove());
   const filtrados = filtroTipoExtintorActual ? extintores.filter(e=>e.tipo===filtroTipoExtintorActual) : extintores;
   filtrados.forEach(e=>{
@@ -5559,7 +5582,7 @@ function renderMarcadoresExtintores(){
 }
 
 function renderMarcadoresTrampas(){
-  const wrap = document.getElementById('mapaTrampasWrap');
+  const wrap = document.getElementById('mapaTrampasInner');
   wrap.querySelectorAll('.mapa-marker').forEach(m=>m.remove());
   trampas.forEach(t=>{
     const dot = document.createElement('div');
@@ -5613,17 +5636,34 @@ function cerrarMarcadorModal(){
 }
 document.getElementById('btnCancelarMarcador').addEventListener('click', cerrarMarcadorModal);
 
-document.getElementById('imgMapaExtintores').closest('.mapa-wrap').addEventListener('click', (ev)=>{
+document.getElementById('imgMapaExtintores').closest('.mapa-inner').addEventListener('click', (ev)=>{
   const rect = ev.currentTarget.getBoundingClientRect();
   const x = ((ev.clientX-rect.left)/rect.width*100).toFixed(2);
   const y = ((ev.clientY-rect.top)/rect.height*100).toFixed(2);
   abrirMarcadorNuevo('extintor', Number(x), Number(y));
 });
-document.getElementById('imgMapaTrampas').closest('.mapa-wrap').addEventListener('click', (ev)=>{
+document.getElementById('imgMapaTrampas').closest('.mapa-inner').addEventListener('click', (ev)=>{
   const rect = ev.currentTarget.getBoundingClientRect();
   const x = ((ev.clientX-rect.left)/rect.width*100).toFixed(2);
   const y = ((ev.clientY-rect.top)/rect.height*100).toFixed(2);
   abrirMarcadorNuevo('trampa', Number(x), Number(y));
+});
+
+/* Zoom controlado por botones (en vez de depender del zoom general del
+   navegador): escala solo el contenedor interno del mapa (imagen +
+   marcadores juntos), y dado que las coordenadas de los marcadores son
+   porcentajes, siguen cayendo en el lugar correcto sin importar el nivel
+   de acercamiento. El contenedor de afuera permite desplazarse (scroll)
+   una vez que la imagen queda más grande que el espacio visible. */
+const zoomMapas = {Extintores:1, Trampas:1};
+function aplicarZoomMapa(mapaId, accion){
+  if(accion==='reset') zoomMapas[mapaId] = 1;
+  else if(accion==='in') zoomMapas[mapaId] = Math.min(4, +(zoomMapas[mapaId]+0.4).toFixed(2));
+  else zoomMapas[mapaId] = Math.max(1, +(zoomMapas[mapaId]-0.4).toFixed(2));
+  document.getElementById('mapa'+mapaId+'Inner').style.width = (zoomMapas[mapaId]*100)+'%';
+}
+document.querySelectorAll('[data-zoombtn]').forEach(btn=>{
+  btn.addEventListener('click', ()=> aplicarZoomMapa(btn.dataset.mapaid, btn.dataset.zoombtn));
 });
 
 document.getElementById('btnGuardarMarcador').addEventListener('click', async ()=>{
