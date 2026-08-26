@@ -116,6 +116,7 @@
   .mant-subcard.requisiciones .mant-icon{background:linear-gradient(135deg,#3DBB8A,#0F6E4A);}
   .mant-subcard.reportes .mant-icon{background:linear-gradient(135deg,#E0575A,#A8262A);}
   .mant-subcard.mapas .mant-icon{background:linear-gradient(135deg,#2CA9BC,#0E5C6B);}
+  .mant-subcard.horasextra .mant-icon{background:linear-gradient(135deg,#B08AE0,#5B3A9E);}
   .mant-subcard span{font-family:var(--sys-font);font-size:16px;color:var(--navy);font-weight:700;line-height:1.35;letter-spacing:-.01em;}
   .mant-subcard p{margin:0;font-size:12.5px;color:var(--gray);}
   @media(max-width:520px){
@@ -573,6 +574,11 @@
         <div class="mant-icon">🗺️</div>
         <span>Mapas de Planta Física</span>
         <p>Ubica extintores por tipo y trampas de ratones sobre el plano del colegio.</p>
+      </button>
+      <button class="mant-subcard horasextra" data-mantopen="horasextra">
+        <div class="mant-icon">🕐</div>
+        <span>Horas Extras del Personal</span>
+        <p>Registro por trabajador, con control automático de los límites diario y mensual.</p>
       </button>
     </div>
   </div>
@@ -1156,6 +1162,87 @@
   </div>
   </div>
   <!-- ===================== /SUB-MÓDULO MAPAS DE PLANTA FÍSICA ===================== -->
+
+  <!-- ===================== SUB-MÓDULO: HORAS EXTRAS DEL PERSONAL ===================== -->
+  <div id="mantSubHorasExtra" style="display:none;">
+  <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+      <h2 style="margin:0;">Horas extras — resumen del mes</h2>
+      <button class="ghost" id="btnConfigLimitesHE">⚙ Configurar límites</button>
+    </div>
+    <p class="hint" style="margin:0 0 14px;" id="heLimitesTexto"></p>
+    <div class="field" style="max-width:220px;margin-bottom:14px;">
+      <label>Mes a revisar</label>
+      <input type="month" id="heMesFiltro">
+    </div>
+    <div id="heResumenPorTrabajador"></div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <h2 style="margin:0;">Registros de horas extras</h2>
+      <button class="primary" id="btnNuevaHoraExtra">+ Agregar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Trabajador</th><th>Horas</th><th>Motivo</th><th></th></tr></thead>
+        <tbody id="heListaBody"></tbody>
+      </table>
+    </div>
+  </div>
+  </div>
+  <!-- ===================== /SUB-MÓDULO HORAS EXTRAS DEL PERSONAL ===================== -->
+
+  <!-- Modal: agregar/editar un registro de horas extras -->
+  <div class="modal-bg" id="heModalBg">
+    <div class="modal" style="max-width:420px;">
+      <h3 id="heModalTitulo">Nueva hora extra</h3>
+      <div class="field" style="margin-top:14px;">
+        <label>Trabajador</label>
+        <select id="heTrabajador"></select>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Fecha</label>
+        <input type="date" id="heFecha">
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Horas</label>
+        <input type="number" id="heHoras" min="0.5" step="0.5" placeholder="Ej: 2">
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Motivo</label>
+        <input type="text" id="heMotivo" placeholder="Ej: Cierre de evento en Paraninfo">
+      </div>
+      <p class="hint" id="heAvisoLimite" style="margin:12px 0 0;"></p>
+      <div class="modal-actions" style="flex-wrap:wrap;gap:10px;">
+        <button class="ghost" id="btnCancelarHE">Cancelar</button>
+        <button class="ghost danger" id="btnEliminarHE" style="display:none;">Eliminar</button>
+        <button class="primary" id="btnGuardarHE">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: configurar los límites diario/mensual -->
+  <div class="modal-bg" id="heLimitesModalBg">
+    <div class="modal" style="max-width:380px;">
+      <h3>Límites de horas extras</h3>
+      <p class="hint" style="margin:6px 0 16px;">Por ley colombiana el máximo diario es 2 horas. El límite mensual no está fijado explícitamente en la ley (sí uno semanal de 12h) — ajústalo según la política del colegio.</p>
+      <div class="field">
+        <label>Límite diario (horas)</label>
+        <input type="number" id="heLimiteDiario" min="0.5" step="0.5">
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Límite mensual (horas)</label>
+        <input type="number" id="heLimiteMensual" min="1" step="1">
+      </div>
+      <div class="modal-actions">
+        <button class="ghost" id="btnCancelarLimitesHE">Cancelar</button>
+        <button class="primary" id="btnGuardarLimitesHE">Guardar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: agregar/editar un marcador (extintor o trampa) sobre el plano -->
   <div class="modal-bg" id="marcadorModalBg">
@@ -2767,6 +2854,8 @@ let reservasEspacios = [];
 let requisiciones = [];
 let extintores = [];
 let trampas = [];
+let horasExtras = [];
+let limitesHorasExtras = {diario: 2, mensual: 48};
 let editingAireId = null;
 let aireVencidoFiltroActivo = false;
 let carrito = [];
@@ -2895,7 +2984,7 @@ const CLAVES_A_MIGRAR = [
   'activities','bitacora','insumos','movimientos','trabajadores','entregas',
   'deletedNames','deletedInsumoNames','deletedTrabajadorNames',
   'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones',
-  'extintores','trampasRatones','syncVersions'
+  'extintores','trampasRatones','horasExtras','limitesHorasExtras','syncVersions'
 ];
 
 async function migrarLocalASupabase(){
@@ -2998,6 +3087,14 @@ async function loadAll(){
     const tr = await storageAPI.get('trampasRatones');
     trampas = JSON.parse(tr.value);
   }catch(e){ trampas = []; }
+  try{
+    const he = await storageAPI.get('horasExtras');
+    horasExtras = JSON.parse(he.value);
+  }catch(e){ horasExtras = []; }
+  try{
+    const hl = await storageAPI.get('limitesHorasExtras');
+    limitesHorasExtras = JSON.parse(hl.value);
+  }catch(e){ limitesHorasExtras = {diario: 2, mensual: 48}; }
 }
 async function saveAiresAcondicionados(){
   try{ await storageAPI.set('airesAcondicionados', JSON.stringify(airesAcondicionados)); }
@@ -3022,6 +3119,14 @@ async function saveExtintores(){
 async function saveTrampas(){
   try{ await storageAPI.set('trampasRatones', JSON.stringify(trampas)); }
   catch(e){ showToast('No se pudo guardar (trampas). Intenta de nuevo.'); }
+}
+async function saveHorasExtras(){
+  try{ await storageAPI.set('horasExtras', JSON.stringify(horasExtras)); }
+  catch(e){ showToast('No se pudo guardar (horas extras). Intenta de nuevo.'); }
+}
+async function saveLimitesHorasExtras(){
+  try{ await storageAPI.set('limitesHorasExtras', JSON.stringify(limitesHorasExtras)); }
+  catch(e){ showToast('No se pudo guardar (límites). Intenta de nuevo.'); }
 }
 async function saveDeletedTrabajadorNames(){
   try{ await storageAPI.set('deletedTrabajadorNames', JSON.stringify(deletedTrabajadorNames)); }
@@ -5716,6 +5821,192 @@ document.querySelectorAll('#filtroTipoExtintor [data-tipoext]').forEach(btn=>{
   });
 });
 
+/* ============================================================
+   HORAS EXTRAS DEL PERSONAL — control automático de límites diario y
+   mensual (Código Sustantivo del Trabajo: máx. 2h/día por ley; el límite
+   mensual es configurable, ya que la ley no fija uno explícito — sí uno
+   semanal de 12h). Usa la misma lista de trabajadores de Salida de
+   Insumos, así no hay que mantener dos listas de personal aparte.
+   ============================================================ */
+function actualizarTextoLimitesHE(){
+  document.getElementById('heLimitesTexto').textContent =
+    `Límite diario: ${limitesHorasExtras.diario}h por persona · Límite mensual: ${limitesHorasExtras.mensual}h por persona.`;
+}
+function horasDelDia(trabajadorId, fecha, excluirId){
+  return horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha===fecha && h.id!==excluirId)
+    .reduce((s,h)=>s+Number(h.horas||0), 0);
+}
+function horasDelMes(trabajadorId, mesKey, excluirId){
+  return horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha.slice(0,7)===mesKey && h.id!==excluirId)
+    .reduce((s,h)=>s+Number(h.horas||0), 0);
+}
+
+function renderHorasExtra(){
+  actualizarTextoLimitesHE();
+  if(!document.getElementById('heMesFiltro').value){
+    document.getElementById('heMesFiltro').value = todayISO().slice(0,7);
+  }
+  const mesKey = document.getElementById('heMesFiltro').value;
+
+  const resumenWrap = document.getElementById('heResumenPorTrabajador');
+  const filas = trabajadores.map(t=>{
+    const total = horasDelMes(t.id, mesKey);
+    const pct = Math.min(100, total/limitesHorasExtras.mensual*100);
+    const excedido = total > limitesHorasExtras.mensual;
+    const color = excedido ? 'var(--red)' : pct>=80 ? 'var(--orange)' : 'var(--green)';
+    return {t, total, pct, color};
+  });
+  const conHoras = filas.filter(f=>f.total>0);
+  const aMostrar = conHoras.length ? conHoras : filas;
+
+  resumenWrap.innerHTML = aMostrar.length ? aMostrar.map(f=>`
+    <div class="bar-row" style="align-items:center;">
+      <span class="name" style="width:140px;flex-shrink:0;" title="${esc(f.t.nombre)}">${esc(f.t.nombre)}</span>
+      <div class="bar-track" style="flex:1;"><div class="bar-fill" style="width:${f.pct}%;background:${f.color};"></div></div>
+      <span class="count" style="width:auto;min-width:96px;font-weight:700;color:${f.color};">${f.total}h / ${limitesHorasExtras.mensual}h</span>
+    </div>`).join('') : '<p class="empty">Aún no hay trabajadores registrados (se agregan desde Salida de Insumos).</p>';
+
+  const registrosDelMes = horasExtras.filter(h=>h.fecha && h.fecha.slice(0,7)===mesKey).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const tbody = document.getElementById('heListaBody');
+  tbody.innerHTML = registrosDelMes.length ? registrosDelMes.map(h=>`
+    <tr>
+      <td>${fmtDate(h.fecha)}</td>
+      <td>${esc(h.trabajadorNombre)}</td>
+      <td>${h.horas}</td>
+      <td>${esc(h.motivo)||'—'}</td>
+      <td><div class="row-actions">
+        <button class="ghost" data-editarhe="${h.id}">Editar</button>
+        <button class="ghost danger" data-eliminarhe="${h.id}">Eliminar</button>
+      </div></td>
+    </tr>`).join('') : `<tr><td colspan="5" class="empty">No hay horas extras registradas en este mes.</td></tr>`;
+
+  tbody.querySelectorAll('[data-editarhe]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const h = horasExtras.find(x=>x.id===btn.dataset.editarhe);
+      if(h) abrirHEModal(h);
+    });
+  });
+  tbody.querySelectorAll('[data-eliminarhe]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!await customConfirm('¿Eliminar este registro de horas extras?')) return;
+      horasExtras = horasExtras.filter(x=>x.id!==btn.dataset.eliminarhe);
+      await saveHorasExtras();
+      renderHorasExtra();
+      showToast('Registro eliminado.');
+    });
+  });
+}
+document.getElementById('heMesFiltro').addEventListener('change', renderHorasExtra);
+
+let heEditandoId = null;
+function poblarSelectTrabajadoresHE(){
+  document.getElementById('heTrabajador').innerHTML = trabajadores.map(t=>`<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
+}
+function abrirHEModal(registro){
+  poblarSelectTrabajadoresHE();
+  heEditandoId = registro ? registro.id : null;
+  document.getElementById('heModalTitulo').textContent = registro ? 'Editar hora extra' : 'Nueva hora extra';
+  document.getElementById('heTrabajador').value = registro ? registro.trabajadorId : (trabajadores[0]?.id || '');
+  document.getElementById('heFecha').value = registro ? registro.fecha : todayISO();
+  document.getElementById('heHoras').value = registro ? registro.horas : '';
+  document.getElementById('heMotivo').value = registro ? (registro.motivo||'') : '';
+  document.getElementById('btnEliminarHE').style.display = registro ? 'inline-block' : 'none';
+  document.getElementById('heModalBg').classList.add('active');
+  actualizarAvisoLimiteHE();
+}
+document.getElementById('btnNuevaHoraExtra').addEventListener('click', ()=>{
+  if(!trabajadores.length){ showToast('Primero agrega trabajadores desde Salida de Insumos.'); return; }
+  abrirHEModal(null);
+});
+document.getElementById('btnCancelarHE').addEventListener('click', ()=>{
+  document.getElementById('heModalBg').classList.remove('active');
+  heEditandoId = null;
+});
+
+function actualizarAvisoLimiteHE(){
+  const trabajadorId = document.getElementById('heTrabajador').value;
+  const fecha = document.getElementById('heFecha').value;
+  const horas = Number(document.getElementById('heHoras').value) || 0;
+  const aviso = document.getElementById('heAvisoLimite');
+  if(!trabajadorId || !fecha || !horas){ aviso.textContent = ''; return; }
+
+  const totalDia = horasDelDia(trabajadorId, fecha, heEditandoId) + horas;
+  const totalMes = horasDelMes(trabajadorId, fecha.slice(0,7), heEditandoId) + horas;
+  const problemas = [];
+  if(totalDia > limitesHorasExtras.diario) problemas.push(`ese día llegaría a ${totalDia}h (límite: ${limitesHorasExtras.diario}h)`);
+  if(totalMes > limitesHorasExtras.mensual) problemas.push(`ese mes llegaría a ${totalMes}h (límite: ${limitesHorasExtras.mensual}h)`);
+
+  if(problemas.length){
+    aviso.textContent = `⚠ Esto excede el límite: ${problemas.join(' y ')}.`;
+    aviso.style.color = 'var(--red)';
+  }else{
+    aviso.textContent = `Día: ${totalDia}h / ${limitesHorasExtras.diario}h · Mes: ${totalMes}h / ${limitesHorasExtras.mensual}h`;
+    aviso.style.color = 'var(--gray)';
+  }
+}
+['heTrabajador','heFecha','heHoras'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', actualizarAvisoLimiteHE);
+  document.getElementById(id).addEventListener('change', actualizarAvisoLimiteHE);
+});
+
+document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
+  const trabajadorId = document.getElementById('heTrabajador').value;
+  const fecha = document.getElementById('heFecha').value;
+  const horas = Number(document.getElementById('heHoras').value);
+  const motivo = document.getElementById('heMotivo').value.trim();
+  if(!trabajadorId){ showToast('Elige un trabajador.'); return; }
+  if(!fecha){ showToast('Elige una fecha.'); return; }
+  if(!horas || horas<=0){ showToast('Escribe cuántas horas fueron.'); return; }
+
+  const totalDia = horasDelDia(trabajadorId, fecha, heEditandoId) + horas;
+  const totalMes = horasDelMes(trabajadorId, fecha.slice(0,7), heEditandoId) + horas;
+  if(totalDia > limitesHorasExtras.diario || totalMes > limitesHorasExtras.mensual){
+    if(!await customConfirm('Esto supera el límite diario y/o mensual configurado. ¿Registrarlo de todas formas?')) return;
+  }
+
+  const trabajador = trabajadores.find(t=>t.id===trabajadorId);
+  if(heEditandoId){
+    const idx = horasExtras.findIndex(h=>h.id===heEditandoId);
+    if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, motivo};
+  }else{
+    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, motivo, createdAt: new Date().toISOString()});
+  }
+  await saveHorasExtras();
+  document.getElementById('heModalBg').classList.remove('active');
+  heEditandoId = null;
+  renderHorasExtra();
+  showToast('Guardado.');
+});
+document.getElementById('btnEliminarHE').addEventListener('click', async ()=>{
+  if(!heEditandoId) return;
+  if(!await customConfirm('¿Eliminar este registro de horas extras?')) return;
+  horasExtras = horasExtras.filter(x=>x.id!==heEditandoId);
+  await saveHorasExtras();
+  document.getElementById('heModalBg').classList.remove('active');
+  heEditandoId = null;
+  renderHorasExtra();
+  showToast('Registro eliminado.');
+});
+
+document.getElementById('btnConfigLimitesHE').addEventListener('click', ()=>{
+  document.getElementById('heLimiteDiario').value = limitesHorasExtras.diario;
+  document.getElementById('heLimiteMensual').value = limitesHorasExtras.mensual;
+  document.getElementById('heLimitesModalBg').classList.add('active');
+});
+document.getElementById('btnCancelarLimitesHE').addEventListener('click', ()=>{
+  document.getElementById('heLimitesModalBg').classList.remove('active');
+});
+document.getElementById('btnGuardarLimitesHE').addEventListener('click', async ()=>{
+  const diario = Number(document.getElementById('heLimiteDiario').value);
+  const mensual = Number(document.getElementById('heLimiteMensual').value);
+  if(!diario || diario<=0 || !mensual || mensual<=0){ showToast('Escribe valores válidos.'); return; }
+  limitesHorasExtras = {diario, mensual};
+  await saveLimitesHorasExtras();
+  document.getElementById('heLimitesModalBg').classList.remove('active');
+  renderHorasExtra();
+  showToast('Límites actualizados.');
+});
+
 function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
   const filas = requisiciones.filter(r=>!r.eliminada).sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
@@ -6697,6 +6988,7 @@ function showMantSelector(){
   document.getElementById('mantSubRequisiciones').style.display = 'none';
   document.getElementById('mantSubReportes').style.display = 'none';
   document.getElementById('mantSubMapas').style.display = 'none';
+  document.getElementById('mantSubHorasExtra').style.display = 'none';
 }
 function openMantSub(name){
   document.getElementById('mantSelector').style.display = 'none';
@@ -6705,9 +6997,11 @@ function openMantSub(name){
   document.getElementById('mantSubRequisiciones').style.display = name==='requisiciones' ? 'block' : 'none';
   document.getElementById('mantSubReportes').style.display = name==='reportes' ? 'block' : 'none';
   document.getElementById('mantSubMapas').style.display = name==='mapas' ? 'block' : 'none';
+  document.getElementById('mantSubHorasExtra').style.display = name==='horasextra' ? 'block' : 'none';
   if(name==='requisiciones'){ showReqLista(); }
   if(name==='reportes'){ cargarReportesRecibidos(); }
   if(name==='mapas'){ renderMarcadoresExtintores(); renderMarcadoresTrampas(); }
+  if(name==='horasextra'){ renderHorasExtra(); }
 }
 document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -8416,7 +8710,9 @@ const BOTON_CIERRE_POR_MODAL = {
   reservaModalBg: 'btnCancelReserva',
   revisarSolModalBg: 'btnCerrarRevisarSol',
   marcarRecibidoModalBg: 'btnCancelarRecibido',
-  marcadorModalBg: 'btnCancelarMarcador'
+  marcadorModalBg: 'btnCancelarMarcador',
+  heModalBg: 'btnCancelarHE',
+  heLimitesModalBg: 'btnCancelarLimitesHE'
 };
 function cerrarModalPorId(modalId){
   const btnId = BOTON_CIERRE_POR_MODAL[modalId];
