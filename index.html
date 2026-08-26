@@ -5695,8 +5695,6 @@ function renderMarcadoresExtintores(){
     dot.style.top = e.y+'%';
     dot.style.background = COLOR_TIPO_EXTINTOR[e.tipo] || '#64748B';
     dot.title = e.tipo + (e.notas ? ' — '+e.notas : '');
-    dot.textContent = '🧯';
-    dot.style.fontSize = '11px';
     dot.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirMarcadorExistente('extintor', e); });
     wrap.appendChild(dot);
   });
