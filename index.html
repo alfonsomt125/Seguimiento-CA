@@ -115,6 +115,7 @@
   .mant-subcard.aires .mant-icon{background:linear-gradient(135deg,#F7AC4D,#D9761A);}
   .mant-subcard.requisiciones .mant-icon{background:linear-gradient(135deg,#3DBB8A,#0F6E4A);}
   .mant-subcard.reportes .mant-icon{background:linear-gradient(135deg,#E0575A,#A8262A);}
+  .mant-subcard.mapas .mant-icon{background:linear-gradient(135deg,#2CA9BC,#0E5C6B);}
   .mant-subcard span{font-family:var(--sys-font);font-size:16px;color:var(--navy);font-weight:700;line-height:1.35;letter-spacing:-.01em;}
   .mant-subcard p{margin:0;font-size:12.5px;color:var(--gray);}
   @media(max-width:520px){
@@ -262,6 +263,10 @@
     .view{margin-left:0;}
   }
   .view.active{display:block;animation:fade .18s ease;}
+  .mapa-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--line);cursor:crosshair;-webkit-user-select:none;user-select:none;background:#fff;}
+  .mapa-wrap img{width:100%;display:block;pointer-events:none;}
+  .mapa-marker{position:absolute;width:26px;height:26px;border-radius:50%;transform:translate(-50%,-50%);border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:2;}
+  .mapa-marker:hover{transform:translate(-50%,-50%) scale(1.15);}
   @keyframes fade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
 
   /* KPI cards */
@@ -558,6 +563,11 @@
         <div class="mant-icon">📋</div>
         <span>Reportes del Personal</span>
         <p>Daños de mobiliario, fallas de aires acondicionados y reportes de seguridad, con fotos.</p>
+      </button>
+      <button class="mant-subcard mapas" data-mantopen="mapas">
+        <div class="mant-icon">🗺️</div>
+        <span>Mapas de Planta Física</span>
+        <p>Ubica extintores por tipo y trampas de ratones sobre el plano del colegio.</p>
       </button>
     </div>
   </div>
@@ -1066,6 +1076,87 @@
     </div>
   </div>
   <!-- ===================== /SUB-MÓDULO REPORTES DEL PERSONAL ===================== -->
+
+  <!-- ===================== SUB-MÓDULO: MAPAS DE PLANTA FÍSICA ===================== -->
+  <div id="mantSubMapas" style="display:none;">
+  <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+
+  <div class="wrap">
+    <nav class="tabs">
+      <button data-mapaview="extintores" class="active">🧯 Extintores</button>
+      <button data-mapaview="trampas">🐭 Trampas de Ratones</button>
+    </nav>
+
+    <section class="view active" id="view-mapa-extintores">
+      <div class="panel">
+        <h2>Extintores por tipo</h2>
+        <p class="hint" style="margin:0 0 10px;">Toca cualquier punto del plano para marcar un extintor nuevo. Toca un marcador ya puesto para editarlo o quitarlo.</p>
+        <div class="year-pills" id="filtroTipoExtintor" data-value="" style="margin-bottom:12px;">
+          <button class="year-pill active" data-tipoext="">Todos</button>
+          <button class="year-pill" data-tipoext="Solkaflam">🔵 Solkaflam</button>
+          <button class="year-pill" data-tipoext="Multipropósito">🔴 Multipropósito</button>
+          <button class="year-pill" data-tipoext="Dióxido de Carbono">⚫ Dióxido de Carbono</button>
+        </div>
+        <div class="mapa-wrap" id="mapaExtintoresWrap">
+          <img src="plano-colegio.jpg" id="imgMapaExtintores" draggable="false" alt="Plano del colegio">
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Listado de extintores (<span id="contadorExtintores">0</span>)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tipo</th><th>Notas</th><th></th></tr></thead>
+            <tbody id="listaExtintoresBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-mapa-trampas">
+      <div class="panel">
+        <h2>Trampas de ratones</h2>
+        <p class="hint" style="margin:0 0 10px;">Toca cualquier punto del plano para marcar una trampa nueva. Toca un marcador ya puesto para editarlo o quitarlo.</p>
+        <div class="mapa-wrap" id="mapaTrampasWrap">
+          <img src="plano-colegio.jpg" id="imgMapaTrampas" draggable="false" alt="Plano del colegio">
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Listado de trampas (<span id="contadorTrampas">0</span>)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Notas</th><th></th></tr></thead>
+            <tbody id="listaTrampasBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+  </div>
+  <!-- ===================== /SUB-MÓDULO MAPAS DE PLANTA FÍSICA ===================== -->
+
+  <!-- Modal: agregar/editar un marcador (extintor o trampa) sobre el plano -->
+  <div class="modal-bg" id="marcadorModalBg">
+    <div class="modal" style="max-width:420px;">
+      <h3 id="marcadorModalTitulo">Nuevo extintor</h3>
+      <div class="field" id="marcadorTipoWrap" style="margin-top:14px;">
+        <label>Tipo</label>
+        <select id="marcadorTipo">
+          <option value="Solkaflam">Solkaflam</option>
+          <option value="Multipropósito">Multipropósito</option>
+          <option value="Dióxido de Carbono">Dióxido de Carbono</option>
+        </select>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Notas (opcional)</label>
+        <input type="text" id="marcadorNotas" placeholder="Ej: Vence en diciembre 2026">
+      </div>
+      <div class="modal-actions" style="flex-wrap:wrap;gap:10px;">
+        <button class="ghost" id="btnCancelarMarcador">Cancelar</button>
+        <button class="ghost danger" id="btnEliminarMarcador" style="display:none;">Eliminar</button>
+        <button class="primary" id="btnGuardarMarcador">Guardar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: revisar/editar una solicitud recibida del formulario público, y exportarla a PDF -->
   <div class="modal-bg" id="revisarSolModalBg">
@@ -2651,6 +2742,8 @@ let airesAcondicionados = [];
 let aireHistorial = [];
 let reservasEspacios = [];
 let requisiciones = [];
+let extintores = [];
+let trampas = [];
 let editingAireId = null;
 let aireVencidoFiltroActivo = false;
 let carrito = [];
@@ -2778,7 +2871,8 @@ async function safeSetVersion(key, value){
 const CLAVES_A_MIGRAR = [
   'activities','bitacora','insumos','movimientos','trabajadores','entregas',
   'deletedNames','deletedInsumoNames','deletedTrabajadorNames',
-  'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones','syncVersions'
+  'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones',
+  'extintores','trampasRatones','syncVersions'
 ];
 
 async function migrarLocalASupabase(){
@@ -2873,6 +2967,14 @@ async function loadAll(){
     const rq = await storageAPI.get('requisiciones');
     requisiciones = JSON.parse(rq.value);
   }catch(e){ requisiciones = []; }
+  try{
+    const ex = await storageAPI.get('extintores');
+    extintores = JSON.parse(ex.value);
+  }catch(e){ extintores = []; }
+  try{
+    const tr = await storageAPI.get('trampasRatones');
+    trampas = JSON.parse(tr.value);
+  }catch(e){ trampas = []; }
 }
 async function saveAiresAcondicionados(){
   try{ await storageAPI.set('airesAcondicionados', JSON.stringify(airesAcondicionados)); }
@@ -2889,6 +2991,14 @@ async function saveReservasEspacios(){
 async function saveRequisiciones(){
   try{ await storageAPI.set('requisiciones', JSON.stringify(requisiciones)); }
   catch(e){ showToast('No se pudo guardar (requisiciones). Intenta de nuevo.'); }
+}
+async function saveExtintores(){
+  try{ await storageAPI.set('extintores', JSON.stringify(extintores)); }
+  catch(e){ showToast('No se pudo guardar (extintores). Intenta de nuevo.'); }
+}
+async function saveTrampas(){
+  try{ await storageAPI.set('trampasRatones', JSON.stringify(trampas)); }
+  catch(e){ showToast('No se pudo guardar (trampas). Intenta de nuevo.'); }
 }
 async function saveDeletedTrabajadorNames(){
   try{ await storageAPI.set('deletedTrabajadorNames', JSON.stringify(deletedTrabajadorNames)); }
@@ -5401,6 +5511,171 @@ document.getElementById('btnRefrescarReportes').addEventListener('click', cargar
 document.getElementById('repFiltroTipo').addEventListener('change', renderReportesLista);
 document.getElementById('repFiltroEstado').addEventListener('change', renderReportesLista);
 
+/* ============================================================
+   MAPAS DE PLANTA FÍSICA — extintores por tipo y trampas de ratones,
+   ubicados con un clic sobre el plano real del colegio. Las coordenadas se
+   guardan como porcentaje (no en píxeles), para que el punto quede en el
+   mismo lugar sin importar el tamaño de pantalla en que se vea el mapa.
+   ============================================================ */
+const COLOR_TIPO_EXTINTOR = {
+  'Solkaflam': '#03459B',
+  'Multipropósito': '#E0342A',
+  'Dióxido de Carbono': '#1D1D1F'
+};
+let filtroTipoExtintorActual = '';
+let marcadorEnEdicion = null; // {tipo:'extintor'|'trampa', id: string|null, x, y}
+
+function renderMarcadoresExtintores(){
+  const wrap = document.getElementById('mapaExtintoresWrap');
+  wrap.querySelectorAll('.mapa-marker').forEach(m=>m.remove());
+  const filtrados = filtroTipoExtintorActual ? extintores.filter(e=>e.tipo===filtroTipoExtintorActual) : extintores;
+  filtrados.forEach(e=>{
+    const dot = document.createElement('div');
+    dot.className = 'mapa-marker';
+    dot.style.left = e.x+'%';
+    dot.style.top = e.y+'%';
+    dot.style.background = COLOR_TIPO_EXTINTOR[e.tipo] || '#64748B';
+    dot.title = e.tipo + (e.notas ? ' — '+e.notas : '');
+    dot.textContent = '🧯';
+    dot.style.fontSize = '11px';
+    dot.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirMarcadorExistente('extintor', e); });
+    wrap.appendChild(dot);
+  });
+  document.getElementById('contadorExtintores').textContent = extintores.length;
+
+  const tbody = document.getElementById('listaExtintoresBody');
+  tbody.innerHTML = extintores.length ? extintores.map(e=>`
+    <tr>
+      <td><span class="pill" style="background:${COLOR_TIPO_EXTINTOR[e.tipo]}22;color:${COLOR_TIPO_EXTINTOR[e.tipo]};">${esc(e.tipo)}</span></td>
+      <td>${esc(e.notas)||'—'}</td>
+      <td><button class="ghost" data-editarextintor="${e.id}">Editar</button></td>
+    </tr>`).join('') : `<tr><td colspan="3" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
+  tbody.querySelectorAll('[data-editarextintor]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const e = extintores.find(x=>x.id===btn.dataset.editarextintor);
+      if(e) abrirMarcadorExistente('extintor', e);
+    });
+  });
+}
+
+function renderMarcadoresTrampas(){
+  const wrap = document.getElementById('mapaTrampasWrap');
+  wrap.querySelectorAll('.mapa-marker').forEach(m=>m.remove());
+  trampas.forEach(t=>{
+    const dot = document.createElement('div');
+    dot.className = 'mapa-marker';
+    dot.style.left = t.x+'%';
+    dot.style.top = t.y+'%';
+    dot.style.background = '#8E6FD6';
+    dot.title = t.notas || 'Trampa de ratones';
+    dot.textContent = '🐭';
+    dot.style.fontSize = '11px';
+    dot.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirMarcadorExistente('trampa', t); });
+    wrap.appendChild(dot);
+  });
+  document.getElementById('contadorTrampas').textContent = trampas.length;
+
+  const tbody = document.getElementById('listaTrampasBody');
+  tbody.innerHTML = trampas.length ? trampas.map(t=>`
+    <tr>
+      <td>${esc(t.notas)||'—'}</td>
+      <td><button class="ghost" data-editartrampa="${t.id}">Editar</button></td>
+    </tr>`).join('') : `<tr><td colspan="2" class="empty">Aún no has marcado ninguna trampa.</td></tr>`;
+  tbody.querySelectorAll('[data-editartrampa]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const t = trampas.find(x=>x.id===btn.dataset.editartrampa);
+      if(t) abrirMarcadorExistente('trampa', t);
+    });
+  });
+}
+
+function abrirMarcadorNuevo(tipoMarcador, x, y){
+  marcadorEnEdicion = {tipoMarcador, id:null, x, y};
+  document.getElementById('marcadorModalTitulo').textContent = tipoMarcador==='extintor' ? 'Nuevo extintor' : 'Nueva trampa';
+  document.getElementById('marcadorTipoWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
+  document.getElementById('marcadorTipo').value = filtroTipoExtintorActual || 'Solkaflam';
+  document.getElementById('marcadorNotas').value = '';
+  document.getElementById('btnEliminarMarcador').style.display = 'none';
+  document.getElementById('marcadorModalBg').classList.add('active');
+}
+function abrirMarcadorExistente(tipoMarcador, obj){
+  marcadorEnEdicion = {tipoMarcador, id:obj.id, x:obj.x, y:obj.y};
+  document.getElementById('marcadorModalTitulo').textContent = tipoMarcador==='extintor' ? 'Editar extintor' : 'Editar trampa';
+  document.getElementById('marcadorTipoWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
+  if(tipoMarcador==='extintor') document.getElementById('marcadorTipo').value = obj.tipo;
+  document.getElementById('marcadorNotas').value = obj.notas || '';
+  document.getElementById('btnEliminarMarcador').style.display = 'inline-block';
+  document.getElementById('marcadorModalBg').classList.add('active');
+}
+function cerrarMarcadorModal(){
+  document.getElementById('marcadorModalBg').classList.remove('active');
+  marcadorEnEdicion = null;
+}
+document.getElementById('btnCancelarMarcador').addEventListener('click', cerrarMarcadorModal);
+
+document.getElementById('imgMapaExtintores').closest('.mapa-wrap').addEventListener('click', (ev)=>{
+  const rect = ev.currentTarget.getBoundingClientRect();
+  const x = ((ev.clientX-rect.left)/rect.width*100).toFixed(2);
+  const y = ((ev.clientY-rect.top)/rect.height*100).toFixed(2);
+  abrirMarcadorNuevo('extintor', Number(x), Number(y));
+});
+document.getElementById('imgMapaTrampas').closest('.mapa-wrap').addEventListener('click', (ev)=>{
+  const rect = ev.currentTarget.getBoundingClientRect();
+  const x = ((ev.clientX-rect.left)/rect.width*100).toFixed(2);
+  const y = ((ev.clientY-rect.top)/rect.height*100).toFixed(2);
+  abrirMarcadorNuevo('trampa', Number(x), Number(y));
+});
+
+document.getElementById('btnGuardarMarcador').addEventListener('click', async ()=>{
+  if(!marcadorEnEdicion) return;
+  const notas = document.getElementById('marcadorNotas').value.trim();
+  if(marcadorEnEdicion.tipoMarcador==='extintor'){
+    const tipo = document.getElementById('marcadorTipo').value;
+    if(marcadorEnEdicion.id){
+      const e = extintores.find(x=>x.id===marcadorEnEdicion.id);
+      if(e){ e.tipo = tipo; e.notas = notas; }
+    }else{
+      extintores.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, tipo, notas, createdAt: new Date().toISOString()});
+    }
+    await saveExtintores();
+    renderMarcadoresExtintores();
+  }else{
+    if(marcadorEnEdicion.id){
+      const t = trampas.find(x=>x.id===marcadorEnEdicion.id);
+      if(t){ t.notas = notas; }
+    }else{
+      trampas.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, notas, createdAt: new Date().toISOString()});
+    }
+    await saveTrampas();
+    renderMarcadoresTrampas();
+  }
+  cerrarMarcadorModal();
+  showToast('Guardado.');
+});
+document.getElementById('btnEliminarMarcador').addEventListener('click', async ()=>{
+  if(!marcadorEnEdicion || !marcadorEnEdicion.id) return;
+  if(!await customConfirm('¿Quitar este marcador del plano?')) return;
+  if(marcadorEnEdicion.tipoMarcador==='extintor'){
+    extintores = extintores.filter(x=>x.id!==marcadorEnEdicion.id);
+    await saveExtintores();
+    renderMarcadoresExtintores();
+  }else{
+    trampas = trampas.filter(x=>x.id!==marcadorEnEdicion.id);
+    await saveTrampas();
+    renderMarcadoresTrampas();
+  }
+  cerrarMarcadorModal();
+  showToast('Marcador eliminado.');
+});
+
+document.querySelectorAll('#filtroTipoExtintor [data-tipoext]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    filtroTipoExtintorActual = btn.dataset.tipoext;
+    document.querySelectorAll('#filtroTipoExtintor [data-tipoext]').forEach(b=>b.classList.toggle('active', b===btn));
+    renderMarcadoresExtintores();
+  });
+});
+
 function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
   const filas = requisiciones.filter(r=>!r.eliminada).sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
@@ -6381,6 +6656,7 @@ function showMantSelector(){
   document.getElementById('mantSubAires').style.display = 'none';
   document.getElementById('mantSubRequisiciones').style.display = 'none';
   document.getElementById('mantSubReportes').style.display = 'none';
+  document.getElementById('mantSubMapas').style.display = 'none';
 }
 function openMantSub(name){
   document.getElementById('mantSelector').style.display = 'none';
@@ -6388,9 +6664,19 @@ function openMantSub(name){
   document.getElementById('mantSubAires').style.display = name==='aires' ? 'block' : 'none';
   document.getElementById('mantSubRequisiciones').style.display = name==='requisiciones' ? 'block' : 'none';
   document.getElementById('mantSubReportes').style.display = name==='reportes' ? 'block' : 'none';
+  document.getElementById('mantSubMapas').style.display = name==='mapas' ? 'block' : 'none';
   if(name==='requisiciones'){ showReqLista(); }
   if(name==='reportes'){ cargarReportesRecibidos(); }
+  if(name==='mapas'){ renderMarcadoresExtintores(); renderMarcadoresTrampas(); }
 }
+document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#mantSubMapas nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#mantSubMapas .view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-mapa-'+btn.dataset.mapaview).classList.add('active');
+  });
+});
 document.querySelectorAll('[data-mantopen]').forEach(card=>{
   card.addEventListener('click', ()=> openMantSub(card.dataset.mantopen));
 });
@@ -8089,7 +8375,8 @@ const BOTON_CIERRE_POR_MODAL = {
   aireMesDetalleModalBg: 'btnCloseAireMesDetalle',
   reservaModalBg: 'btnCancelReserva',
   revisarSolModalBg: 'btnCerrarRevisarSol',
-  marcarRecibidoModalBg: 'btnCancelarRecibido'
+  marcarRecibidoModalBg: 'btnCancelarRecibido',
+  marcadorModalBg: 'btnCancelarMarcador'
 };
 function cerrarModalPorId(modalId){
   const btnId = BOTON_CIERRE_POR_MODAL[modalId];
