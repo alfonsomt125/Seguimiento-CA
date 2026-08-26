@@ -214,6 +214,57 @@
   </div>
 
   <!-- ===== PANTALLA 4: PEDIDO DE MATERIALES ===== -->
+  <!-- ===== PANTALLA: ¿QUIÉN ERES? (elegir uno de los 4 usuarios) ===== -->
+  <div id="screenPedidoQuien" style="display:none;">
+    <button class="btn ghost" id="btnVolverInicioQuien" style="margin-bottom:16px;">← Volver</button>
+    <div class="modulo-cards">
+      <button class="modulo-card" data-usuariopedido="Usuario 1">
+        <div class="modulo-icono" style="background:linear-gradient(135deg,#7EA6E8,#03459B);">👤</div>
+        <div class="modulo-texto"><strong>Usuario 1</strong><span>Toca para ingresar con tu clave.</span></div>
+        <div class="modulo-flecha">›</div>
+      </button>
+      <button class="modulo-card" data-usuariopedido="Usuario 2">
+        <div class="modulo-icono" style="background:linear-gradient(135deg,#3DBB8A,#0F6E4A);">👤</div>
+        <div class="modulo-texto"><strong>Usuario 2</strong><span>Toca para ingresar con tu clave.</span></div>
+        <div class="modulo-flecha">›</div>
+      </button>
+      <button class="modulo-card" data-usuariopedido="Usuario 3">
+        <div class="modulo-icono" style="background:linear-gradient(135deg,#F7AC4D,#D9761A);">👤</div>
+        <div class="modulo-texto"><strong>Usuario 3</strong><span>Toca para ingresar con tu clave.</span></div>
+        <div class="modulo-flecha">›</div>
+      </button>
+      <button class="modulo-card" data-usuariopedido="Usuario 4">
+        <div class="modulo-icono" style="background:linear-gradient(135deg,#E0575A,#A8262A);">👤</div>
+        <div class="modulo-texto"><strong>Usuario 4</strong><span>Toca para ingresar con tu clave.</span></div>
+        <div class="modulo-flecha">›</div>
+      </button>
+    </div>
+    <div class="panel" id="pinPedidoWrap" style="display:none;margin-top:16px;">
+      <h2 id="pinPedidoTitulo">Clave de Usuario 1</h2>
+      <div class="field" style="margin-top:14px;max-width:200px;">
+        <label>Clave</label>
+        <input type="password" id="pinPedidoInput" inputmode="numeric" placeholder="••••">
+      </div>
+      <div class="actions-row">
+        <button class="btn primary" id="btnPinPedidoConfirmar">Ingresar</button>
+        <button class="btn ghost" id="btnPinPedidoCancelar">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PANTALLA: HISTORIAL DE MIS PEDIDOS ===== -->
+  <div id="screenPedidoHistorial" style="display:none;">
+    <button class="btn ghost" id="btnVolverQuien" style="margin-bottom:16px;">← Cambiar de usuario</button>
+    <div class="panel">
+      <h2 id="historialTitulo">Mis pedidos</h2>
+      <p class="hint" style="margin:6px 0 16px;">Aquí ves lo que has solicitado antes.</p>
+      <div id="historialLista"></div>
+    </div>
+    <div class="actions-row">
+      <button class="btn primary" id="btnNuevoPedidoDesdeHistorial">+ Nuevo pedido</button>
+    </div>
+  </div>
+
   <div id="screenPedido" style="display:none;">
     <button class="btn ghost" id="btnVolverInicio2" style="margin-bottom:16px;">← Volver</button>
     <div class="panel">
@@ -225,19 +276,19 @@
         </div>
         <div class="field" style="grid-column:1/-1;">
           <label>Nombre del solicitante *</label>
-          <input type="text" id="fSolicitante" placeholder="Tu nombre completo">
+          <input type="text" id="fSolicitante" placeholder="Tu nombre completo" readonly>
         </div>
       </div>
     </div>
 
     <div class="panel">
       <h2>Descripción de los bienes</h2>
-      <p class="hint">Agrega cada material que necesitas. Puedes agregar tantas líneas como quieras.</p>
+      <p class="hint">Agrega cada material que necesitas. La foto es opcional — solo si te ayuda a mostrar una muestra de lo que buscas.</p>
       <div class="table-wrap">
         <table>
           <thead><tr>
             <th style="width:30px;">No.</th><th>Descripción de los bienes</th><th>Especificaciones</th>
-            <th style="width:90px;">Cantidad</th><th>Uso</th><th></th>
+            <th style="width:90px;">Cantidad</th><th>Uso</th><th style="width:60px;">Foto</th><th></th>
           </tr></thead>
           <tbody id="itemsBody"></tbody>
         </table>
@@ -248,6 +299,7 @@
     </div>
 
     <div class="actions-row">
+
       <button class="btn primary" id="btnEnviar">Enviar solicitud</button>
     </div>
   </div>
@@ -298,7 +350,7 @@ function showToast(msg){
 /* ============================================================
    NAVEGACIÓN ENTRE PANTALLAS
    ============================================================ */
-const PANTALLAS = ['screenInicio','screenReportesLista','screenReporteForm','screenPedido','successPanel'];
+const PANTALLAS = ['screenInicio','screenReportesLista','screenReporteForm','screenPedidoQuien','screenPedidoHistorial','screenPedido','successPanel'];
 function mostrarPantalla(id){
   PANTALLAS.forEach(p=>{ document.getElementById(p).style.display = (p===id) ? 'block' : 'none'; });
   window.scrollTo({top:0, behavior:'smooth'});
@@ -311,8 +363,9 @@ document.getElementById('btnIrReportes').addEventListener('click', ()=>{
 });
 document.getElementById('btnIrPedido').addEventListener('click', ()=>{
   document.getElementById('tituloPagina').textContent = 'Pedido de Materiales';
-  document.getElementById('subtituloPagina').textContent = 'Insumos para reparaciones y mantenimiento.';
-  mostrarPantalla('screenPedido');
+  document.getElementById('subtituloPagina').textContent = '¿Quién eres?';
+  document.getElementById('pinPedidoWrap').style.display = 'none';
+  mostrarPantalla('screenPedidoQuien');
 });
 function volverInicio(){
   document.getElementById('tituloPagina').textContent = 'Portal de Servicios Generales';
@@ -320,12 +373,114 @@ function volverInicio(){
   mostrarPantalla('screenInicio');
 }
 document.getElementById('btnVolverInicio1').addEventListener('click', volverInicio);
-document.getElementById('btnVolverInicio2').addEventListener('click', volverInicio);
 document.getElementById('btnVolverInicioExito').addEventListener('click', volverInicio);
+document.getElementById('btnVolverInicioQuien').addEventListener('click', volverInicio);
 document.getElementById('btnVolverReportesLista').addEventListener('click', ()=>{
   document.getElementById('tituloPagina').textContent = 'Hacer un reporte';
   document.getElementById('subtituloPagina').textContent = 'Elige qué tipo de reporte quieres hacer.';
   mostrarPantalla('screenReportesLista');
+});
+
+/* ============================================================
+   4 USUARIOS CON CLAVE PARA PEDIDO DE MATERIALES — cada uno ve solo su
+   propio historial de lo que ha solicitado. La clave se verifica en el
+   servidor (Supabase), nunca queda expuesta en este archivo.
+   ============================================================ */
+let usuarioPedidoElegido = null;
+let usuarioPedidoActual = null;
+
+document.querySelectorAll('[data-usuariopedido]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    usuarioPedidoElegido = btn.dataset.usuariopedido;
+    document.getElementById('pinPedidoTitulo').textContent = `Clave de ${usuarioPedidoElegido}`;
+    document.getElementById('pinPedidoInput').value = '';
+    document.getElementById('pinPedidoWrap').style.display = 'block';
+    document.getElementById('pinPedidoInput').focus();
+  });
+});
+document.getElementById('btnPinPedidoCancelar').addEventListener('click', ()=>{
+  document.getElementById('pinPedidoWrap').style.display = 'none';
+  usuarioPedidoElegido = null;
+});
+async function intentarIngresoPedido(){
+  const pin = document.getElementById('pinPedidoInput').value.trim();
+  if(!pin){ showToast('Escribe tu clave.'); return; }
+  if(!supabaseAPI){ showToast('No se pudo conectar. Revisa tu conexión.'); return; }
+  const btn = document.getElementById('btnPinPedidoConfirmar');
+  btn.disabled = true;
+  try{
+    const { data, error } = await supabaseAPI.rpc('verificar_usuario_pedido', {p_nombre: usuarioPedidoElegido, p_pin: pin});
+    if(error || !data){ showToast('Clave incorrecta.'); return; }
+    usuarioPedidoActual = usuarioPedidoElegido;
+    document.getElementById('pinPedidoWrap').style.display = 'none';
+    await mostrarHistorialPedido();
+  }catch(e){
+    console.error(e);
+    showToast('No se pudo verificar la clave. Intenta de nuevo.');
+  }finally{
+    btn.disabled = false;
+  }
+}
+document.getElementById('btnPinPedidoConfirmar').addEventListener('click', intentarIngresoPedido);
+document.getElementById('pinPedidoInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') intentarIngresoPedido(); });
+
+async function mostrarHistorialPedido(){
+  document.getElementById('historialTitulo').textContent = `Pedidos de ${usuarioPedidoActual}`;
+  document.getElementById('tituloPagina').textContent = usuarioPedidoActual;
+  document.getElementById('subtituloPagina').textContent = 'Tu historial de pedidos de materiales.';
+  const wrap = document.getElementById('historialLista');
+  wrap.innerHTML = '<p class="hint">Cargando...</p>';
+  mostrarPantalla('screenPedidoHistorial');
+
+  if(!supabaseAPI){ wrap.innerHTML = '<p class="hint">Sin conexión.</p>'; return; }
+  try{
+    const { data, error } = await supabaseAPI.from('solicitudes_requisicion').select('*')
+      .eq('nombre_solicitante', usuarioPedidoActual).order('created_at', {ascending:false});
+    if(error) throw error;
+    if(!data || !data.length){
+      wrap.innerHTML = '<p class="hint">Aún no has hecho ningún pedido.</p>';
+      return;
+    }
+    wrap.innerHTML = data.map(s=>{
+      const fecha = s.fecha_solicitud ? s.fecha_solicitud.split('-').reverse().join('/') : '—';
+      const items = Array.isArray(s.items) ? s.items : [];
+      const estado = s.estado || 'Pendiente';
+      return `
+      <div class="panel" style="margin-bottom:12px;border:1px solid var(--line);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <strong style="color:var(--navy);">${fecha}</strong>
+          <span class="hint" style="margin:0;">${estado}</span>
+        </div>
+        <p class="hint" style="margin:8px 0 0;">${items.map(it=>esc(it.descripcion)).filter(Boolean).join(', ') || 'Sin materiales'}</p>
+      </div>`;
+    }).join('');
+  }catch(e){
+    console.error(e);
+    wrap.innerHTML = '<p class="hint">No se pudo cargar tu historial.</p>';
+  }
+}
+document.getElementById('btnVolverQuien').addEventListener('click', ()=>{
+  usuarioPedidoActual = null;
+  document.getElementById('tituloPagina').textContent = 'Pedido de Materiales';
+  document.getElementById('subtituloPagina').textContent = '¿Quién eres?';
+  document.getElementById('pinPedidoWrap').style.display = 'none';
+  mostrarPantalla('screenPedidoQuien');
+});
+document.getElementById('btnNuevoPedidoDesdeHistorial').addEventListener('click', ()=>{
+  document.getElementById('tituloPagina').textContent = 'Nuevo pedido';
+  document.getElementById('subtituloPagina').textContent = usuarioPedidoActual;
+  document.getElementById('fSolicitante').value = usuarioPedidoActual;
+  document.getElementById('fFecha').value = todayISO();
+  items = Array.from({length:4}, ITEM_VACIO);
+  renderItems();
+  mostrarPantalla('screenPedido');
+});
+document.getElementById('btnVolverInicio2').addEventListener('click', ()=>{
+  if(usuarioPedidoActual){
+    mostrarHistorialPedido();
+  }else{
+    volverInicio();
+  }
 });
 
 /* ============================================================
@@ -494,16 +649,18 @@ document.getElementById('btnEnviarReporte').addEventListener('click', async ()=>
    ============================================================ */
 document.getElementById('fFecha').value = todayISO();
 
-const ITEM_VACIO = ()=>({descripcion:'', especificaciones:'', cantidad:'', uso:''});
+const ITEM_VACIO = ()=>({descripcion:'', especificaciones:'', cantidad:'', uso:'', fotoFile:null, fotoPreview:null});
 let items = Array.from({length:4}, ITEM_VACIO);
 
 function syncItemsFromDOM(){
   const filas = [...document.querySelectorAll('#itemsBody tr')];
-  items = filas.map(tr=>({
+  items = filas.map((tr,idx)=>({
     descripcion: tr.querySelector('[data-f="descripcion"]').value.trim(),
     especificaciones: tr.querySelector('[data-f="especificaciones"]').value.trim(),
     cantidad: tr.querySelector('[data-f="cantidad"]').value.trim(),
     uso: tr.querySelector('[data-f="uso"]').value.trim(),
+    fotoFile: items[idx]?.fotoFile || null,
+    fotoPreview: items[idx]?.fotoPreview || null,
   }));
 }
 function renderItems(){
@@ -515,6 +672,12 @@ function renderItems(){
       <td><input type="text" data-f="especificaciones" value="${esc(it.especificaciones)}" placeholder="Ej: 75 gr, blanca"></td>
       <td><input type="text" data-f="cantidad" value="${esc(it.cantidad)}" style="text-align:center;"></td>
       <td><input type="text" data-f="uso" value="${esc(it.uso)}"></td>
+      <td style="text-align:center;">
+        <input type="file" accept="image/*" data-fotoinput="${idx}" style="display:none;">
+        ${it.fotoPreview
+          ? `<div style="position:relative;display:inline-block;"><img src="${it.fotoPreview}" data-fotolabel="${idx}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;cursor:pointer;"><span data-fotodel="${idx}" style="position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</span></div>`
+          : `<span data-fotolabel="${idx}" title="Agregar foto (opcional)" style="cursor:pointer;font-size:18px;">📷</span>`}
+      </td>
       <td><span class="entry-del" data-del="${idx}" title="Quitar línea">✕</span></td>
     </tr>`).join('');
   tbody.querySelectorAll('[data-del]').forEach(el=>{
@@ -522,6 +685,33 @@ function renderItems(){
       syncItemsFromDOM();
       items.splice(Number(el.dataset.del), 1);
       if(!items.length) items.push(ITEM_VACIO());
+      renderItems();
+    });
+  });
+  tbody.querySelectorAll('[data-fotolabel]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      syncItemsFromDOM();
+      tbody.querySelector(`[data-fotoinput="${el.dataset.fotolabel}"]`).click();
+    });
+  });
+  tbody.querySelectorAll('[data-fotodel]').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      syncItemsFromDOM();
+      const idx = Number(el.dataset.fotodel);
+      items[idx].fotoFile = null;
+      items[idx].fotoPreview = null;
+      renderItems();
+    });
+  });
+  tbody.querySelectorAll('[data-fotoinput]').forEach(el=>{
+    el.addEventListener('change', (e)=>{
+      const file = e.target.files[0];
+      if(!file || !file.type.startsWith('image/')) return;
+      syncItemsFromDOM();
+      const idx = Number(el.dataset.fotoinput);
+      items[idx].fotoFile = file;
+      items[idx].fotoPreview = URL.createObjectURL(file);
       renderItems();
     });
   });
@@ -549,10 +739,25 @@ document.getElementById('btnEnviar').addEventListener('click', async ()=>{
   btn.textContent = 'Enviando...';
 
   try{
+    // sube la foto de muestra de cada línea que la tenga (es opcional, no todas la tendrán)
+    const itemsFinal = [];
+    for(const it of itemsConDatos){
+      let fotoUrl = null;
+      if(it.fotoFile){
+        const nombreArchivo = `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${it.fotoFile.name}`;
+        const { error: errorSubida } = await supabaseAPI.storage.from('pedidos-fotos').upload(nombreArchivo, it.fotoFile);
+        if(!errorSubida){
+          const { data: pub } = supabaseAPI.storage.from('pedidos-fotos').getPublicUrl(nombreArchivo);
+          fotoUrl = pub?.publicUrl || null;
+        }
+      }
+      itemsFinal.push({descripcion: it.descripcion, especificaciones: it.especificaciones, cantidad: it.cantidad, uso: it.uso, foto: fotoUrl});
+    }
+
     const { error } = await supabaseAPI.from('solicitudes_requisicion').insert({
       fecha_solicitud: document.getElementById('fFecha').value || todayISO(),
       nombre_solicitante: solicitante,
-      items: itemsConDatos,
+      items: itemsFinal,
       estado: 'Pendiente'
     });
     if(error) throw error;
