@@ -1116,7 +1116,9 @@
     <section class="view active" id="view-mapa-extintores">
       <div class="panel">
         <h2>Seguimiento de recarga de extintores</h2>
-        <div class="kpis" id="extintoresKpiRow" style="margin-top:12px;"></div>
+        <p class="hint" style="margin:10px 0 8px;">Cantidad por tipo — toca uno para filtrar todo lo de abajo (y el mapa) solo por ese tipo:</p>
+        <div class="year-pills" id="extintoresConteoPorTipo" style="margin-bottom:14px;"></div>
+        <div class="kpis" id="extintoresKpiRow"></div>
         <p class="hint" style="margin:14px 0 8px;">Ordenados del más urgente al menos urgente. Toca uno para editarlo.</p>
         <div id="extintoresVencimientosLista"></div>
       </div>
@@ -5746,19 +5748,41 @@ function estadoVencimientoExtintor(fecha){
   return 'vigente';
 }
 function renderVencimientosExtintores(){
-  const vencidos = extintores.filter(e=>estadoVencimientoExtintor(e.fecha)==='vencido');
-  const porVencer = extintores.filter(e=>estadoVencimientoExtintor(e.fecha)==='por-vencer');
-  const sinFecha = extintores.filter(e=>estadoVencimientoExtintor(e.fecha)==='sin-fecha');
+  // Conteo por tipo: siempre muestra los 3, sin importar el filtro activo —
+  // es la referencia de "cuántos hay de cada uno" en total.
+  const TIPOS_EXTINTOR = ['Solkaflam', 'Multipropósito', 'Dióxido de Carbono'];
+  document.getElementById('extintoresConteoPorTipo').innerHTML = TIPOS_EXTINTOR.map(tipo=>{
+    const cant = extintores.filter(e=>e.tipo===tipo).length;
+    const activo = filtroTipoExtintorActual===tipo;
+    return `<button class="year-pill${activo?' active':''}" data-tipoextconteo="${tipo}" style="display:inline-flex;align-items:center;gap:6px;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${COLOR_TIPO_EXTINTOR[tipo]};border:1.5px solid var(--navy);flex-shrink:0;"></span>
+      ${esc(tipo)}: <strong>${cant}</strong>
+    </button>`;
+  }).join('');
+  document.querySelectorAll('#extintoresConteoPorTipo [data-tipoextconteo]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const tipo = btn.dataset.tipoextconteo;
+      filtroTipoExtintorActual = filtroTipoExtintorActual===tipo ? '' : tipo;
+      document.querySelectorAll('#filtroTipoExtintor [data-tipoext]').forEach(b=>b.classList.toggle('active', b.dataset.tipoext===filtroTipoExtintorActual));
+      renderMarcadoresExtintores();
+    });
+  });
+
+  // A partir de aquí, todo respeta el filtro activo (Todos o un tipo específico)
+  const base = filtroTipoExtintorActual ? extintores.filter(e=>e.tipo===filtroTipoExtintorActual) : extintores;
+  const vencidos = base.filter(e=>estadoVencimientoExtintor(e.fecha)==='vencido');
+  const porVencer = base.filter(e=>estadoVencimientoExtintor(e.fecha)==='por-vencer');
+  const sinFecha = base.filter(e=>estadoVencimientoExtintor(e.fecha)==='sin-fecha');
 
   document.getElementById('extintoresKpiRow').innerHTML = `
-    <div class="kpi"><div class="num">${extintores.length}</div><div class="lbl">Extintores marcados</div></div>
+    <div class="kpi"><div class="num">${base.length}</div><div class="lbl">${filtroTipoExtintorActual ? esc(filtroTipoExtintorActual) : 'Extintores'} marcados</div></div>
     <div class="kpi" style="border-color:var(--red);"><div class="num" style="color:var(--red);">${vencidos.length}</div><div class="lbl">Vencidos</div></div>
     <div class="kpi" style="border-color:var(--orange);"><div class="num" style="color:var(--orange);">${porVencer.length}</div><div class="lbl">Por vencer (30 días)</div></div>
     <div class="kpi"><div class="num" style="color:var(--gray);">${sinFecha.length}</div><div class="lbl">Sin fecha registrada</div></div>
   `;
 
   const orden = {'vencido':0, 'por-vencer':1, 'sin-fecha':2, 'vigente':3};
-  const ordenados = [...extintores].sort((a,b)=>{
+  const ordenados = [...base].sort((a,b)=>{
     const eA = estadoVencimientoExtintor(a.fecha), eB = estadoVencimientoExtintor(b.fecha);
     if(orden[eA]!==orden[eB]) return orden[eA]-orden[eB];
     return (a.fecha||'9999').localeCompare(b.fecha||'9999');
@@ -5779,7 +5803,7 @@ function renderVencimientosExtintores(){
       <span class="hint" style="margin:0;white-space:nowrap;">${e.fecha ? fmtDate(e.fecha) : '—'}</span>
       <span class="pill ${est.pill}" style="flex-shrink:0;">${est.texto}</span>
     </div>`;
-  }).join('') : '<p class="empty">Aún no has marcado ningún extintor.</p>';
+  }).join('') : `<p class="empty">${filtroTipoExtintorActual ? 'No hay extintores de este tipo marcados.' : 'Aún no has marcado ningún extintor.'}</p>`;
   wrapVenc.querySelectorAll('[data-vervencimiento]').forEach(row=>{
     row.addEventListener('click', ()=>{
       const e = extintores.find(x=>x.id===row.dataset.vervencimiento);
