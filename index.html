@@ -1142,7 +1142,7 @@
         <h2>Listado de extintores (<span id="contadorExtintores">0</span>)</h2>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Tipo</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Tipo</th><th>Fecha</th><th>Notas</th><th></th></tr></thead>
             <tbody id="listaExtintoresBody"></tbody>
           </table>
         </div>
@@ -1172,7 +1172,7 @@
         <h2>Listado de trampas (<span id="contadorTrampas">0</span>)</h2>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Notas</th><th></th></tr></thead>
             <tbody id="listaTrampasBody"></tbody>
           </table>
         </div>
@@ -1274,6 +1274,10 @@
           <option value="Multipropósito">Multipropósito</option>
           <option value="Dióxido de Carbono">Dióxido de Carbono</option>
         </select>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label id="marcadorFechaLabel">Fecha de recarga/vencimiento (opcional)</label>
+        <input type="date" id="marcadorFecha">
       </div>
       <div class="field" style="margin-top:14px;">
         <label>Notas (opcional)</label>
@@ -5694,7 +5698,7 @@ function renderMarcadoresExtintores(){
     dot.style.left = e.x+'%';
     dot.style.top = e.y+'%';
     dot.style.background = COLOR_TIPO_EXTINTOR[e.tipo] || '#64748B';
-    dot.title = e.tipo + (e.notas ? ' — '+e.notas : '');
+    dot.title = e.tipo + (e.fecha ? ' — vence/recarga: '+fmtDate(e.fecha) : '') + (e.notas ? ' — '+e.notas : '');
     dot.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirMarcadorExistente('extintor', e); });
     wrap.appendChild(dot);
   });
@@ -5704,9 +5708,10 @@ function renderMarcadoresExtintores(){
   tbody.innerHTML = extintores.length ? extintores.map(e=>`
     <tr>
       <td><span class="pill" style="background:${COLOR_FONDO_PILL_EXTINTOR[e.tipo]};color:${COLOR_TEXTO_TIPO_EXTINTOR[e.tipo]};">${esc(e.tipo)}</span></td>
+      <td>${e.fecha ? fmtDate(e.fecha) : '—'}</td>
       <td>${esc(e.notas)||'—'}</td>
       <td><button class="ghost" data-editarextintor="${e.id}">Editar</button></td>
-    </tr>`).join('') : `<tr><td colspan="3" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="4" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
   tbody.querySelectorAll('[data-editarextintor]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const e = extintores.find(x=>x.id===btn.dataset.editarextintor);
@@ -5724,7 +5729,7 @@ function renderMarcadoresTrampas(){
     dot.style.left = t.x+'%';
     dot.style.top = t.y+'%';
     dot.style.background = '#8E6FD6';
-    dot.title = t.notas || 'Trampa de ratones';
+    dot.title = 'Trampa de ratones' + (t.fecha ? ' — revisada: '+fmtDate(t.fecha) : '') + (t.notas ? ' — '+t.notas : '');
     dot.textContent = '🐭';
     dot.style.fontSize = '11px';
     dot.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirMarcadorExistente('trampa', t); });
@@ -5735,9 +5740,10 @@ function renderMarcadoresTrampas(){
   const tbody = document.getElementById('listaTrampasBody');
   tbody.innerHTML = trampas.length ? trampas.map(t=>`
     <tr>
+      <td>${t.fecha ? fmtDate(t.fecha) : '—'}</td>
       <td>${esc(t.notas)||'—'}</td>
       <td><button class="ghost" data-editartrampa="${t.id}">Editar</button></td>
-    </tr>`).join('') : `<tr><td colspan="2" class="empty">Aún no has marcado ninguna trampa.</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="3" class="empty">Aún no has marcado ninguna trampa.</td></tr>`;
   tbody.querySelectorAll('[data-editartrampa]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const t = trampas.find(x=>x.id===btn.dataset.editartrampa);
@@ -5750,7 +5756,9 @@ function abrirMarcadorNuevo(tipoMarcador, x, y){
   marcadorEnEdicion = {tipoMarcador, id:null, x, y};
   document.getElementById('marcadorModalTitulo').textContent = tipoMarcador==='extintor' ? 'Nuevo extintor' : 'Nueva trampa';
   document.getElementById('marcadorTipoWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
+  document.getElementById('marcadorFechaLabel').textContent = tipoMarcador==='extintor' ? 'Fecha de recarga/vencimiento (opcional)' : 'Fecha de revisión (opcional)';
   document.getElementById('marcadorTipo').value = filtroTipoExtintorActual || 'Solkaflam';
+  document.getElementById('marcadorFecha').value = '';
   document.getElementById('marcadorNotas').value = '';
   document.getElementById('btnEliminarMarcador').style.display = 'none';
   document.getElementById('marcadorModalBg').classList.add('active');
@@ -5759,7 +5767,9 @@ function abrirMarcadorExistente(tipoMarcador, obj){
   marcadorEnEdicion = {tipoMarcador, id:obj.id, x:obj.x, y:obj.y};
   document.getElementById('marcadorModalTitulo').textContent = tipoMarcador==='extintor' ? 'Editar extintor' : 'Editar trampa';
   document.getElementById('marcadorTipoWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
+  document.getElementById('marcadorFechaLabel').textContent = tipoMarcador==='extintor' ? 'Fecha de recarga/vencimiento (opcional)' : 'Fecha de revisión (opcional)';
   if(tipoMarcador==='extintor') document.getElementById('marcadorTipo').value = obj.tipo;
+  document.getElementById('marcadorFecha').value = obj.fecha || '';
   document.getElementById('marcadorNotas').value = obj.notas || '';
   document.getElementById('btnEliminarMarcador').style.display = 'inline-block';
   document.getElementById('marcadorModalBg').classList.add('active');
@@ -5873,22 +5883,23 @@ document.addEventListener('keydown', (e)=>{
 document.getElementById('btnGuardarMarcador').addEventListener('click', async ()=>{
   if(!marcadorEnEdicion) return;
   const notas = document.getElementById('marcadorNotas').value.trim();
+  const fecha = document.getElementById('marcadorFecha').value;
   if(marcadorEnEdicion.tipoMarcador==='extintor'){
     const tipo = document.getElementById('marcadorTipo').value;
     if(marcadorEnEdicion.id){
       const e = extintores.find(x=>x.id===marcadorEnEdicion.id);
-      if(e){ e.tipo = tipo; e.notas = notas; }
+      if(e){ e.tipo = tipo; e.fecha = fecha; e.notas = notas; }
     }else{
-      extintores.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, tipo, notas, createdAt: new Date().toISOString()});
+      extintores.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, tipo, fecha, notas, createdAt: new Date().toISOString()});
     }
     await saveExtintores();
     renderMarcadoresExtintores();
   }else{
     if(marcadorEnEdicion.id){
       const t = trampas.find(x=>x.id===marcadorEnEdicion.id);
-      if(t){ t.notas = notas; }
+      if(t){ t.fecha = fecha; t.notas = notas; }
     }else{
-      trampas.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, notas, createdAt: new Date().toISOString()});
+      trampas.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, fecha, notas, createdAt: new Date().toISOString()});
     }
     await saveTrampas();
     renderMarcadoresTrampas();
