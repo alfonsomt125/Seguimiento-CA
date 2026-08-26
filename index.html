@@ -265,6 +265,18 @@
   }
   .view.active{display:block;animation:fade .18s ease;}
   .mapa-outer{position:relative;}
+  .mapa-outer.mapa-fullscreen{
+    position:fixed;inset:0;z-index:300;background:#fff;padding:16px;
+    display:flex;flex-direction:column;
+  }
+  .mapa-outer.mapa-fullscreen .mapa-wrap{flex:1;max-height:none;}
+  .mapa-fs-cerrar{display:none;}
+  .mapa-outer.mapa-fullscreen .mapa-fs-cerrar{
+    display:flex;align-items:center;gap:8px;align-self:flex-end;margin-bottom:10px;
+    background:var(--navy);color:#fff;border:none;border-radius:10px;padding:9px 16px;
+    font-family:var(--sys-font,inherit);font-weight:700;font-size:13.5px;cursor:pointer;
+  }
+  body.mapa-fullscreen-activo{overflow:hidden;}
   .mapa-wrap{position:relative;width:100%;max-height:560px;overflow:auto;border-radius:12px;border:1px solid var(--line);background:#f2f3f6;-webkit-user-select:none;user-select:none;}
   .mapa-inner{position:relative;cursor:crosshair;width:100%;transition:width .15s ease;}
   .mapa-inner img{width:100%;display:block;pointer-events:none;}
@@ -1108,8 +1120,10 @@
           <button class="year-pill" data-tipoext="Multipropósito">🔴 Multipropósito</button>
           <button class="year-pill" data-tipoext="Dióxido de Carbono">⚫ Dióxido de Carbono</button>
         </div>
-        <div class="mapa-outer">
+        <div class="mapa-outer" id="mapaExtintoresOuter">
+          <button class="mapa-fs-cerrar" data-cerrarfs="Extintores">✕ Cerrar pantalla completa</button>
           <div class="mapa-zoom-controls">
+            <button data-zoombtn="fs" data-mapaid="Extintores" title="Ver en pantalla completa">⛶</button>
             <button data-zoombtn="in" data-mapaid="Extintores" title="Acercar">+</button>
             <button data-zoombtn="out" data-mapaid="Extintores" title="Alejar">−</button>
             <button data-zoombtn="reset" data-mapaid="Extintores" title="Restablecer">↺</button>
@@ -1136,8 +1150,10 @@
       <div class="panel">
         <h2>Trampas de ratones</h2>
         <p class="hint" style="margin:0 0 10px;">Toca cualquier punto del plano para marcar una trampa nueva. Toca un marcador ya puesto para editarlo o quitarlo.</p>
-        <div class="mapa-outer">
+        <div class="mapa-outer" id="mapaTrampasOuter">
+          <button class="mapa-fs-cerrar" data-cerrarfs="Trampas">✕ Cerrar pantalla completa</button>
           <div class="mapa-zoom-controls">
+            <button data-zoombtn="fs" data-mapaid="Trampas" title="Ver en pantalla completa">⛶</button>
             <button data-zoombtn="in" data-mapaid="Trampas" title="Acercar">+</button>
             <button data-zoombtn="out" data-mapaid="Trampas" title="Alejar">−</button>
             <button data-zoombtn="reset" data-mapaid="Trampas" title="Restablecer">↺</button>
@@ -1245,7 +1261,7 @@
   </div>
 
   <!-- Modal: agregar/editar un marcador (extintor o trampa) sobre el plano -->
-  <div class="modal-bg" id="marcadorModalBg">
+  <div class="modal-bg" id="marcadorModalBg" style="z-index:400;">
     <div class="modal" style="max-width:420px;">
       <h3 id="marcadorModalTitulo">Nuevo extintor</h3>
       <div class="field" id="marcadorTipoWrap" style="margin-top:14px;">
@@ -5742,12 +5758,20 @@ function cerrarMarcadorModal(){
 document.getElementById('btnCancelarMarcador').addEventListener('click', cerrarMarcadorModal);
 
 document.getElementById('imgMapaExtintores').closest('.mapa-inner').addEventListener('click', (ev)=>{
+  if(!document.getElementById('mapaExtintoresOuter').classList.contains('mapa-fullscreen')){
+    abrirMapaFullscreen('Extintores');
+    return;
+  }
   const rect = ev.currentTarget.getBoundingClientRect();
   const x = ((ev.clientX-rect.left)/rect.width*100).toFixed(2);
   const y = ((ev.clientY-rect.top)/rect.height*100).toFixed(2);
   abrirMarcadorNuevo('extintor', Number(x), Number(y));
 });
 document.getElementById('imgMapaTrampas').closest('.mapa-inner').addEventListener('click', (ev)=>{
+  if(!document.getElementById('mapaTrampasOuter').classList.contains('mapa-fullscreen')){
+    abrirMapaFullscreen('Trampas');
+    return;
+  }
   const rect = ev.currentTarget.getBoundingClientRect();
   const x = ((ev.clientX-rect.left)/rect.width*100).toFixed(2);
   const y = ((ev.clientY-rect.top)/rect.height*100).toFixed(2);
@@ -5759,9 +5783,16 @@ document.getElementById('imgMapaTrampas').closest('.mapa-inner').addEventListene
    marcadores juntos), y dado que las coordenadas de los marcadores son
    porcentajes, siguen cayendo en el lugar correcto sin importar el nivel
    de acercamiento. El contenedor de afuera permite desplazarse (scroll)
-   una vez que la imagen queda más grande que el espacio visible. */
+   una vez que la imagen queda más grande que el espacio visible.
+   El botón ⛶ abre el mapa en pantalla completa (tapa el resto de la
+   página), para que el zoom se quede aislado ahí y no afecte el tamaño
+   de los textos y botones del resto de la app. */
 const zoomMapas = {Extintores:1, Trampas:1};
 function aplicarZoomMapa(mapaId, accion){
+  if(accion==='fs'){
+    abrirMapaFullscreen(mapaId);
+    return;
+  }
   if(accion==='reset') zoomMapas[mapaId] = 1;
   else if(accion==='in') zoomMapas[mapaId] = Math.min(4, +(zoomMapas[mapaId]+0.4).toFixed(2));
   else zoomMapas[mapaId] = Math.max(1, +(zoomMapas[mapaId]-0.4).toFixed(2));
@@ -5769,6 +5800,21 @@ function aplicarZoomMapa(mapaId, accion){
 }
 document.querySelectorAll('[data-zoombtn]').forEach(btn=>{
   btn.addEventListener('click', ()=> aplicarZoomMapa(btn.dataset.mapaid, btn.dataset.zoombtn));
+});
+
+function abrirMapaFullscreen(mapaId){
+  document.getElementById('mapa'+mapaId+'Outer').classList.add('mapa-fullscreen');
+  document.body.classList.add('mapa-fullscreen-activo');
+}
+function cerrarMapaFullscreen(mapaId){
+  document.getElementById('mapa'+mapaId+'Outer').classList.remove('mapa-fullscreen');
+  document.body.classList.remove('mapa-fullscreen-activo');
+}
+document.querySelectorAll('[data-cerrarfs]').forEach(btn=>{
+  btn.addEventListener('click', ()=> cerrarMapaFullscreen(btn.dataset.cerrarfs));
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape'){ cerrarMapaFullscreen('Extintores'); cerrarMapaFullscreen('Trampas'); }
 });
 
 document.getElementById('btnGuardarMarcador').addEventListener('click', async ()=>{
