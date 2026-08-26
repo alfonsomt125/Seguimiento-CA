@@ -286,7 +286,7 @@
   .mapa-zoom-controls{position:absolute;top:10px;right:10px;z-index:6;display:flex;flex-direction:column;gap:6px;}
   .mapa-zoom-controls button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;box-shadow:var(--shadow);font-size:17px;font-weight:700;cursor:pointer;color:var(--navy);line-height:1;}
   .mapa-zoom-controls button:hover{background:var(--paper-2);}
-  .mapa-marker{position:absolute;width:26px;height:26px;border-radius:50%;transform:translate(-50%,-50%);border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:2;}
+  .mapa-marker{position:absolute;width:26px;height:26px;border-radius:50%;transform:translate(-50%,-50%);border:2.5px solid var(--navy,#011632);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:2;}
   .mapa-marker:hover{transform:translate(-50%,-50%) scale(1.15);}
   @keyframes fade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
 
@@ -1119,9 +1119,9 @@
         <p class="hint" style="margin:0 0 10px;">Toca cualquier punto del plano para marcar un extintor nuevo. Toca un marcador ya puesto para editarlo o quitarlo.</p>
         <div class="year-pills" id="filtroTipoExtintor" data-value="" style="margin-bottom:12px;">
           <button class="year-pill active" data-tipoext="">Todos</button>
-          <button class="year-pill" data-tipoext="Solkaflam">🔵 Solkaflam</button>
-          <button class="year-pill" data-tipoext="Multipropósito">🔴 Multipropósito</button>
-          <button class="year-pill" data-tipoext="Dióxido de Carbono">⚫ Dióxido de Carbono</button>
+          <button class="year-pill" data-tipoext="Solkaflam">⚪ Solkaflam</button>
+          <button class="year-pill" data-tipoext="Multipropósito">🟡 Multipropósito</button>
+          <button class="year-pill" data-tipoext="Dióxido de Carbono">🔴 Dióxido de Carbono</button>
         </div>
         <div class="mapa-outer" id="mapaExtintoresOuter">
           <button class="mapa-fs-cerrar" data-cerrarfs="Extintores">✕ Cerrar pantalla completa</button>
@@ -5665,9 +5665,21 @@ document.getElementById('repFiltroEstado').addEventListener('change', renderRepo
    mismo lugar sin importar el tamaño de pantalla en que se vea el mapa.
    ============================================================ */
 const COLOR_TIPO_EXTINTOR = {
-  'Solkaflam': '#03459B',
-  'Multipropósito': '#E0342A',
-  'Dióxido de Carbono': '#1D1D1F'
+  'Solkaflam': '#FFFFFF',
+  'Multipropósito': '#F2C230',
+  'Dióxido de Carbono': '#E0342A'
+};
+// Color de texto/borde para la "pill" de la tabla — el blanco puro no se ve
+// bien como texto ni como fondo sin más, así que aquí se define aparte.
+const COLOR_TEXTO_TIPO_EXTINTOR = {
+  'Solkaflam': '#4B5568',
+  'Multipropósito': '#8A6412',
+  'Dióxido de Carbono': '#E0342A'
+};
+const COLOR_FONDO_PILL_EXTINTOR = {
+  'Solkaflam': '#EEF0F4',
+  'Multipropósito': '#FCF2CE',
+  'Dióxido de Carbono': '#FCEAEA'
 };
 let filtroTipoExtintorActual = '';
 let marcadorEnEdicion = null; // {tipo:'extintor'|'trampa', id: string|null, x, y}
@@ -5693,7 +5705,7 @@ function renderMarcadoresExtintores(){
   const tbody = document.getElementById('listaExtintoresBody');
   tbody.innerHTML = extintores.length ? extintores.map(e=>`
     <tr>
-      <td><span class="pill" style="background:${COLOR_TIPO_EXTINTOR[e.tipo]}22;color:${COLOR_TIPO_EXTINTOR[e.tipo]};">${esc(e.tipo)}</span></td>
+      <td><span class="pill" style="background:${COLOR_FONDO_PILL_EXTINTOR[e.tipo]};color:${COLOR_TEXTO_TIPO_EXTINTOR[e.tipo]};">${esc(e.tipo)}</span></td>
       <td>${esc(e.notas)||'—'}</td>
       <td><button class="ghost" data-editarextintor="${e.id}">Editar</button></td>
     </tr>`).join('') : `<tr><td colspan="3" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
