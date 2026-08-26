@@ -3396,6 +3396,23 @@ function fmtDate(iso){
   const [y,m,d]=iso.split('-');
   return `${d}/${m}/${y}`;
 }
+const MESES_LARGOS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function fmtMesAnio(mesIso){
+  // recibe "AAAA-MM" (lo que da un <input type="month">) y devuelve "Mes AAAA"
+  if(!mesIso) return '—';
+  const [y,m] = mesIso.split('-');
+  const nombre = MESES_LARGOS[Number(m)-1] || m;
+  return `${nombre.charAt(0).toUpperCase()+nombre.slice(1)} ${y}`;
+}
+function finDeMes(mesIso){
+  // último día calendario de ese mes, en formato "AAAA-MM-DD" — así un
+  // extintor que vence "en agosto" no se marca como vencido sino hasta que
+  // agosto realmente termine.
+  if(!mesIso) return '';
+  const [y,m] = mesIso.split('-').map(Number);
+  const ultimoDia = new Date(y, m, 0).getDate();
+  return `${y}-${String(m).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}`;
+}
 function fmtMoney(n){
   n = Number(n)||0;
   return '$ '+n.toLocaleString('es-CO');
@@ -5703,6 +5720,14 @@ const COLOR_FONDO_PILL_EXTINTOR = {
 let filtroTipoExtintorActual = '';
 let marcadorEnEdicion = null; // {tipo:'extintor'|'trampa', id: string|null, x, y}
 
+// Muestra "Mes AAAA" — soporta tanto el formato nuevo (solo mes/año) como
+// el formato viejo de fecha completa, por si quedó algún extintor guardado
+// antes de este cambio.
+function fmtFechaExtintor(fecha){
+  if(!fecha) return '—';
+  return fecha.length===7 ? fmtMesAnio(fecha) : fmtMesAnio(fecha.slice(0,7));
+}
+
 /* Ícono de extintor en SVG (no un emoji): así sí se puede pintar del color
    exacto de cada tipo con CSS/JS, cosa que un emoji nunca permite porque
    trae sus colores fijos de fábrica. */
@@ -5726,7 +5751,7 @@ function renderMarcadoresExtintores(){
     dot.style.left = e.x+'%';
     dot.style.top = e.y+'%';
     dot.innerHTML = iconoExtintorSVG(COLOR_TIPO_EXTINTOR[e.tipo] || '#64748B');
-    dot.title = e.tipo + (e.fecha ? ' — vence/recarga: '+fmtDate(e.fecha) : '') + (e.notas ? ' — '+e.notas : '');
+    dot.title = e.tipo + (e.fecha ? ' — vence/recarga: '+fmtFechaExtintor(e.fecha) : '') + (e.notas ? ' — '+e.notas : '');
     dot.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirMarcadorExistente('extintor', e); });
     wrap.appendChild(dot);
   });
@@ -5736,7 +5761,7 @@ function renderMarcadoresExtintores(){
   tbody.innerHTML = extintores.length ? extintores.map(e=>`
     <tr>
       <td><span class="pill" style="background:${COLOR_FONDO_PILL_EXTINTOR[e.tipo]};color:${COLOR_TEXTO_TIPO_EXTINTOR[e.tipo]};">${esc(e.tipo)}</span></td>
-      <td>${e.fecha ? fmtDate(e.fecha) : '—'}</td>
+      <td>${fmtFechaExtintor(e.fecha)}</td>
       <td>${esc(e.notas)||'—'}</td>
       <td><button class="ghost" data-editarextintor="${e.id}">Editar</button></td>
     </tr>`).join('') : `<tr><td colspan="4" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
@@ -5754,11 +5779,16 @@ function renderMarcadoresExtintores(){
    (dentro de 30 días), vigentes, o sin fecha registrada todavía --- */
 function estadoVencimientoExtintor(fecha){
   if(!fecha) return 'sin-fecha';
+  // "fecha" puede venir como "AAAA-MM" (mes/año) o, por compatibilidad,
+  // como "AAAA-MM-DD" de cuando el campo todavía pedía el día — en ambos
+  // casos se compara contra el ÚLTIMO día de ese mes, para no marcarlo
+  // como vencido antes de que el mes realmente termine.
+  const fechaEfectiva = fecha.length===7 ? finDeMes(fecha) : fecha;
   const hoy = todayISO();
   const en30dias = new Date(); en30dias.setDate(en30dias.getDate()+30);
   const en30ISO = en30dias.toISOString().slice(0,10);
-  if(fecha < hoy) return 'vencido';
-  if(fecha <= en30ISO) return 'por-vencer';
+  if(fechaEfectiva < hoy) return 'vencido';
+  if(fechaEfectiva <= en30ISO) return 'por-vencer';
   return 'vigente';
 }
 function renderVencimientosExtintores(){
@@ -5814,7 +5844,7 @@ function renderVencimientosExtintores(){
     <div class="bar-row" style="align-items:center;cursor:pointer;" data-vervencimiento="${e.id}">
       <span class="pill" style="background:${COLOR_FONDO_PILL_EXTINTOR[e.tipo]};color:${COLOR_TEXTO_TIPO_EXTINTOR[e.tipo]};flex-shrink:0;">${esc(e.tipo)}</span>
       <span class="name" style="width:auto;flex:1;">${esc(e.notas)||'(sin notas)'}</span>
-      <span class="hint" style="margin:0;white-space:nowrap;">${e.fecha ? fmtDate(e.fecha) : '—'}</span>
+      <span class="hint" style="margin:0;white-space:nowrap;">${fmtFechaExtintor(e.fecha)}</span>
       <span class="pill ${est.pill}" style="flex-shrink:0;">${est.texto}</span>
     </div>`;
   }).join('') : `<p class="empty">${filtroTipoExtintorActual ? 'No hay extintores de este tipo marcados.' : 'Aún no has marcado ningún extintor.'}</p>`;
@@ -5862,7 +5892,8 @@ function abrirMarcadorNuevo(tipoMarcador, x, y){
   marcadorEnEdicion = {tipoMarcador, id:null, x, y};
   document.getElementById('marcadorModalTitulo').textContent = tipoMarcador==='extintor' ? 'Nuevo extintor' : 'Nueva trampa';
   document.getElementById('marcadorTipoWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
-  document.getElementById('marcadorFechaLabel').textContent = tipoMarcador==='extintor' ? 'Fecha de recarga/vencimiento (opcional)' : 'Fecha de revisión (opcional)';
+  document.getElementById('marcadorFechaLabel').textContent = tipoMarcador==='extintor' ? 'Mes y año de recarga/vencimiento (opcional)' : 'Fecha de revisión (opcional)';
+  document.getElementById('marcadorFecha').type = tipoMarcador==='extintor' ? 'month' : 'date';
   document.getElementById('marcadorTipo').value = filtroTipoExtintorActual || 'Solkaflam';
   document.getElementById('marcadorFecha').value = '';
   document.getElementById('marcadorNotas').value = '';
@@ -5873,9 +5904,10 @@ function abrirMarcadorExistente(tipoMarcador, obj){
   marcadorEnEdicion = {tipoMarcador, id:obj.id, x:obj.x, y:obj.y};
   document.getElementById('marcadorModalTitulo').textContent = tipoMarcador==='extintor' ? 'Editar extintor' : 'Editar trampa';
   document.getElementById('marcadorTipoWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
-  document.getElementById('marcadorFechaLabel').textContent = tipoMarcador==='extintor' ? 'Fecha de recarga/vencimiento (opcional)' : 'Fecha de revisión (opcional)';
+  document.getElementById('marcadorFechaLabel').textContent = tipoMarcador==='extintor' ? 'Mes y año de recarga/vencimiento (opcional)' : 'Fecha de revisión (opcional)';
+  document.getElementById('marcadorFecha').type = tipoMarcador==='extintor' ? 'month' : 'date';
   if(tipoMarcador==='extintor') document.getElementById('marcadorTipo').value = obj.tipo;
-  document.getElementById('marcadorFecha').value = obj.fecha || '';
+  document.getElementById('marcadorFecha').value = tipoMarcador==='extintor' ? (obj.fecha||'').slice(0,7) : (obj.fecha||'');
   document.getElementById('marcadorNotas').value = obj.notas || '';
   document.getElementById('btnEliminarMarcador').style.display = 'inline-block';
   document.getElementById('marcadorModalBg').classList.add('active');
@@ -6010,7 +6042,7 @@ function construirMapaExportHTML(tipoMapa){
     ? items.map((it,i)=>`<tr>
         <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${i+1}</td>
         <td style="border:1px solid #000;padding:5px 6px;">${esc(it.tipo)}</td>
-        <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${it.fecha?fmtDate(it.fecha):'—'}</td>
+        <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${fmtFechaExtintor(it.fecha)}</td>
         <td style="border:1px solid #000;padding:5px 6px;">${esc(it.notas)||'—'}</td>
       </tr>`).join('')
     : items.map((it,i)=>`<tr>
