@@ -1398,6 +1398,11 @@
       <div id="invConsumoSemanalBars"></div>
     </div>
     <div class="panel">
+      <h2>Productos con mayor variación semanal</h2>
+      <p class="hint" style="margin:0 0 10px;" id="invVariacionSubtitulo"></p>
+      <div id="invVariacionSemanal"></div>
+    </div>
+    <div class="panel">
       <h2>Productos faltantes vs. disponibles</h2>
       <p class="hint" style="margin:0 0 10px;">Por cantidad de productos distintos (no por unidades). "Faltante" = sin ninguna unidad en stock. Toca para ver el listado.</p>
       <div id="invFaltantesPie" class="pie-wrap"></div>
@@ -6675,6 +6680,45 @@ function renderInvDashboard(){
       openSemanaDetalle(col.dataset.semInicio, col.dataset.semFin, label);
     });
   });
+
+  /* --- Comparativo semanal: qué 5 productos cambiaron más entre la semana
+     actual y la anterior (subieron o bajaron, sin importar el sentido) --- */
+  function totalesPorProductoEnRango(desde, hasta){
+    const mapa = {};
+    movimientos.filter(mv=>mv.tipo==='salida' && mv.fecha && mv.fecha>=desde && mv.fecha<=hasta).forEach(mv=>{
+      mapa[mv.insumoId] = (mapa[mv.insumoId]||0) + Number(mv.cantidad||0);
+    });
+    return mapa;
+  }
+  const semanaActual = semanas[semanas.length-1];
+  const semanaAnterior = semanas[semanas.length-2];
+  const totalesActual = totalesPorProductoEnRango(semanaActual.inicio, semanaActual.fin);
+  const totalesAnterior = totalesPorProductoEnRango(semanaAnterior.inicio, semanaAnterior.fin);
+  const idsUnion = new Set([...Object.keys(totalesActual), ...Object.keys(totalesAnterior)]);
+  const variaciones = [...idsUnion].map(insumoId=>{
+    const insumo = insumos.find(i=>i.id===insumoId);
+    const antes = totalesAnterior[insumoId]||0;
+    const ahora = totalesActual[insumoId]||0;
+    return {
+      nombre: insumo ? insumo.nombre : '(insumo eliminado)',
+      unidad: insumo ? (insumo.unidad||'') : '',
+      antes, ahora, delta: ahora-antes
+    };
+  }).filter(v=>v.delta!==0).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta)).slice(0,5);
+
+  document.getElementById('invVariacionSubtitulo').textContent =
+    `Comparando la semana del ${fmtDate(semanaAnterior.inicio)} vs. la semana del ${fmtDate(semanaActual.inicio)}.`;
+  document.getElementById('invVariacionSemanal').innerHTML = variaciones.length ? variaciones.map(v=>{
+    const subio = v.delta>0;
+    const color = subio ? 'var(--green)' : 'var(--red)';
+    const flecha = subio ? '▲' : '▼';
+    return `
+    <div class="bar-row" style="align-items:center;">
+      <span class="name" style="width:auto;flex:1;" title="${esc(v.nombre)}">${esc(v.nombre)}</span>
+      <span class="hint" style="margin:0;white-space:nowrap;">${v.antes} → ${v.ahora} ${esc(v.unidad)}</span>
+      <span class="count" style="width:auto;min-width:70px;color:${color};font-weight:700;">${flecha} ${Math.abs(v.delta)}</span>
+    </div>`;
+  }).join('') : '<p class="empty">No hay suficientes datos todavía para comparar estas dos semanas.</p>';
 
   // --- Torta: consumido este mes vs. disponible actual (interactiva) ---
   const pieEl = document.getElementById('invConsumoPie');
