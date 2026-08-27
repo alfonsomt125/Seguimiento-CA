@@ -1129,6 +1129,11 @@
           <button class="ghost" id="btnExportarMapaExtintores">⬇ Exportar a PDF</button>
         </div>
         <p class="hint" style="margin:0 0 10px;">Toca cualquier punto del plano para marcar un extintor nuevo. Toca un marcador ya puesto para editarlo o quitarlo.</p>
+        <p class="hint" style="margin:0 0 6px;">Plano:</p>
+        <div class="year-pills" id="filtroPlanoExtintores" data-value="principal" style="margin-bottom:10px;">
+          <button class="year-pill active" data-planoext="principal">🏫 Planta principal</button>
+          <button class="year-pill" data-planoext="segundo-piso">🏢 2do piso (Admin. / C / D)</button>
+        </div>
         <div class="year-pills" id="filtroTipoExtintor" data-value="" style="margin-bottom:12px;">
           <button class="year-pill active" data-tipoext="">Todos</button>
           <button class="year-pill" data-tipoext="Solkaflam">⚪ Solkaflam</button>
@@ -1154,7 +1159,7 @@
         <h2>Listado de extintores (<span id="contadorExtintores">0</span>)</h2>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Tipo</th><th>Fecha</th><th>Última revisión</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Plano</th><th>Tipo</th><th>Fecha</th><th>Última revisión</th><th>Notas</th><th></th></tr></thead>
             <tbody id="listaExtintoresBody"></tbody>
           </table>
         </div>
@@ -1168,6 +1173,11 @@
           <button class="ghost" id="btnExportarMapaTrampas">⬇ Exportar a PDF</button>
         </div>
         <p class="hint" style="margin:0 0 10px;">Toca cualquier punto del plano para marcar una trampa nueva. Toca un marcador ya puesto para editarlo o quitarlo.</p>
+        <p class="hint" style="margin:0 0 6px;">Plano:</p>
+        <div class="year-pills" id="filtroPlanoTrampas" data-value="principal" style="margin-bottom:12px;">
+          <button class="year-pill active" data-planotr="principal">🏫 Planta principal</button>
+          <button class="year-pill" data-planotr="segundo-piso">🏢 2do piso (Admin. / C / D)</button>
+        </div>
         <div class="mapa-outer" id="mapaTrampasOuter">
           <button class="mapa-fs-cerrar" data-cerrarfs="Trampas">✕ Cerrar pantalla completa</button>
           <div class="mapa-zoom-controls">
@@ -1187,7 +1197,7 @@
         <h2>Listado de trampas (<span id="contadorTrampas">0</span>)</h2>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Fecha</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Plano</th><th>Fecha</th><th>Notas</th><th></th></tr></thead>
             <tbody id="listaTrampasBody"></tbody>
           </table>
         </div>
@@ -5753,6 +5763,16 @@ const COLOR_FONDO_PILL_EXTINTOR = {
 };
 let filtroTipoExtintorActual = '';
 let marcadorEnEdicion = null; // {tipo:'extintor'|'trampa', id: string|null, x, y}
+let planoActualExtintores = 'principal';
+let planoActualTrampas = 'principal';
+const PLANO_IMG = {
+  'principal': 'plano-colegio.png',
+  'segundo-piso': 'plano-segundo-piso.png'
+};
+const PLANO_LABEL = {
+  'principal': 'Planta principal',
+  'segundo-piso': '2do piso (Bloque Administrativo, C y D)'
+};
 
 // Muestra "Mes AAAA" — soporta tanto el formato nuevo (solo mes/año) como
 // el formato viejo de fecha completa, por si quedó algún extintor guardado
@@ -5794,7 +5814,8 @@ function iconoExtintorSVG(color){
 function renderMarcadoresExtintores(){
   const wrap = document.getElementById('mapaExtintoresInner');
   wrap.querySelectorAll('.mapa-marker').forEach(m=>m.remove());
-  const filtrados = filtroTipoExtintorActual ? extintores.filter(e=>e.tipo===filtroTipoExtintorActual) : extintores;
+  const delPlano = extintores.filter(e=>(e.plano||'principal')===planoActualExtintores);
+  const filtrados = filtroTipoExtintorActual ? delPlano.filter(e=>e.tipo===filtroTipoExtintorActual) : delPlano;
   filtrados.forEach(e=>{
     const dot = document.createElement('div');
     dot.className = 'mapa-marker mapa-marker-icono';
@@ -5817,13 +5838,14 @@ function renderMarcadoresExtintores(){
       : '<span class="hint" style="margin:0;">Sin revisar</span>';
     return `
     <tr>
+      <td style="font-size:12px;color:var(--gray);">${e.plano==='segundo-piso' ? '2do piso' : 'Planta principal'}</td>
       <td><span class="pill" style="background:${COLOR_FONDO_PILL_EXTINTOR[e.tipo]};color:${COLOR_TEXTO_TIPO_EXTINTOR[e.tipo]};">${esc(e.tipo)}</span></td>
       <td>${fmtFechaExtintor(e.fecha)}</td>
       <td>${celdaRevision}</td>
       <td>${esc(e.notas)||'—'}</td>
       <td><button class="ghost" data-editarextintor="${e.id}">Editar</button></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="5" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
+  }).join('') : `<tr><td colspan="6" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
   tbody.querySelectorAll('[data-editarextintor]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const e = extintores.find(x=>x.id===btn.dataset.editarextintor);
@@ -5918,7 +5940,8 @@ function renderVencimientosExtintores(){
 function renderMarcadoresTrampas(){
   const wrap = document.getElementById('mapaTrampasInner');
   wrap.querySelectorAll('.mapa-marker').forEach(m=>m.remove());
-  trampas.forEach(t=>{
+  const delPlano = trampas.filter(t=>(t.plano||'principal')===planoActualTrampas);
+  delPlano.forEach(t=>{
     const dot = document.createElement('div');
     dot.className = 'mapa-marker';
     dot.style.left = t.x+'%';
@@ -5935,10 +5958,11 @@ function renderMarcadoresTrampas(){
   const tbody = document.getElementById('listaTrampasBody');
   tbody.innerHTML = trampas.length ? trampas.map(t=>`
     <tr>
+      <td style="font-size:12px;color:var(--gray);">${t.plano==='segundo-piso' ? '2do piso' : 'Planta principal'}</td>
       <td>${t.fecha ? fmtDate(t.fecha) : '—'}</td>
       <td>${esc(t.notas)||'—'}</td>
       <td><button class="ghost" data-editartrampa="${t.id}">Editar</button></td>
-    </tr>`).join('') : `<tr><td colspan="3" class="empty">Aún no has marcado ninguna trampa.</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="4" class="empty">Aún no has marcado ninguna trampa.</td></tr>`;
   tbody.querySelectorAll('[data-editartrampa]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const t = trampas.find(x=>x.id===btn.dataset.editartrampa);
@@ -5948,7 +5972,8 @@ function renderMarcadoresTrampas(){
 }
 
 function abrirMarcadorNuevo(tipoMarcador, x, y){
-  marcadorEnEdicion = {tipoMarcador, id:null, x, y};
+  const plano = tipoMarcador==='extintor' ? planoActualExtintores : planoActualTrampas;
+  marcadorEnEdicion = {tipoMarcador, id:null, x, y, plano};
   document.getElementById('marcadorModalTitulo').textContent = tipoMarcador==='extintor' ? 'Nuevo extintor' : 'Nueva trampa';
   document.getElementById('marcadorTipoWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
   document.getElementById('marcadorFechaLabel').textContent = tipoMarcador==='extintor' ? 'Mes y año de recarga/vencimiento (opcional)' : 'Fecha de revisión (opcional)';
@@ -6095,12 +6120,14 @@ document.addEventListener('keydown', (e)=>{
    absoluta por porcentaje, igual que se ve en pantalla, más una tabla con
    el detalle de cada uno debajo. URL absoluta de la imagen porque la
    pestaña nueva no siempre resuelve rutas relativas correctamente. */
-const URL_PLANO_COLEGIO = 'https://alfonsomt125.github.io/Seguimiento-CA/plano-colegio.png';
+const URL_PLANO_COLEGIO_BASE = 'https://alfonsomt125.github.io/Seguimiento-CA/';
 
 function construirMapaExportHTML(tipoMapa){
   const esExtintores = tipoMapa==='extintores';
-  const items = esExtintores ? extintores : trampas;
-  const titulo = esExtintores ? 'Plano de Extintores' : 'Plano de Trampas de Ratones';
+  const planoActual = esExtintores ? planoActualExtintores : planoActualTrampas;
+  const items = (esExtintores ? extintores : trampas).filter(it=>(it.plano||'principal')===planoActual);
+  const titulo = (esExtintores ? 'Plano de Extintores' : 'Plano de Trampas de Ratones') + ' — ' + PLANO_LABEL[planoActual];
+  const urlImagenPlano = 'https://alfonsomt125.github.io/Seguimiento-CA/' + PLANO_IMG[planoActual];
 
   const marcadoresHtml = items.map(it=>{
     if(esExtintores){
@@ -6149,7 +6176,7 @@ function construirMapaExportHTML(tipoMapa){
   <div style="font-size:11px;color:#6B7280;margin-bottom:6px;">Generado el ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})}. Total: ${items.length} punto(s) marcado(s).</div>
   ${leyenda}
   <div style="position:relative;width:100%;border:1px solid #000;">
-    <img src="${URL_PLANO_COLEGIO}" style="width:100%;display:block;">
+    <img src="${urlImagenPlano}" style="width:100%;display:block;">
     ${marcadoresHtml}
   </div>
   <h3 style="margin:20px 0 8px;font-size:13px;color:#011632;">Detalle</h3>
@@ -6231,7 +6258,7 @@ document.getElementById('btnGuardarMarcador').addEventListener('click', async ()
       const e = extintores.find(x=>x.id===marcadorEnEdicion.id);
       if(e){ e.tipo = tipo; e.fecha = fecha; e.notas = notas; }
     }else{
-      extintores.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, tipo, fecha, notas, createdAt: new Date().toISOString()});
+      extintores.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, tipo, fecha, notas, plano: marcadorEnEdicion.plano||'principal', createdAt: new Date().toISOString()});
     }
     await saveExtintores();
     renderMarcadoresExtintores();
@@ -6240,7 +6267,7 @@ document.getElementById('btnGuardarMarcador').addEventListener('click', async ()
       const t = trampas.find(x=>x.id===marcadorEnEdicion.id);
       if(t){ t.fecha = fecha; t.notas = notas; }
     }else{
-      trampas.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, fecha, notas, createdAt: new Date().toISOString()});
+      trampas.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, fecha, notas, plano: marcadorEnEdicion.plano||'principal', createdAt: new Date().toISOString()});
     }
     await saveTrampas();
     renderMarcadoresTrampas();
@@ -6269,6 +6296,29 @@ document.querySelectorAll('#filtroTipoExtintor [data-tipoext]').forEach(btn=>{
     filtroTipoExtintorActual = btn.dataset.tipoext;
     document.querySelectorAll('#filtroTipoExtintor [data-tipoext]').forEach(b=>b.classList.toggle('active', b===btn));
     renderMarcadoresExtintores();
+  });
+});
+
+/* Cambiar de plano (planta principal / 2do piso): cambia la imagen de
+   fondo, restablece el zoom (cada plano empieza limpio) y vuelve a pintar
+   solo los marcadores que pertenecen a ese plano. */
+function cambiarPlano(mapaId, plano){
+  if(mapaId==='Extintores') planoActualExtintores = plano; else planoActualTrampas = plano;
+  document.getElementById('imgMapa'+mapaId).src = PLANO_IMG[plano];
+  document.getElementById('mapa'+mapaId+'Inner').style.width = '100%';
+  zoomMapas[mapaId] = 1;
+  if(mapaId==='Extintores') renderMarcadoresExtintores(); else renderMarcadoresTrampas();
+}
+document.querySelectorAll('#filtroPlanoExtintores [data-planoext]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#filtroPlanoExtintores [data-planoext]').forEach(b=>b.classList.toggle('active', b===btn));
+    cambiarPlano('Extintores', btn.dataset.planoext);
+  });
+});
+document.querySelectorAll('#filtroPlanoTrampas [data-planotr]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#filtroPlanoTrampas [data-planotr]').forEach(b=>b.classList.toggle('active', b===btn));
+    cambiarPlano('Trampas', btn.dataset.planotr);
   });
 });
 
