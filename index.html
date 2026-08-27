@@ -1154,7 +1154,7 @@
         <h2>Listado de extintores (<span id="contadorExtintores">0</span>)</h2>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Tipo</th><th>Fecha</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Tipo</th><th>Fecha</th><th>Última revisión</th><th>Notas</th><th></th></tr></thead>
             <tbody id="listaExtintoresBody"></tbody>
           </table>
         </div>
@@ -1280,7 +1280,7 @@
 
   <!-- Modal: agregar/editar un marcador (extintor o trampa) sobre el plano -->
   <div class="modal-bg" id="marcadorModalBg" style="z-index:400;">
-    <div class="modal" style="max-width:420px;">
+    <div class="modal" style="max-width:480px;">
       <h3 id="marcadorModalTitulo">Nuevo extintor</h3>
       <div class="field" id="marcadorTipoWrap" style="margin-top:14px;">
         <label>Tipo</label>
@@ -1298,6 +1298,36 @@
         <label>Notas (opcional)</label>
         <input type="text" id="marcadorNotas" placeholder="Ej: Vence en diciembre 2026">
       </div>
+
+      <div id="revisionesExtintorWrap" style="display:none;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);">
+        <h4 style="margin:0 0 4px;font-size:13px;color:var(--navy);">Revisiones periódicas</h4>
+        <p class="hint" style="margin:0 0 10px;">Registra cada vez que lo revises: si tiene el anillo de seguridad puesto y el estado general.</p>
+        <div id="listaRevisionesExtintor" style="margin-bottom:12px;"></div>
+        <div class="grid-2" style="gap:10px;">
+          <div class="field">
+            <label>¿Tiene anillo de seguridad?</label>
+            <select id="revAnilloSeguridad">
+              <option value="Sí">Sí</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Estado general</label>
+            <select id="revEstado">
+              <option value="Bueno">Bueno</option>
+              <option value="Regular">Regular</option>
+              <option value="Malo">Malo</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:10px;">
+          <label>Notas de la revisión (opcional)</label>
+          <input type="text" id="revNotas" placeholder="Ej: Manguera un poco reseca">
+        </div>
+        <button class="ghost" id="btnRegistrarRevision" style="margin-top:10px;">+ Registrar revisión de hoy</button>
+      </div>
+      <p class="hint" id="revisionesGuardaPrimero" style="display:none;margin-top:16px;">Guarda el extintor primero para poder registrar sus revisiones periódicas.</p>
+
       <div class="modal-actions" style="flex-wrap:wrap;gap:10px;">
         <button class="ghost" id="btnCancelarMarcador">Cancelar</button>
         <button class="ghost danger" id="btnEliminarMarcador" style="display:none;">Eliminar</button>
@@ -5774,13 +5804,22 @@ function renderMarcadoresExtintores(){
   document.getElementById('contadorExtintores').textContent = extintores.length;
 
   const tbody = document.getElementById('listaExtintoresBody');
-  tbody.innerHTML = extintores.length ? extintores.map(e=>`
+  tbody.innerHTML = extintores.length ? extintores.map(e=>{
+    const revisiones = e.revisiones || [];
+    const ultima = revisiones.length ? [...revisiones].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))[0] : null;
+    const alerta = ultima && (ultima.anilloSeguridad==='No' || ultima.estado!=='Bueno');
+    const celdaRevision = ultima
+      ? `<span style="color:${alerta?'var(--red)':'var(--gray)'};font-size:12px;">${fmtDate(ultima.fecha)}${alerta?' ⚠':''}<br>Anillo: ${esc(ultima.anilloSeguridad)} · ${esc(ultima.estado)}</span>`
+      : '<span class="hint" style="margin:0;">Sin revisar</span>';
+    return `
     <tr>
       <td><span class="pill" style="background:${COLOR_FONDO_PILL_EXTINTOR[e.tipo]};color:${COLOR_TEXTO_TIPO_EXTINTOR[e.tipo]};">${esc(e.tipo)}</span></td>
       <td>${fmtFechaExtintor(e.fecha)}</td>
+      <td>${celdaRevision}</td>
       <td>${esc(e.notas)||'—'}</td>
       <td><button class="ghost" data-editarextintor="${e.id}">Editar</button></td>
-    </tr>`).join('') : `<tr><td colspan="4" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
+    </tr>`;
+  }).join('') : `<tr><td colspan="5" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
   tbody.querySelectorAll('[data-editarextintor]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const e = extintores.find(x=>x.id===btn.dataset.editarextintor);
@@ -5914,6 +5953,8 @@ function abrirMarcadorNuevo(tipoMarcador, x, y){
   document.getElementById('marcadorFecha').value = '';
   document.getElementById('marcadorNotas').value = '';
   document.getElementById('btnEliminarMarcador').style.display = 'none';
+  document.getElementById('revisionesExtintorWrap').style.display = 'none';
+  document.getElementById('revisionesGuardaPrimero').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
   document.getElementById('marcadorModalBg').classList.add('active');
 }
 function abrirMarcadorExistente(tipoMarcador, obj){
@@ -5926,6 +5967,16 @@ function abrirMarcadorExistente(tipoMarcador, obj){
   document.getElementById('marcadorFecha').value = tipoMarcador==='extintor' ? (obj.fecha||'').slice(0,7) : (obj.fecha||'');
   document.getElementById('marcadorNotas').value = obj.notas || '';
   document.getElementById('btnEliminarMarcador').style.display = 'inline-block';
+  document.getElementById('revisionesGuardaPrimero').style.display = 'none';
+  if(tipoMarcador==='extintor'){
+    document.getElementById('revisionesExtintorWrap').style.display = 'block';
+    document.getElementById('revAnilloSeguridad').value = 'Sí';
+    document.getElementById('revEstado').value = 'Bueno';
+    document.getElementById('revNotas').value = '';
+    renderListaRevisionesExtintor(obj.id);
+  }else{
+    document.getElementById('revisionesExtintorWrap').style.display = 'none';
+  }
   document.getElementById('marcadorModalBg').classList.add('active');
 }
 function cerrarMarcadorModal(){
@@ -6121,6 +6172,46 @@ document.getElementById('btnExportarMapaTrampas').addEventListener('click', ()=>
   win.document.write(construirMapaExportHTML('trampas'));
   win.document.close();
   showToast('Se abrió una pestaña nueva con el plano. Ahí elige "Guardar como PDF".');
+});
+
+/* Revisiones periódicas de cada extintor: un historial propio (no
+   sobreescribe nada anterior) con si tenía el anillo de seguridad puesto y
+   el estado general en el momento de revisarlo. */
+function renderListaRevisionesExtintor(extintorId){
+  const e = extintores.find(x=>x.id===extintorId);
+  const revisiones = (e && e.revisiones) || [];
+  const wrap = document.getElementById('listaRevisionesExtintor');
+  if(!revisiones.length){
+    wrap.innerHTML = '<p class="hint" style="margin:0;">Todavía no se ha registrado ninguna revisión.</p>';
+    return;
+  }
+  const ordenadas = [...revisiones].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const PILL_ESTADO = {Bueno:'pill-Finalizado', Regular:'pill-Pendiente', Malo:'pill-Dañado'};
+  wrap.innerHTML = ordenadas.map(r=>`
+    <div class="bar-row" style="align-items:center;">
+      <span class="hint" style="margin:0;width:76px;flex-shrink:0;">${fmtDate(r.fecha)}</span>
+      <span class="pill ${r.anilloSeguridad==='Sí' ? 'pill-Finalizado' : 'pill-Dañado'}" style="flex-shrink:0;">Anillo: ${esc(r.anilloSeguridad)}</span>
+      <span class="pill ${PILL_ESTADO[r.estado]||''}" style="flex-shrink:0;">${esc(r.estado)}</span>
+      <span class="name" style="width:auto;flex:1;font-size:12px;color:var(--gray);">${esc(r.notas)||''}</span>
+    </div>`).join('');
+}
+document.getElementById('btnRegistrarRevision').addEventListener('click', async ()=>{
+  if(!marcadorEnEdicion || !marcadorEnEdicion.id) return;
+  const e = extintores.find(x=>x.id===marcadorEnEdicion.id);
+  if(!e) return;
+  if(!Array.isArray(e.revisiones)) e.revisiones = [];
+  e.revisiones.push({
+    id: uid(),
+    fecha: todayISO(),
+    anilloSeguridad: document.getElementById('revAnilloSeguridad').value,
+    estado: document.getElementById('revEstado').value,
+    notas: document.getElementById('revNotas').value.trim()
+  });
+  await saveExtintores();
+  renderListaRevisionesExtintor(e.id);
+  renderMarcadoresExtintores();
+  document.getElementById('revNotas').value = '';
+  showToast('Revisión registrada.');
 });
 
 document.getElementById('btnGuardarMarcador').addEventListener('click', async ()=>{
