@@ -1303,7 +1303,11 @@
         <h4 style="margin:0 0 4px;font-size:13px;color:var(--navy);">Revisiones periódicas</h4>
         <p class="hint" style="margin:0 0 10px;">Registra cada vez que lo revises: si tiene el anillo de seguridad puesto y el estado general.</p>
         <div id="listaRevisionesExtintor" style="margin-bottom:12px;"></div>
-        <div class="grid-2" style="gap:10px;">
+        <div class="field">
+          <label>Mes y año de la revisión</label>
+          <input type="month" id="revMes">
+        </div>
+        <div class="grid-2" style="gap:10px;margin-top:10px;">
           <div class="field">
             <label>¿Tiene anillo de seguridad?</label>
             <select id="revAnilloSeguridad">
@@ -1324,7 +1328,7 @@
           <label>Notas de la revisión (opcional)</label>
           <input type="text" id="revNotas" placeholder="Ej: Manguera un poco reseca">
         </div>
-        <button class="ghost" id="btnRegistrarRevision" style="margin-top:10px;">+ Registrar revisión de hoy</button>
+        <button class="ghost" id="btnRegistrarRevision" style="margin-top:10px;">+ Registrar revisión</button>
       </div>
       <p class="hint" id="revisionesGuardaPrimero" style="display:none;margin-top:16px;">Guarda el extintor primero para poder registrar sus revisiones periódicas.</p>
 
@@ -5809,7 +5813,7 @@ function renderMarcadoresExtintores(){
     const ultima = revisiones.length ? [...revisiones].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))[0] : null;
     const alerta = ultima && (ultima.anilloSeguridad==='No' || ultima.estado!=='Bueno');
     const celdaRevision = ultima
-      ? `<span style="color:${alerta?'var(--red)':'var(--gray)'};font-size:12px;">${fmtDate(ultima.fecha)}${alerta?' ⚠':''}<br>Anillo: ${esc(ultima.anilloSeguridad)} · ${esc(ultima.estado)}</span>`
+      ? `<span style="color:${alerta?'var(--red)':'var(--gray)'};font-size:12px;">${fmtFechaExtintor(ultima.fecha)}${alerta?' ⚠':''}<br>Anillo: ${esc(ultima.anilloSeguridad)} · ${esc(ultima.estado)}</span>`
       : '<span class="hint" style="margin:0;">Sin revisar</span>';
     return `
     <tr>
@@ -5970,6 +5974,7 @@ function abrirMarcadorExistente(tipoMarcador, obj){
   document.getElementById('revisionesGuardaPrimero').style.display = 'none';
   if(tipoMarcador==='extintor'){
     document.getElementById('revisionesExtintorWrap').style.display = 'block';
+    document.getElementById('revMes').value = todayISO().slice(0,7);
     document.getElementById('revAnilloSeguridad').value = 'Sí';
     document.getElementById('revEstado').value = 'Bueno';
     document.getElementById('revNotas').value = '';
@@ -6189,7 +6194,7 @@ function renderListaRevisionesExtintor(extintorId){
   const PILL_ESTADO = {Bueno:'pill-Finalizado', Regular:'pill-Pendiente', Malo:'pill-Dañado'};
   wrap.innerHTML = ordenadas.map(r=>`
     <div class="bar-row" style="align-items:center;">
-      <span class="hint" style="margin:0;width:76px;flex-shrink:0;">${fmtDate(r.fecha)}</span>
+      <span class="hint" style="margin:0;width:96px;flex-shrink:0;">${fmtFechaExtintor(r.fecha)}</span>
       <span class="pill ${r.anilloSeguridad==='Sí' ? 'pill-Finalizado' : 'pill-Dañado'}" style="flex-shrink:0;">Anillo: ${esc(r.anilloSeguridad)}</span>
       <span class="pill ${PILL_ESTADO[r.estado]||''}" style="flex-shrink:0;">${esc(r.estado)}</span>
       <span class="name" style="width:auto;flex:1;font-size:12px;color:var(--gray);">${esc(r.notas)||''}</span>
@@ -6197,12 +6202,14 @@ function renderListaRevisionesExtintor(extintorId){
 }
 document.getElementById('btnRegistrarRevision').addEventListener('click', async ()=>{
   if(!marcadorEnEdicion || !marcadorEnEdicion.id) return;
+  const mes = document.getElementById('revMes').value;
+  if(!mes){ showToast('Elige el mes y año de la revisión.'); return; }
   const e = extintores.find(x=>x.id===marcadorEnEdicion.id);
   if(!e) return;
   if(!Array.isArray(e.revisiones)) e.revisiones = [];
   e.revisiones.push({
     id: uid(),
-    fecha: todayISO(),
+    fecha: mes,
     anilloSeguridad: document.getElementById('revAnilloSeguridad').value,
     estado: document.getElementById('revEstado').value,
     notas: document.getElementById('revNotas').value.trim()
