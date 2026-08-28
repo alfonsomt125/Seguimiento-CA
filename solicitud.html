@@ -70,6 +70,33 @@
   }
   @media(max-width:640px){ .grid-2{grid-template-columns:1fr;} }
 
+  /* Lista de materiales del pedido — con flexbox en vez de una tabla, así
+     se acomoda solo según el espacio disponible: en una sola fila en PC,
+     en 2-3 columnas en tablet, y apilado completo en celular, sin scroll
+     horizontal en ningún tamaño. */
+  .items-list{display:flex;flex-direction:column;gap:14px;margin-top:14px;}
+  .item-card{
+    position:relative;display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-start;
+    background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 14px 14px;
+  }
+  .item-num{
+    position:absolute;top:-9px;left:14px;background:var(--navy);color:#fff;
+    font-size:11px;font-weight:700;min-width:20px;height:20px;padding:0 5px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .item-field{display:flex;flex-direction:column;gap:5px;flex:2 1 170px;min-width:0;}
+  .item-field-cantidad{flex:0 1 90px;}
+  .item-field-foto{flex:0 0 auto;}
+  .item-field label{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.03em;}
+  .item-del-wrap{flex:0 0 auto;display:flex;align-items:flex-end;margin-left:auto;}
+  .item-del-wrap .entry-del{border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px;}
+  .item-del-wrap .entry-del:hover{background:var(--red-bg);border-color:var(--red);}
+  @media(max-width:520px){
+    .item-field, .item-field-cantidad{flex:1 1 100%;}
+    .item-del-wrap{margin-left:0;width:100%;}
+    .item-del-wrap .entry-del{width:100%;text-align:center;}
+  }
+
   /* Tarjetas grandes del inicio y de la lista de reportes */
   .modulo-cards, .reporte-cards{display:flex;flex-direction:column;gap:14px;}
   .modulo-card, .reporte-card{
@@ -284,15 +311,7 @@
     <div class="panel">
       <h2>Descripción de los bienes</h2>
       <p class="hint">Agrega cada material que necesitas. La foto es opcional — solo si te ayuda a mostrar una muestra de lo que buscas.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th style="width:30px;">No.</th><th>Descripción de los bienes</th><th>Especificaciones</th>
-            <th style="width:90px;">Cantidad</th><th>Uso</th><th style="width:60px;">Foto</th><th></th>
-          </tr></thead>
-          <tbody id="itemsBody"></tbody>
-        </table>
-      </div>
+      <div class="items-list" id="itemsBody"></div>
       <div class="actions-row">
         <button class="btn ghost" id="btnAgregarLinea">+ Agregar línea</button>
       </div>
@@ -653,7 +672,7 @@ const ITEM_VACIO = ()=>({descripcion:'', especificaciones:'', cantidad:'', uso:'
 let items = Array.from({length:4}, ITEM_VACIO);
 
 function syncItemsFromDOM(){
-  const filas = [...document.querySelectorAll('#itemsBody tr')];
+  const filas = [...document.querySelectorAll('#itemsBody .item-card')];
   items = filas.map((tr,idx)=>({
     descripcion: tr.querySelector('[data-f="descripcion"]').value.trim(),
     especificaciones: tr.querySelector('[data-f="especificaciones"]').value.trim(),
@@ -666,20 +685,35 @@ function syncItemsFromDOM(){
 function renderItems(){
   const tbody = document.getElementById('itemsBody');
   tbody.innerHTML = items.map((it,idx)=>`
-    <tr>
-      <td style="text-align:center;color:var(--gray);">${idx+1}</td>
-      <td><input type="text" data-f="descripcion" value="${esc(it.descripcion)}" placeholder="Ej: Resma de papel carta"></td>
-      <td><input type="text" data-f="especificaciones" value="${esc(it.especificaciones)}" placeholder="Ej: 75 gr, blanca"></td>
-      <td><input type="text" data-f="cantidad" value="${esc(it.cantidad)}" style="text-align:center;"></td>
-      <td><input type="text" data-f="uso" value="${esc(it.uso)}"></td>
-      <td style="text-align:center;">
+    <div class="item-card">
+      <span class="item-num">Material ${idx+1}</span>
+      <div class="item-field">
+        <label>Descripción de los bienes</label>
+        <input type="text" data-f="descripcion" value="${esc(it.descripcion)}" placeholder="Ej: Resma de papel carta">
+      </div>
+      <div class="item-field">
+        <label>Especificaciones</label>
+        <input type="text" data-f="especificaciones" value="${esc(it.especificaciones)}" placeholder="Ej: 75 gr, blanca">
+      </div>
+      <div class="item-field item-field-cantidad">
+        <label>Cantidad</label>
+        <input type="text" data-f="cantidad" value="${esc(it.cantidad)}" style="text-align:center;">
+      </div>
+      <div class="item-field">
+        <label>Uso</label>
+        <input type="text" data-f="uso" value="${esc(it.uso)}">
+      </div>
+      <div class="item-field item-field-foto">
+        <label>Foto</label>
         <input type="file" accept="image/*" data-fotoinput="${idx}" style="display:none;">
         ${it.fotoPreview
-          ? `<div style="position:relative;display:inline-block;"><img src="${it.fotoPreview}" data-fotolabel="${idx}" style="width:32px;height:32px;object-fit:cover;border-radius:6px;cursor:pointer;"><span data-fotodel="${idx}" style="position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</span></div>`
-          : `<span data-fotolabel="${idx}" title="Agregar foto (opcional)" style="cursor:pointer;font-size:18px;">📷</span>`}
-      </td>
-      <td><span class="entry-del" data-del="${idx}" title="Quitar línea">✕</span></td>
-    </tr>`).join('');
+          ? `<div style="position:relative;display:inline-block;"><img src="${it.fotoPreview}" data-fotolabel="${idx}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;cursor:pointer;display:block;"><span data-fotodel="${idx}" style="position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;">✕</span></div>`
+          : `<span data-fotolabel="${idx}" title="Agregar foto (opcional)" style="cursor:pointer;font-size:22px;display:block;">📷</span>`}
+      </div>
+      <div class="item-del-wrap">
+        <span class="entry-del" data-del="${idx}" title="Quitar línea">✕ Quitar</span>
+      </div>
+    </div>`).join('');
   tbody.querySelectorAll('[data-del]').forEach(el=>{
     el.addEventListener('click', ()=>{
       syncItemsFromDOM();
