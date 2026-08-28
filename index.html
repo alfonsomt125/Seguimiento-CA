@@ -279,13 +279,11 @@
     background:var(--navy);color:#fff;border:none;border-radius:10px;padding:9px 16px;
     font-family:var(--sys-font,inherit);font-weight:700;font-size:13.5px;cursor:pointer;
   }
-  .mapa-dibujo-controls{
-    position:absolute;top:10px;left:10px;z-index:7;
-    display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:calc(100% - 90px);
-    background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;
-    box-shadow:var(--shadow);font-size:12px;color:var(--navy);font-weight:600;
-  }
-  .mapa-dibujo-controls button{font-size:12px;padding:6px 10px;}
+  .flecha-compass{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:6px;justify-content:center;margin-top:8px;}
+  .flecha-compass button{font-size:20px;border-radius:9px;border:1.5px solid var(--line);background:#fff;cursor:pointer;color:var(--navy);}
+  .flecha-compass button:hover{background:var(--paper-2);}
+  .flecha-compass button.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .flecha-compass-center{display:flex;align-items:center;justify-content:center;font-size:18px;opacity:.5;}
   body.mapa-fullscreen-activo{overflow:hidden;}
   .mapa-wrap{position:relative;width:100%;max-height:560px;overflow:auto;border-radius:12px;border:1px solid var(--line);background:#f2f3f6;-webkit-user-select:none;user-select:none;}
   .mapa-inner{position:relative;cursor:crosshair;width:100%;transition:width .15s ease;}
@@ -1257,7 +1255,7 @@
           <h2 style="margin:0;">Rutas de evacuación</h2>
           <button class="ghost" id="btnExportarMapaEvacuacion">⬇ Exportar a PDF</button>
         </div>
-        <p class="hint" style="margin:0 0 10px;" id="evacuacionInstrucciones">Toca "Dibujar nueva ruta" y luego toca el plano en orden para trazar el camino de salida. Toca una ruta ya dibujada para editar sus notas o borrarla.</p>
+        <p class="hint" style="margin:0 0 10px;">Toca cualquier punto del plano para colocar una flecha nueva y elegir hacia dónde apunta. Toca una flecha ya puesta para editarla o quitarla.</p>
         <p class="hint" style="margin:0 0 6px;">Plano:</p>
         <div class="year-pills" id="filtroPlanoEvacuacion" data-value="principal" style="margin-bottom:12px;">
           <button class="year-pill active" data-planoev="principal">🏫 Planta principal</button>
@@ -1265,14 +1263,6 @@
         </div>
         <div class="mapa-outer" id="mapaEvacuacionOuter">
           <button class="mapa-fs-cerrar" data-cerrarfs="Evacuacion">✕ Cerrar pantalla completa</button>
-          <div class="mapa-dibujo-controls" id="mapaControlesInicio">
-            <button class="primary" id="btnDibujarRuta" style="font-size:12px;padding:6px 10px;">✏️ Dibujar nueva ruta</button>
-          </div>
-          <div class="mapa-dibujo-controls" id="mapaDibujoControles" style="display:none;">
-            <span id="rutaEnCursoTexto"></span>
-            <button class="ghost" id="btnFinalizarRuta">✔ Finalizar</button>
-            <button class="ghost danger" id="btnCancelarRuta">Cancelar</button>
-          </div>
           <div class="mapa-zoom-controls">
             <button data-zoombtn="fs" data-mapaid="Evacuacion" title="Ver en pantalla completa">⛶</button>
             <button data-zoombtn="in" data-mapaid="Evacuacion" title="Acercar">+</button>
@@ -1282,16 +1272,15 @@
           <div class="mapa-wrap" id="mapaEvacuacionWrap">
             <div class="mapa-inner" id="mapaEvacuacionInner">
               <img src="plano-colegio.png" id="imgMapaEvacuacion" draggable="false" alt="Plano del colegio">
-              <svg id="svgRutasEvacuacion" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
             </div>
           </div>
         </div>
       </div>
       <div class="panel">
-        <h2>Listado de rutas (<span id="contadorEvacuacion">0</span>)</h2>
+        <h2>Listado de flechas (<span id="contadorEvacuacion">0</span>)</h2>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Plano</th><th>Color</th><th>Puntos</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Plano</th><th>Dirección</th><th>Notas</th><th></th></tr></thead>
             <tbody id="listaEvacuacionBody"></tbody>
           </table>
         </div>
@@ -1445,27 +1434,23 @@
   </div>
 
   <!-- Modal: datos de una ruta de evacuación (color y notas) -->
-  <div class="modal-bg" id="rutaModalBg" style="z-index:400;">
-    <div class="modal" style="max-width:400px;">
-      <h3 id="rutaModalTitulo">Nueva ruta de evacuación</h3>
-      <div class="field" style="margin-top:14px;">
-        <label>Color de la ruta</label>
-        <select id="rutaColor">
-          <option value="#E0342A">🔴 Rojo</option>
-          <option value="#03459B">🔵 Azul</option>
-          <option value="#1F9E6B">🟢 Verde</option>
-          <option value="#F29622">🟠 Naranja</option>
-          <option value="#8E6FD6">🟣 Morado</option>
-        </select>
+  <div class="modal-bg" id="flechaModalBg" style="z-index:400;">
+    <div class="modal" style="max-width:360px;">
+      <h3 id="flechaModalTitulo">Nueva flecha de evacuación</h3>
+      <p class="hint" style="margin:10px 0 4px;">¿Hacia dónde apunta?</p>
+      <div class="flecha-compass" id="flechaCompass">
+        <button type="button" data-angulo="315">↖</button><button type="button" data-angulo="0">↑</button><button type="button" data-angulo="45">↗</button>
+        <button type="button" data-angulo="270">←</button><div class="flecha-compass-center">🧭</div><button type="button" data-angulo="90">→</button>
+        <button type="button" data-angulo="225">↙</button><button type="button" data-angulo="180">↓</button><button type="button" data-angulo="135">↘</button>
       </div>
-      <div class="field" style="margin-top:14px;">
+      <div class="field" style="margin-top:16px;">
         <label>Notas (opcional)</label>
-        <input type="text" id="rutaNotas" placeholder="Ej: Salida desde Bloque C hacia Cancha La Jaula">
+        <input type="text" id="flechaNotas" placeholder="Ej: Hacia la Cancha La Jaula">
       </div>
       <div class="modal-actions" style="flex-wrap:wrap;gap:10px;">
-        <button class="ghost" id="btnCancelarRutaModal">Cancelar</button>
-        <button class="ghost danger" id="btnEliminarRuta" style="display:none;">Eliminar</button>
-        <button class="primary" id="btnGuardarRuta">Guardar</button>
+        <button class="ghost" id="btnCancelarFlecha">Cancelar</button>
+        <button class="ghost danger" id="btnEliminarFlecha" style="display:none;">Eliminar</button>
+        <button class="primary" id="btnGuardarFlecha">Guardar</button>
       </div>
     </div>
   </div>
@@ -3057,7 +3042,7 @@ let requisiciones = [];
 let extintores = [];
 let trampas = [];
 let puntosEncuentro = [];
-let rutasEvacuacion = [];
+let flechasEvacuacion = [];
 let horasExtras = [];
 let limitesHorasExtras = {diario: 2, mensual: 48};
 let editingAireId = null;
@@ -3188,7 +3173,7 @@ const CLAVES_A_MIGRAR = [
   'activities','bitacora','insumos','movimientos','trabajadores','entregas',
   'deletedNames','deletedInsumoNames','deletedTrabajadorNames',
   'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones',
-  'extintores','trampasRatones','puntosEncuentro','rutasEvacuacion',
+  'extintores','trampasRatones','puntosEncuentro','flechasEvacuacion',
   'horasExtras','limitesHorasExtras','syncVersions'
 ];
 
@@ -3297,9 +3282,9 @@ async function loadAll(){
     puntosEncuentro = JSON.parse(pe.value);
   }catch(e){ puntosEncuentro = []; }
   try{
-    const re = await storageAPI.get('rutasEvacuacion');
-    rutasEvacuacion = JSON.parse(re.value);
-  }catch(e){ rutasEvacuacion = []; }
+    const fe = await storageAPI.get('flechasEvacuacion');
+    flechasEvacuacion = JSON.parse(fe.value);
+  }catch(e){ flechasEvacuacion = []; }
   try{
     const he = await storageAPI.get('horasExtras');
     horasExtras = JSON.parse(he.value);
@@ -3337,8 +3322,8 @@ async function savePuntosEncuentro(){
   try{ await storageAPI.set('puntosEncuentro', JSON.stringify(puntosEncuentro)); }
   catch(e){ showToast('No se pudo guardar (puntos de encuentro). Intenta de nuevo.'); }
 }
-async function saveRutasEvacuacion(){
-  try{ await storageAPI.set('rutasEvacuacion', JSON.stringify(rutasEvacuacion)); }
+async function saveFlechasEvacuacion(){
+  try{ await storageAPI.set('flechasEvacuacion', JSON.stringify(flechasEvacuacion)); }
   catch(e){ showToast('No se pudo guardar (rutas de evacuación). Intenta de nuevo.'); }
 }
 async function saveHorasExtras(){
@@ -6384,16 +6369,19 @@ function construirMapaExportHTML(tipoMapa){
 }
 function construirEvacuacionExportHTML(){
   const planoActual = planoActualEvacuacion;
-  const rutas = rutasEvacuacion.filter(r=>(r.plano||'principal')===planoActual);
+  const flechas = flechasEvacuacion.filter(f=>(f.plano||'principal')===planoActual);
   const titulo = 'Plano de Rutas de Evacuación — ' + PLANO_LABEL[planoActual];
   const urlImagenPlano = 'https://alfonsomt125.github.io/Seguimiento-CA/' + PLANO_IMG[planoActual];
 
-  const lineasHtml = rutas.map(r=>construirPolylineSVG(r.puntos, r.color, false)).join('');
-  const filasTabla = rutas.map((r,i)=>`<tr>
+  const marcadoresHtml = flechas.map(f=>
+    `<div style="position:absolute;left:${f.x}%;top:${f.y}%;transform:translate(-50%,-50%) rotate(${f.angulo}deg);width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #011632;box-shadow:0 0 0 2px #fff, 0 2px 5px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2 L19.5 21 L12 16.5 L4.5 21 Z" fill="#E0342A" stroke="#011632" stroke-width="1"/></svg></div>`
+  ).join('');
+
+  const NOMBRE_DIRECCION = {0:'↑ Arriba', 45:'↗ Arriba-derecha', 90:'→ Derecha', 135:'↘ Abajo-derecha', 180:'↓ Abajo', 225:'↙ Abajo-izquierda', 270:'← Izquierda', 315:'↖ Arriba-izquierda'};
+  const filasTabla = flechas.map((f,i)=>`<tr>
     <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${i+1}</td>
-    <td style="border:1px solid #000;padding:5px 6px;text-align:center;"><span style="display:inline-block;width:12px;height:12px;background:${r.color};border:1px solid #000;"></span></td>
-    <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${r.puntos.length}</td>
-    <td style="border:1px solid #000;padding:5px 6px;">${esc(r.notas)||'—'}</td>
+    <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${NOMBRE_DIRECCION[f.angulo]||f.angulo+'°'}</td>
+    <td style="border:1px solid #000;padding:5px 6px;">${esc(f.notas)||'—'}</td>
   </tr>`).join('');
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -6407,20 +6395,19 @@ function construirEvacuacionExportHTML(){
   <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
   <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">${titulo}</div>
-  <div style="font-size:11px;color:#6B7280;margin-bottom:6px;">Generado el ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})}. Total: ${rutas.length} ruta(s).</div>
+  <div style="font-size:11px;color:#6B7280;margin-bottom:6px;">Generado el ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})}. Total: ${flechas.length} flecha(s).</div>
   <div style="position:relative;width:100%;border:1px solid #000;">
     <img src="${urlImagenPlano}" style="width:100%;display:block;">
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;">${lineasHtml}</svg>
+    ${marcadoresHtml}
   </div>
   <h3 style="margin:20px 0 8px;font-size:13px;color:#011632;">Detalle</h3>
   <table>
     <thead><tr style="background:#BDD7EE;font-weight:700;">
       <th style="border:1px solid #000;padding:6px;width:32px;">No.</th>
-      <th style="border:1px solid #000;padding:6px;width:60px;">Color</th>
-      <th style="border:1px solid #000;padding:6px;width:60px;">Puntos</th>
+      <th style="border:1px solid #000;padding:6px;width:120px;">Dirección</th>
       <th style="border:1px solid #000;padding:6px;">Notas</th>
     </tr></thead>
-    <tbody>${filasTabla || `<tr><td colspan="4" style="border:1px solid #000;padding:10px;text-align:center;color:#6B7280;">Sin rutas dibujadas todavía.</td></tr>`}</tbody>
+    <tbody>${filasTabla || `<tr><td colspan="3" style="border:1px solid #000;padding:10px;text-align:center;color:#6B7280;">Sin flechas colocadas todavía.</td></tr>`}</tbody>
   </table>
   <script>
     window.addEventListener('load', function(){ setTimeout(function(){ window.focus(); window.print(); }, 400); });
@@ -6579,7 +6566,7 @@ const RENDER_POR_MAPA = {
   Extintores: renderMarcadoresExtintores,
   Trampas: renderMarcadoresTrampas,
   Encuentro: renderMarcadoresEncuentro,
-  Evacuacion: ()=>renderRutasEvacuacion()
+  Evacuacion: renderFlechasEvacuacion
 };
 function cambiarPlano(mapaId, plano){
   SETTER_PLANO[mapaId](plano);
@@ -6614,147 +6601,115 @@ document.querySelectorAll('#filtroPlanoEvacuacion [data-planoev]').forEach(btn=>
 });
 
 /* ============================================================
-   RUTAS DE EVACUACIÓN — a diferencia de los demás marcadores (un solo
-   punto), una ruta es una serie de puntos conectados en línea, dibujados
-   uno por uno tocando el plano en modo "dibujar". Queda guardada como una
-   lista de coordenadas (%), y se pinta encima del plano con SVG.
+   RUTAS DE EVACUACIÓN — flechas individuales, cada una colocada con un
+   clic (igual que un extintor) y orientada hacia donde el usuario elija
+   con la brújula de 8 direcciones. No van conectadas entre sí: cada una
+   es independiente, así que se pueden ir sembrando a lo largo del
+   camino real de salida sin quedar atadas a una sola línea recta.
    ============================================================ */
-let dibujandoRuta = false;
-let rutaEnProgreso = [];
-let rutaEnEdicionId = null;
+let flechaEnEdicionId = null;
+let flechaAnguloElegido = 0;
+let flechaPosicionNueva = null; // {x,y} mientras se crea una
 
-function iconoFlechaSVG(x1,y1,x2,y2,color){
-  const angulo = Math.atan2(y2-y1, x2-x1) * 180/Math.PI;
-  return `<g transform="translate(${x2},${y2}) rotate(${angulo})">
-    <path d="M0,0 L-3.2,-1.6 L-2.2,0 L-3.2,1.6 Z" fill="${color}"/>
-  </g>`;
+function iconoFlechaMarker(){
+  return `<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 2 L19.5 21 L12 16.5 L4.5 21 Z" fill="#E0342A" stroke="#011632" stroke-width="1"/></svg>`;
 }
-function construirPolylineSVG(puntos, color, punteada){
-  if(puntos.length<2) return '';
-  const pts = puntos.map(p=>`${p.x},${p.y}`).join(' ');
-  const flecha = puntos.length>=2 ? iconoFlechaSVG(puntos[puntos.length-2].x, puntos[puntos.length-2].y, puntos[puntos.length-1].x, puntos[puntos.length-1].y, color) : '';
-  return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" ${punteada?'stroke-dasharray="2,1.5"':''}/>${flecha}`;
-}
-function renderRutasEvacuacion(){
-  const svg = document.getElementById('svgRutasEvacuacion');
-  const delPlano = rutasEvacuacion.filter(r=>(r.plano||'principal')===planoActualEvacuacion);
-  let html = delPlano.map(r=>{
-    const linea = construirPolylineSVG(r.puntos, r.color, false);
-    return `<g style="pointer-events:stroke;cursor:pointer;" data-rutaid="${r.id}">${linea}</g>`;
-  }).join('');
-  if(dibujandoRuta && rutaEnProgreso.length){
-    html += construirPolylineSVG(rutaEnProgreso, '#F29622', true);
-    html += rutaEnProgreso.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="1" fill="#F29622" stroke="#fff" stroke-width=".3"/>`).join('');
-  }
-  svg.innerHTML = html;
-  svg.querySelectorAll('[data-rutaid]').forEach(g=>{
-    g.addEventListener('click', (ev)=>{
-      ev.stopPropagation();
-      const r = rutasEvacuacion.find(x=>x.id===g.dataset.rutaid);
-      if(r) abrirRutaExistente(r);
-    });
+function renderFlechasEvacuacion(){
+  const wrap = document.getElementById('mapaEvacuacionInner');
+  wrap.querySelectorAll('.mapa-marker').forEach(m=>m.remove());
+  const delPlano = flechasEvacuacion.filter(f=>(f.plano||'principal')===planoActualEvacuacion);
+  delPlano.forEach(f=>{
+    const dot = document.createElement('div');
+    dot.className = 'mapa-marker mapa-marker-icono';
+    dot.style.left = f.x+'%';
+    dot.style.top = f.y+'%';
+    dot.style.transform = `translate(-50%,-50%) rotate(${f.angulo}deg)`;
+    dot.innerHTML = iconoFlechaMarker();
+    dot.title = 'Ruta de evacuación' + (f.notas ? ' — '+f.notas : '');
+    dot.addEventListener('click', (ev)=>{ ev.stopPropagation(); abrirFlechaExistente(f); });
+    wrap.appendChild(dot);
   });
-  document.getElementById('contadorEvacuacion').textContent = rutasEvacuacion.length;
+  document.getElementById('contadorEvacuacion').textContent = flechasEvacuacion.length;
 
+  const NOMBRE_DIRECCION = {0:'↑ Arriba', 45:'↗ Arriba-derecha', 90:'→ Derecha', 135:'↘ Abajo-derecha', 180:'↓ Abajo', 225:'↙ Abajo-izquierda', 270:'← Izquierda', 315:'↖ Arriba-izquierda'};
   const tbody = document.getElementById('listaEvacuacionBody');
-  tbody.innerHTML = rutasEvacuacion.length ? rutasEvacuacion.map(r=>`
+  tbody.innerHTML = flechasEvacuacion.length ? flechasEvacuacion.map(f=>`
     <tr>
-      <td style="font-size:12px;color:var(--gray);">${r.plano==='segundo-piso' ? '2do piso' : 'Planta principal'}</td>
-      <td><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${r.color};vertical-align:middle;"></span></td>
-      <td>${r.puntos.length}</td>
-      <td>${esc(r.notas)||'—'}</td>
-      <td><button class="ghost" data-editarruta="${r.id}">Editar</button></td>
-    </tr>`).join('') : `<tr><td colspan="5" class="empty">Aún no has dibujado ninguna ruta.</td></tr>`;
-  tbody.querySelectorAll('[data-editarruta]').forEach(btn=>{
+      <td style="font-size:12px;color:var(--gray);">${f.plano==='segundo-piso' ? '2do piso' : 'Planta principal'}</td>
+      <td>${NOMBRE_DIRECCION[f.angulo]||f.angulo+'°'}</td>
+      <td>${esc(f.notas)||'—'}</td>
+      <td><button class="ghost" data-editarflecha="${f.id}">Editar</button></td>
+    </tr>`).join('') : `<tr><td colspan="4" class="empty">Aún no has colocado ninguna flecha.</td></tr>`;
+  tbody.querySelectorAll('[data-editarflecha]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const r = rutasEvacuacion.find(x=>x.id===btn.dataset.editarruta);
-      if(r) abrirRutaExistente(r);
+      const f = flechasEvacuacion.find(x=>x.id===btn.dataset.editarflecha);
+      if(f) abrirFlechaExistente(f);
     });
   });
 }
 
-function actualizarUIModoDibujo(){
-  document.getElementById('mapaControlesInicio').style.display = dibujandoRuta ? 'none' : 'flex';
-  document.getElementById('mapaDibujoControles').style.display = dibujandoRuta ? 'flex' : 'none';
-  document.getElementById('rutaEnCursoTexto').textContent = dibujandoRuta ? `${rutaEnProgreso.length} punto(s)` : '';
-  document.getElementById('evacuacionInstrucciones').textContent = dibujandoRuta
-    ? 'Toca el plano en orden para ir trazando el camino. Cuando termines, toca "Finalizar".'
-    : 'Toca "Dibujar nueva ruta" y luego toca el plano en orden para trazar el camino de salida. Toca una ruta ya dibujada para editar sus notas o borrarla.';
+function seleccionarAnguloCompass(angulo){
+  flechaAnguloElegido = angulo;
+  document.querySelectorAll('#flechaCompass [data-angulo]').forEach(b=>{
+    b.classList.toggle('active', Number(b.dataset.angulo)===angulo);
+  });
 }
-document.getElementById('btnDibujarRuta').addEventListener('click', ()=>{
-  dibujandoRuta = true;
-  rutaEnProgreso = [];
-  if(!document.getElementById('mapaEvacuacionOuter').classList.contains('mapa-fs-animando')){
-    abrirMapaFullscreen('Evacuacion');
-  }
-  actualizarUIModoDibujo();
-  renderRutasEvacuacion();
+document.querySelectorAll('#flechaCompass [data-angulo]').forEach(btn=>{
+  btn.addEventListener('click', ()=> seleccionarAnguloCompass(Number(btn.dataset.angulo)));
 });
-document.getElementById('btnCancelarRuta').addEventListener('click', ()=>{
-  dibujandoRuta = false;
-  rutaEnProgreso = [];
-  actualizarUIModoDibujo();
-  renderRutasEvacuacion();
-});
-document.getElementById('btnFinalizarRuta').addEventListener('click', ()=>{
-  if(rutaEnProgreso.length<2){ showToast('Toca al menos 2 puntos en el plano para formar una línea.'); return; }
-  rutaEnEdicionId = null;
-  document.getElementById('rutaModalTitulo').textContent = 'Nueva ruta de evacuación';
-  document.getElementById('rutaColor').value = '#E0342A';
-  document.getElementById('rutaNotas').value = '';
-  document.getElementById('btnEliminarRuta').style.display = 'none';
-  document.getElementById('rutaModalBg').classList.add('active');
-});
-function abrirRutaExistente(r){
-  rutaEnEdicionId = r.id;
-  document.getElementById('rutaModalTitulo').textContent = 'Editar ruta de evacuación';
-  document.getElementById('rutaColor').value = r.color;
-  document.getElementById('rutaNotas').value = r.notas || '';
-  document.getElementById('btnEliminarRuta').style.display = 'inline-block';
-  document.getElementById('rutaModalBg').classList.add('active');
+
+function abrirFlechaNueva(x, y){
+  flechaEnEdicionId = null;
+  flechaPosicionNueva = {x, y};
+  document.getElementById('flechaModalTitulo').textContent = 'Nueva flecha de evacuación';
+  document.getElementById('flechaNotas').value = '';
+  document.getElementById('btnEliminarFlecha').style.display = 'none';
+  seleccionarAnguloCompass(0);
+  document.getElementById('flechaModalBg').classList.add('active');
 }
-document.getElementById('btnCancelarRutaModal').addEventListener('click', ()=>{
-  document.getElementById('rutaModalBg').classList.remove('active');
+function abrirFlechaExistente(f){
+  flechaEnEdicionId = f.id;
+  flechaPosicionNueva = null;
+  document.getElementById('flechaModalTitulo').textContent = 'Editar flecha de evacuación';
+  document.getElementById('flechaNotas').value = f.notas || '';
+  document.getElementById('btnEliminarFlecha').style.display = 'inline-block';
+  seleccionarAnguloCompass(f.angulo);
+  document.getElementById('flechaModalBg').classList.add('active');
+}
+document.getElementById('btnCancelarFlecha').addEventListener('click', ()=>{
+  document.getElementById('flechaModalBg').classList.remove('active');
 });
-document.getElementById('btnGuardarRuta').addEventListener('click', async ()=>{
-  const color = document.getElementById('rutaColor').value;
-  const notas = document.getElementById('rutaNotas').value.trim();
-  if(rutaEnEdicionId){
-    const r = rutasEvacuacion.find(x=>x.id===rutaEnEdicionId);
-    if(r){ r.color = color; r.notas = notas; }
+document.getElementById('btnGuardarFlecha').addEventListener('click', async ()=>{
+  const notas = document.getElementById('flechaNotas').value.trim();
+  if(flechaEnEdicionId){
+    const f = flechasEvacuacion.find(x=>x.id===flechaEnEdicionId);
+    if(f){ f.angulo = flechaAnguloElegido; f.notas = notas; }
   }else{
-    rutasEvacuacion.push({id: uid(), plano: planoActualEvacuacion, puntos: rutaEnProgreso, color, notas, createdAt: new Date().toISOString()});
-    dibujandoRuta = false;
-    rutaEnProgreso = [];
-    actualizarUIModoDibujo();
+    flechasEvacuacion.push({id: uid(), x: flechaPosicionNueva.x, y: flechaPosicionNueva.y, plano: planoActualEvacuacion, angulo: flechaAnguloElegido, notas, createdAt: new Date().toISOString()});
   }
-  await saveRutasEvacuacion();
-  document.getElementById('rutaModalBg').classList.remove('active');
-  renderRutasEvacuacion();
-  showToast('Ruta guardada.');
+  await saveFlechasEvacuacion();
+  document.getElementById('flechaModalBg').classList.remove('active');
+  renderFlechasEvacuacion();
+  showToast('Guardado.');
 });
-document.getElementById('btnEliminarRuta').addEventListener('click', async ()=>{
-  if(!rutaEnEdicionId) return;
-  if(!await customConfirm('¿Eliminar esta ruta de evacuación?')) return;
-  rutasEvacuacion = rutasEvacuacion.filter(x=>x.id!==rutaEnEdicionId);
-  await saveRutasEvacuacion();
-  document.getElementById('rutaModalBg').classList.remove('active');
-  renderRutasEvacuacion();
-  showToast('Ruta eliminada.');
+document.getElementById('btnEliminarFlecha').addEventListener('click', async ()=>{
+  if(!flechaEnEdicionId) return;
+  if(!await customConfirm('¿Quitar esta flecha del plano?')) return;
+  flechasEvacuacion = flechasEvacuacion.filter(x=>x.id!==flechaEnEdicionId);
+  await saveFlechasEvacuacion();
+  document.getElementById('flechaModalBg').classList.remove('active');
+  renderFlechasEvacuacion();
+  showToast('Flecha eliminada.');
 });
 document.getElementById('imgMapaEvacuacion').closest('.mapa-inner').addEventListener('click', (ev)=>{
-  if(!dibujandoRuta){
-    if(!document.getElementById('mapaEvacuacionOuter').classList.contains('mapa-fs-animando')){
-      abrirMapaFullscreen('Evacuacion');
-    }
+  if(!document.getElementById('mapaEvacuacionOuter').classList.contains('mapa-fs-animando')){
+    abrirMapaFullscreen('Evacuacion');
     return;
   }
   const rect = ev.currentTarget.getBoundingClientRect();
   const x = Number((((ev.clientX-rect.left)/rect.width)*100).toFixed(2));
   const y = Number((((ev.clientY-rect.top)/rect.height)*100).toFixed(2));
-  rutaEnProgreso.push({x,y});
-  actualizarUIModoDibujo();
-  renderRutasEvacuacion();
+  abrirFlechaNueva(x, y);
 });
 
 /* ============================================================
@@ -7936,7 +7891,7 @@ function openMantSub(name){
   document.getElementById('mantSubHorasExtra').style.display = name==='horasextra' ? 'block' : 'none';
   if(name==='requisiciones'){ showReqLista(); }
   if(name==='reportes'){ cargarReportesRecibidos(); }
-  if(name==='mapas'){ renderMarcadoresExtintores(); renderMarcadoresTrampas(); renderMarcadoresEncuentro(); renderRutasEvacuacion(); }
+  if(name==='mapas'){ renderMarcadoresExtintores(); renderMarcadoresTrampas(); renderMarcadoresEncuentro(); renderFlechasEvacuacion(); }
   if(name==='horasextra'){ renderHorasExtra(); }
 }
 document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEach(btn=>{
