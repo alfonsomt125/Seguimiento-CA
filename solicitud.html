@@ -689,11 +689,11 @@ function renderItems(){
       <span class="item-num">Material ${idx+1}</span>
       <div class="item-field">
         <label>Descripción de los bienes</label>
-        <input type="text" data-f="descripcion" value="${esc(it.descripcion)}" placeholder="Ej: Resma de papel carta">
+        <input type="text" data-f="descripcion" value="${esc(it.descripcion)}" placeholder="${idx===0 ? 'Ej: Resma de papel carta' : ''}">
       </div>
       <div class="item-field">
         <label>Especificaciones</label>
-        <input type="text" data-f="especificaciones" value="${esc(it.especificaciones)}" placeholder="Ej: 75 gr, blanca">
+        <input type="text" data-f="especificaciones" value="${esc(it.especificaciones)}" placeholder="${idx===0 ? 'Ej: 75 gr, blanca' : ''}">
       </div>
       <div class="item-field item-field-cantidad">
         <label>Cantidad</label>
