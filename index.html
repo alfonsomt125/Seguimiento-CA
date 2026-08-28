@@ -293,6 +293,7 @@
   .mapa-zoom-controls button:hover{background:var(--paper-2);}
   .mapa-marker{position:absolute;width:28px;height:28px;border-radius:50%;transform:translate(-50%,-50%);border:3.5px solid var(--navy,#011632);box-shadow:0 0 0 2px #fff, 0 3px 8px rgba(0,0,0,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;z-index:2;}
   .mapa-marker-icono{width:32px;height:32px;background:#fff;border-width:2px;padding:2px 1px;overflow:hidden;}
+  .mapa-marker-flecha{width:26px;height:26px;background:transparent;border:none;box-shadow:none;}
   .mapa-marker:hover{transform:translate(-50%,-50%) scale(1.15);}
   @keyframes fade{from{opacity:0;transform:translateY(3px);}to{opacity:1;transform:none;}}
 
@@ -6374,7 +6375,7 @@ function construirEvacuacionExportHTML(){
   const urlImagenPlano = 'https://alfonsomt125.github.io/Seguimiento-CA/' + PLANO_IMG[planoActual];
 
   const marcadoresHtml = flechas.map(f=>
-    `<div style="position:absolute;left:${f.x}%;top:${f.y}%;transform:translate(-50%,-50%) rotate(${f.angulo}deg);width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #011632;box-shadow:0 0 0 2px #fff, 0 2px 5px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2 L19.5 21 L12 16.5 L4.5 21 Z" fill="#E0342A" stroke="#011632" stroke-width="1"/></svg></div>`
+    `<div style="position:absolute;left:${f.x}%;top:${f.y}%;transform:translate(-50%,-50%) rotate(${f.angulo}deg);width:22px;height:22px;"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 1 L21 22 L12 17 L3 22 Z" fill="#E0342A"/></svg></div>`
   ).join('');
 
   const NOMBRE_DIRECCION = {0:'↑ Arriba', 45:'↗ Arriba-derecha', 90:'→ Derecha', 135:'↘ Abajo-derecha', 180:'↓ Abajo', 225:'↙ Abajo-izquierda', 270:'← Izquierda', 315:'↖ Arriba-izquierda'};
@@ -6612,7 +6613,7 @@ let flechaAnguloElegido = 0;
 let flechaPosicionNueva = null; // {x,y} mientras se crea una
 
 function iconoFlechaMarker(){
-  return `<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 2 L19.5 21 L12 16.5 L4.5 21 Z" fill="#E0342A" stroke="#011632" stroke-width="1"/></svg>`;
+  return `<svg viewBox="0 0 24 24" width="26" height="26" style="display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));"><path d="M12 1 L21 22 L12 17 L3 22 Z" fill="#E0342A"/></svg>`;
 }
 function renderFlechasEvacuacion(){
   const wrap = document.getElementById('mapaEvacuacionInner');
@@ -6620,7 +6621,7 @@ function renderFlechasEvacuacion(){
   const delPlano = flechasEvacuacion.filter(f=>(f.plano||'principal')===planoActualEvacuacion);
   delPlano.forEach(f=>{
     const dot = document.createElement('div');
-    dot.className = 'mapa-marker mapa-marker-icono';
+    dot.className = 'mapa-marker mapa-marker-flecha';
     dot.style.left = f.x+'%';
     dot.style.top = f.y+'%';
     dot.style.transform = `translate(-50%,-50%) rotate(${f.angulo}deg)`;
