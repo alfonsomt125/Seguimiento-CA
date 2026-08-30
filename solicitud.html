@@ -490,7 +490,7 @@ document.getElementById('btnNuevoPedidoDesdeHistorial').addEventListener('click'
   document.getElementById('subtituloPagina').textContent = usuarioPedidoActual;
   document.getElementById('fSolicitante').value = usuarioPedidoActual;
   document.getElementById('fFecha').value = todayISO();
-  items = Array.from({length:4}, ITEM_VACIO);
+  items = Array.from({length:2}, ITEM_VACIO);
   renderItems();
   mostrarPantalla('screenPedido');
 });
@@ -669,7 +669,7 @@ document.getElementById('btnEnviarReporte').addEventListener('click', async ()=>
 document.getElementById('fFecha').value = todayISO();
 
 const ITEM_VACIO = ()=>({descripcion:'', especificaciones:'', cantidad:'', uso:'', fotoFile:null, fotoPreview:null});
-let items = Array.from({length:4}, ITEM_VACIO);
+let items = Array.from({length:2}, ITEM_VACIO);
 
 function syncItemsFromDOM(){
   const filas = [...document.querySelectorAll('#itemsBody .item-card')];
