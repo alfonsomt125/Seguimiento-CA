@@ -443,6 +443,17 @@ async function intentarIngresoPedido(){
 document.getElementById('btnPinPedidoConfirmar').addEventListener('click', intentarIngresoPedido);
 document.getElementById('pinPedidoInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') intentarIngresoPedido(); });
 
+// Mismo cálculo simple que en la app: compara lo recibido contra lo
+// autorizado (o lo solicitado si Alfonso aún no puso cantidad autorizada).
+function estadoRecepcionPortal(it){
+  const esperado = Number(it.cantidadAutorizada||it.cantidad||0);
+  const recibido = Number(it.cantidadRecibida||0);
+  if(!esperado) return null;
+  if(recibido<=0) return {texto:'Pendiente', color:'var(--gray)', bg:'#EEF0F4'};
+  if(recibido<esperado) return {texto:'Parcial', color:'#B45309', bg:'#FDF0DC'};
+  return {texto:'Completo', color:'var(--green)', bg:'var(--green-bg)'};
+}
+
 async function mostrarHistorialPedido(){
   document.getElementById('historialTitulo').textContent = `Pedidos de ${usuarioPedidoActual}`;
   document.getElementById('tituloPagina').textContent = usuarioPedidoActual;
@@ -464,13 +475,21 @@ async function mostrarHistorialPedido(){
       const fecha = s.fecha_solicitud ? s.fecha_solicitud.split('-').reverse().join('/') : '—';
       const items = Array.isArray(s.items) ? s.items : [];
       const estado = s.estado || 'Pendiente';
+      const filasItems = items.map(it=>{
+        const rec = estadoRecepcionPortal(it);
+        return `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);">
+          <span style="font-size:13px;">${esc(it.descripcion)||'(sin descripción)'}${it.cantidad?` <span style="color:var(--gray);">· pediste ${esc(it.cantidad)}</span>`:''}</span>
+          ${rec ? `<span style="flex-shrink:0;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:20px;color:${rec.color};background:${rec.bg};">${rec.texto}</span>` : ''}
+        </div>`;
+      }).join('');
       return `
       <div class="panel" style="margin-bottom:12px;border:1px solid var(--line);">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <strong style="color:var(--navy);">${fecha}</strong>
-          <span class="hint" style="margin:0;">${estado}</span>
+          <span class="hint" style="margin:0;">${esc(estado)}</span>
         </div>
-        <p class="hint" style="margin:8px 0 0;">${items.map(it=>esc(it.descripcion)).filter(Boolean).join(', ') || 'Sin materiales'}</p>
+        ${filasItems || '<p class="hint" style="margin:8px 0 0;">Sin materiales</p>'}
       </div>`;
     }).join('');
   }catch(e){
