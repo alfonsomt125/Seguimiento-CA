@@ -990,14 +990,24 @@
       </div>
     </div>
     <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
         <h2 style="margin:0;">Requisiciones de Materiales</h2>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="ghost" id="btnVerPapeleraReq">🗑️ Papelera (<span id="reqPapeleraCount">0</span>)</button>
           <button class="primary" id="btnNuevaRequisicion">+ Nueva requisición</button>
         </div>
       </div>
-      <p class="hint" style="margin:0 0 14px;">Formato institucional GA-LO-CO01 — Solicitud de Pedidos a Compras. Toca una fila para editarla.</p>
+      <p class="hint" style="margin:0 0 12px;">Formato institucional GA-LO-CO01 — Solicitud de Pedidos a Compras. Toca una fila para editarla. Marca una requisición como "Compra directa" cuando algo se compró sin pasar por una solicitud previa, para poder armar después el listado de legalización.</p>
+      <div class="year-pills" id="filtroEstadoReq" data-value="" style="margin-bottom:14px;">
+        <button class="year-pill active" data-estadoreq="">Todos</button>
+        <button class="year-pill" data-estadoreq="Pendiente">Pendiente</button>
+        <button class="year-pill" data-estadoreq="Solicitado">Solicitado</button>
+        <button class="year-pill" data-estadoreq="Entregado">Entregado</button>
+        <button class="year-pill" data-estadoreq="legalizar">🧾 Por legalizar</button>
+      </div>
+      <div id="reqExportarLegalizarWrap" style="display:none;margin-bottom:14px;">
+        <button class="ghost" id="btnExportarLegalizar">⬇ Exportar listado para legalizar</button>
+      </div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th>Compras</th><th></th></tr></thead>
@@ -1065,6 +1075,20 @@
         <div class="field" style="grid-column:1/-1;">
           <label>Nombre del solicitante</label>
           <input type="text" id="reqSolicitante">
+        </div>
+      </div>
+
+      <div id="compraDirectaWrap" style="margin-top:16px;padding:14px;border:1px dashed var(--line);border-radius:12px;background:var(--paper-2,#f4f5f8);">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;color:var(--navy);cursor:pointer;">
+          <input type="checkbox" id="reqEsCompraDirecta" style="width:16px;height:16px;">
+          🧾 Esta fue una compra directa (sin solicitud previa)
+        </label>
+        <p class="hint" style="margin:6px 0 0;">Márcalo cuando algo se compró sin pasar por una solicitud del personal — así queda separado para armar el listado de legalización.</p>
+        <div id="reqLegalizadaWrap" style="display:none;margin-top:10px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+            <input type="checkbox" id="reqLegalizada" style="width:16px;height:16px;">
+            Ya la legalicé (envié el listado y quedó formalizada)
+          </label>
         </div>
       </div>
 
@@ -7059,9 +7083,17 @@ document.getElementById('btnGuardarLimitesHE').addEventListener('click', async (
   showToast('Límites actualizados.');
 });
 
+let filtroEstadoReqActual = '';
 function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
-  const filas = requisiciones.filter(r=>!r.eliminada).sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
+  let filas = requisiciones.filter(r=>!r.eliminada);
+  if(filtroEstadoReqActual==='legalizar'){
+    filas = filas.filter(r=>r.esCompraDirecta && !r.legalizada);
+  }else if(filtroEstadoReqActual){
+    filas = filas.filter(r=>(r.estadoCompras||'Pendiente')===filtroEstadoReqActual);
+  }
+  filas = filas.sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
+
   tbody.innerHTML = filas.length ? filas.map(r=>{
     const estado = r.estadoCompras || 'Pendiente';
     const pillClase = estado==='Entregado' ? 'pill-Finalizado' : estado==='Solicitado' ? 'pill-En_proceso' : 'pill-Pendiente';
@@ -7071,25 +7103,29 @@ function renderReqLista(){
     const resumenRecepcion = itemsConDatos.length
       ? `<br><span class="hint" style="margin:0;font-size:11px;">${completos}/${itemsConDatos.length} recibidos${parciales?` · ${parciales} parcial(es)`:''}</span>`
       : '';
+    const insigniaCompraDirecta = r.esCompraDirecta
+      ? `<br><span class="pill" style="background:${r.legalizada?'var(--green-bg)':'#FDF0DC'};color:${r.legalizada?'var(--green)':'#B45309'};margin-top:4px;">🧾 ${r.legalizada?'Legalizada':'Por legalizar'}</span>`
+      : '';
     return `<tr data-verreq="${r.id}" style="cursor:pointer;">
       <td>${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
       <td><strong>${esc(r.areaSeccion)||'—'}</strong></td>
       <td>${esc(r.nombreSolicitante)||'—'}</td>
       <td>${itemsConDatos.length}${resumenRecepcion}</td>
-      <td><span class="pill ${pillClase}">${esc(estado)}</span></td>
+      <td><span class="pill ${pillClase}">${esc(estado)}</span>${insigniaCompraDirecta}</td>
       <td><div class="row-actions">
         ${estado!=='Entregado' ? `<button class="ghost" data-recibido="${r.id}" style="color:var(--green);border-color:var(--green);">✅ Recibido</button>` : ''}
+        ${r.esCompraDirecta && !r.legalizada ? `<button class="ghost" data-legalizar="${r.id}" style="color:#B45309;border-color:#B45309;">🧾 Legalizada</button>` : ''}
         <button class="ghost" data-editreq="${r.id}">Editar</button>
         <button class="ghost danger" data-delreq="${r.id}">Eliminar</button>
       </div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="6" class="empty">Aún no has creado ninguna requisición.</td></tr>`;
+  }).join('') : `<tr><td colspan="6" class="empty">${filtroEstadoReqActual ? 'No hay requisiciones que coincidan con este filtro.' : 'Aún no has creado ninguna requisición.'}</td></tr>`;
 
   document.getElementById('reqPapeleraCount').textContent = requisiciones.filter(r=>r.eliminada).length;
 
   tbody.querySelectorAll('[data-verreq]').forEach(tr=>{
     tr.addEventListener('click', (e)=>{
-      if(e.target.closest('[data-delreq]') || e.target.closest('[data-recibido]')) return;
+      if(e.target.closest('[data-delreq]') || e.target.closest('[data-recibido]') || e.target.closest('[data-legalizar]')) return;
       openReqEditor(tr.dataset.verreq);
     });
   });
@@ -7098,6 +7134,17 @@ function renderReqLista(){
   });
   tbody.querySelectorAll('[data-recibido]').forEach(btn=>{
     btn.addEventListener('click', (e)=>{ e.stopPropagation(); abrirMarcarRecibido(btn.dataset.recibido); });
+  });
+  tbody.querySelectorAll('[data-legalizar]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const idx = requisiciones.findIndex(r=>r.id===btn.dataset.legalizar);
+      if(idx===-1) return;
+      requisiciones[idx] = {...requisiciones[idx], legalizada:true};
+      await saveRequisiciones();
+      renderReqLista();
+      showToast('Marcada como legalizada.');
+    });
   });
   tbody.querySelectorAll('[data-delreq]').forEach(btn=>{
     btn.addEventListener('click', async (e)=>{
@@ -7111,6 +7158,63 @@ function renderReqLista(){
     });
   });
 }
+document.querySelectorAll('#filtroEstadoReq [data-estadoreq]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    filtroEstadoReqActual = btn.dataset.estadoreq;
+    document.querySelectorAll('#filtroEstadoReq [data-estadoreq]').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('reqExportarLegalizarWrap').style.display = filtroEstadoReqActual==='legalizar' ? 'block' : 'none';
+    renderReqLista();
+  });
+});
+
+function construirLegalizarHTML(){
+  const pendientes = requisiciones.filter(r=>!r.eliminada && r.esCompraDirecta && !r.legalizada)
+    .sort((a,b)=>(a.fechaSolicitud||'').localeCompare(b.fechaSolicitud||''));
+  const filas = pendientes.map((r,i)=>{
+    const desc = (r.items||[]).filter(it=>it.descripcion).map(it=>it.descripcion).join(', ') || '—';
+    return `<tr>
+      <td style="border:1px solid #000;padding:6px;text-align:center;">${i+1}</td>
+      <td style="border:1px solid #000;padding:6px;text-align:center;">${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
+      <td style="border:1px solid #000;padding:6px;">${esc(r.areaSeccion)||'—'}</td>
+      <td style="border:1px solid #000;padding:6px;">${esc(r.nombreSolicitante)||'—'}</td>
+      <td style="border:1px solid #000;padding:6px;">${esc(desc)}</td>
+    </tr>`;
+  }).join('');
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Listado de compras por legalizar — ${todayISO()}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:14mm 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;}
+  .btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} body{margin:8mm 10mm;} }
+</style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Listado de compras directas por legalizar</div>
+  <div style="font-size:11px;color:#6B7280;margin-bottom:14px;">Generado el ${new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'})}. Total: ${pendientes.length} compra(s) sin legalizar.</div>
+  <table>
+    <thead><tr style="background:#BDD7EE;font-weight:700;">
+      <th style="border:1px solid #000;padding:6px;width:32px;">No.</th>
+      <th style="border:1px solid #000;padding:6px;width:90px;">Fecha</th>
+      <th style="border:1px solid #000;padding:6px;">Área / Sección</th>
+      <th style="border:1px solid #000;padding:6px;">Solicitante</th>
+      <th style="border:1px solid #000;padding:6px;">Materiales comprados</th>
+    </tr></thead>
+    <tbody>${filas || `<tr><td colspan="5" style="border:1px solid #000;padding:10px;text-align:center;color:#6B7280;">No hay compras pendientes de legalizar.</td></tr>`}</tbody>
+  </table>
+  <script>
+    window.addEventListener('load', function(){ setTimeout(function(){ window.focus(); window.print(); }, 400); });
+  <\/script>
+</body></html>`;
+}
+document.getElementById('btnExportarLegalizar').addEventListener('click', ()=>{
+  const win = window.open('', '_blank');
+  if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
+  win.document.open();
+  win.document.write(construirLegalizarHTML());
+  win.document.close();
+  showToast('Se abrió una pestaña nueva con el listado. Ahí eliges "Guardar como PDF".');
+});
 
 /* Marcar rápido como recibido, directo desde la lista, sin tener que abrir
    el editor completo — útil cuando solo quieres registrar la fecha en que
@@ -7213,6 +7317,10 @@ function openReqEditor(reqId){
   document.getElementById('reqSolicitante').value = r?.nombreSolicitante || '';
   document.getElementById('btnEliminarRequisicion').style.display = r ? 'inline-block' : 'none';
 
+  document.getElementById('reqEsCompraDirecta').checked = !!r?.esCompraDirecta;
+  document.getElementById('reqLegalizada').checked = !!r?.legalizada;
+  document.getElementById('reqLegalizadaWrap').style.display = r?.esCompraDirecta ? 'block' : 'none';
+
   currentReqItems = r ? JSON.parse(JSON.stringify(r.items||[])) : Array.from({length:5}, REQ_ITEM_VACIO);
   if(!currentReqItems.length) currentReqItems = Array.from({length:5}, REQ_ITEM_VACIO);
   renderReqItemsTable();
@@ -7224,6 +7332,10 @@ function openReqEditor(reqId){
   document.getElementById('reqEditWrap').style.display = 'block';
   window.scrollTo({top:0, behavior:'instant'});
 }
+document.getElementById('reqEsCompraDirecta').addEventListener('change', (e)=>{
+  document.getElementById('reqLegalizadaWrap').style.display = e.target.checked ? 'block' : 'none';
+  if(!e.target.checked) document.getElementById('reqLegalizada').checked = false;
+});
 
 /* Seguimiento con Compras: Pendiente -> Solicitado -> Entregado. La fecha
    de entrega se escribe a mano (Compras no siempre avisa el mismo día),
@@ -7413,7 +7525,9 @@ document.getElementById('btnGuardarRequisicion').addEventListener('click', async
     areaSeccion,
     centroCostos: document.getElementById('reqCentroCostos').value.trim(),
     nombreSolicitante,
-    items: itemsConDatos
+    items: itemsConDatos,
+    esCompraDirecta: document.getElementById('reqEsCompraDirecta').checked,
+    legalizada: document.getElementById('reqEsCompraDirecta').checked ? document.getElementById('reqLegalizada').checked : false
   };
 
   if(currentReqId){
