@@ -459,6 +459,31 @@
   .table-wrap td, .table-wrap th{padding-left:14px;}
   #aireAlertasPanel .table-wrap thead th{position:sticky;top:0;background:#fff;z-index:1;}
 
+  /* Materiales de una requisición (editor y modal de revisar solicitud):
+     tarjetas con flexbox en vez de una tabla ancha, así se ven completas
+     en celular, tablet, y PC sin necesitar scroll horizontal. */
+  .req-items-list{display:flex;flex-direction:column;gap:12px;margin-top:10px;}
+  .req-item-card{
+    position:relative;display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end;
+    background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 12px 12px;
+  }
+  .req-item-num{
+    position:absolute;top:-9px;left:12px;background:var(--navy);color:#fff;
+    font-size:10.5px;font-weight:700;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .req-item-field{display:flex;flex-direction:column;gap:4px;flex:2 1 150px;min-width:0;}
+  .req-item-field-cant{flex:0 1 84px;}
+  .req-item-field label{font-size:10.5px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.02em;}
+  .req-item-del-wrap{flex:0 0 auto;margin-left:auto;}
+  .req-item-del-wrap .entry-del{position:static;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;}
+  .req-item-del-wrap .entry-del:hover{background:var(--red-bg,#FCEAEA);border-color:var(--red,#E0342A);}
+  @media(max-width:640px){
+    .req-item-field, .req-item-field-cant{flex:1 1 100%;}
+    .req-item-del-wrap{margin-left:0;width:100%;}
+    .req-item-del-wrap .entry-del{width:100%;text-align:center;}
+  }
+
   /* Gantt chart */
   .gantt-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px;}
   .gantt{display:flex;flex-direction:column;min-width:800px;}
@@ -1036,15 +1061,7 @@
       </div>
 
       <h3 style="margin:22px 0 10px;font-size:14px;color:var(--navy);">Descripción de los bienes</h3>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th style="width:36px;">No.</th><th>Descripción de los bienes</th><th>Especificaciones</th>
-            <th style="width:100px;">Cant. Solicitada</th><th style="width:100px;">Cant. Autorizada</th><th>Uso</th><th></th>
-          </tr></thead>
-          <tbody id="reqItemsBody"></tbody>
-        </table>
-      </div>
+      <div class="req-items-list" id="reqItemsBody"></div>
       <div class="modal-actions" style="justify-content:flex-start;margin-top:12px;">
         <button class="ghost" id="btnAgregarLineaReq">+ Agregar línea</button>
       </div>
@@ -1481,15 +1498,7 @@
       </div>
 
       <h3 style="margin:20px 0 10px;font-size:14px;color:var(--navy);">Materiales solicitados</h3>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th style="width:32px;">No.</th><th>Descripción de los bienes</th><th>Especificaciones</th>
-            <th style="width:100px;">Cant. Solicitada</th><th style="width:100px;">Cant. Autorizada</th><th>Uso</th><th></th>
-          </tr></thead>
-          <tbody id="revItemsBody"></tbody>
-        </table>
-      </div>
+      <div class="req-items-list" id="revItemsBody"></div>
       <div class="modal-actions" style="justify-content:flex-start;margin-top:10px;">
         <button class="ghost" id="btnAgregarLineaRev">+ Agregar línea</button>
       </div>
@@ -5524,7 +5533,7 @@ let revisarSolId = null;
 let revisarSolItems = [];
 
 function syncRevisarSolItemsFromDOM(){
-  const filas = [...document.querySelectorAll('#revItemsBody tr')];
+  const filas = [...document.querySelectorAll('#revItemsBody .req-item-card')];
   revisarSolItems = filas.map(tr=>({
     descripcion: tr.querySelector('[data-revf="descripcion"]').value.trim(),
     especificaciones: tr.querySelector('[data-revf="especificaciones"]').value.trim(),
@@ -5536,15 +5545,32 @@ function syncRevisarSolItemsFromDOM(){
 function renderRevisarSolItems(){
   const tbody = document.getElementById('revItemsBody');
   tbody.innerHTML = revisarSolItems.map((it,idx)=>`
-    <tr>
-      <td style="text-align:center;color:var(--gray);">${idx+1}</td>
-      <td><input type="text" data-revf="descripcion" value="${esc(it.descripcion)}"></td>
-      <td><input type="text" data-revf="especificaciones" value="${esc(it.especificaciones)}"></td>
-      <td><input type="text" data-revf="cantidadSolicitada" value="${esc(it.cantidad)}" style="text-align:center;"></td>
-      <td><input type="text" data-revf="cantidadAutorizada" value="${esc(it.cantidadAutorizada)}" style="text-align:center;"></td>
-      <td><input type="text" data-revf="uso" value="${esc(it.uso)}"></td>
-      <td><span class="entry-del" data-delrevitem="${idx}" title="Quitar línea" style="cursor:pointer;">✕</span></td>
-    </tr>`).join('');
+    <div class="req-item-card">
+      <span class="req-item-num">${idx+1}</span>
+      <div class="req-item-field">
+        <label>Descripción de los bienes</label>
+        <input type="text" data-revf="descripcion" value="${esc(it.descripcion)}">
+      </div>
+      <div class="req-item-field">
+        <label>Especificaciones</label>
+        <input type="text" data-revf="especificaciones" value="${esc(it.especificaciones)}">
+      </div>
+      <div class="req-item-field req-item-field-cant">
+        <label>Cant. Solicitada</label>
+        <input type="text" data-revf="cantidadSolicitada" value="${esc(it.cantidad)}" style="text-align:center;">
+      </div>
+      <div class="req-item-field req-item-field-cant">
+        <label>Cant. Autorizada</label>
+        <input type="text" data-revf="cantidadAutorizada" value="${esc(it.cantidadAutorizada)}" style="text-align:center;">
+      </div>
+      <div class="req-item-field">
+        <label>Uso</label>
+        <input type="text" data-revf="uso" value="${esc(it.uso)}">
+      </div>
+      <div class="req-item-del-wrap">
+        <span class="entry-del" data-delrevitem="${idx}" title="Quitar línea" style="cursor:pointer;">✕ Quitar</span>
+      </div>
+    </div>`).join('');
   tbody.querySelectorAll('[data-delrevitem]').forEach(el=>{
     el.addEventListener('click', ()=>{
       syncRevisarSolItemsFromDOM();
@@ -7136,7 +7162,7 @@ document.getElementById('btnReabrirCompras').addEventListener('click', async ()=
    o quitar una línea, y antes de guardar/exportar, para no perder nada de
    lo que ya se había escrito al volver a dibujar la tabla. */
 function syncReqItemsFromDOM(){
-  const filas = [...document.querySelectorAll('#reqItemsBody tr')];
+  const filas = [...document.querySelectorAll('#reqItemsBody .req-item-card')];
   currentReqItems = filas.map(tr=>({
     descripcion: tr.querySelector('[data-reqf="descripcion"]').value.trim(),
     especificaciones: tr.querySelector('[data-reqf="especificaciones"]').value.trim(),
@@ -7149,15 +7175,32 @@ function syncReqItemsFromDOM(){
 function renderReqItemsTable(){
   const tbody = document.getElementById('reqItemsBody');
   tbody.innerHTML = currentReqItems.map((it,idx)=>`
-    <tr>
-      <td style="text-align:center;color:var(--gray);">${idx+1}</td>
-      <td><input type="text" data-reqf="descripcion" value="${esc(it.descripcion)}" placeholder="Ej: Resma de papel carta"></td>
-      <td><input type="text" data-reqf="especificaciones" value="${esc(it.especificaciones)}" placeholder="Ej: 75 gr, blanca"></td>
-      <td><input type="text" data-reqf="cantidadSolicitada" value="${esc(it.cantidadSolicitada)}" style="text-align:center;"></td>
-      <td><input type="text" data-reqf="cantidadAutorizada" value="${esc(it.cantidadAutorizada)}" style="text-align:center;"></td>
-      <td><input type="text" data-reqf="uso" value="${esc(it.uso)}"></td>
-      <td><span class="entry-del" data-delreqitem="${idx}" title="Quitar línea" style="cursor:pointer;">✕</span></td>
-    </tr>`).join('');
+    <div class="req-item-card">
+      <span class="req-item-num">${idx+1}</span>
+      <div class="req-item-field">
+        <label>Descripción de los bienes</label>
+        <input type="text" data-reqf="descripcion" value="${esc(it.descripcion)}" placeholder="${idx===0 ? 'Ej: Resma de papel carta' : ''}">
+      </div>
+      <div class="req-item-field">
+        <label>Especificaciones</label>
+        <input type="text" data-reqf="especificaciones" value="${esc(it.especificaciones)}" placeholder="${idx===0 ? 'Ej: 75 gr, blanca' : ''}">
+      </div>
+      <div class="req-item-field req-item-field-cant">
+        <label>Cant. Solicitada</label>
+        <input type="text" data-reqf="cantidadSolicitada" value="${esc(it.cantidadSolicitada)}" style="text-align:center;">
+      </div>
+      <div class="req-item-field req-item-field-cant">
+        <label>Cant. Autorizada</label>
+        <input type="text" data-reqf="cantidadAutorizada" value="${esc(it.cantidadAutorizada)}" style="text-align:center;">
+      </div>
+      <div class="req-item-field">
+        <label>Uso</label>
+        <input type="text" data-reqf="uso" value="${esc(it.uso)}">
+      </div>
+      <div class="req-item-del-wrap">
+        <span class="entry-del" data-delreqitem="${idx}" title="Quitar línea" style="cursor:pointer;">✕ Quitar</span>
+      </div>
+    </div>`).join('');
   tbody.querySelectorAll('[data-delreqitem]').forEach(el=>{
     el.addEventListener('click', ()=>{
       syncReqItemsFromDOM();
