@@ -478,10 +478,16 @@
   .req-item-del-wrap{flex:0 0 auto;margin-left:auto;}
   .req-item-del-wrap .entry-del{position:static;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;}
   .req-item-del-wrap .entry-del:hover{background:var(--red-bg,#FCEAEA);border-color:var(--red,#E0342A);}
+  .req-item-recibido-row{
+    flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 12px;
+    margin-top:6px;padding-top:12px;border-top:1px dashed var(--line);
+  }
   @media(max-width:640px){
     .req-item-field, .req-item-field-cant{flex:1 1 100%;}
     .req-item-del-wrap{margin-left:0;width:100%;}
     .req-item-del-wrap .entry-del{width:100%;text-align:center;}
+    .req-item-recibido-row{flex-direction:column;align-items:stretch;}
+    .req-item-recibido-row button{width:100%;}
   }
 
   /* Gantt chart */
@@ -6931,11 +6937,17 @@ function renderReqLista(){
   tbody.innerHTML = filas.length ? filas.map(r=>{
     const estado = r.estadoCompras || 'Pendiente';
     const pillClase = estado==='Entregado' ? 'pill-Finalizado' : estado==='Solicitado' ? 'pill-En_proceso' : 'pill-Pendiente';
+    const itemsConDatos = (r.items||[]).filter(it=>it.descripcion);
+    const completos = itemsConDatos.filter(it=>estadoRecepcionItem(it).texto==='Completo').length;
+    const parciales = itemsConDatos.filter(it=>estadoRecepcionItem(it).texto==='Parcial').length;
+    const resumenRecepcion = itemsConDatos.length
+      ? `<br><span class="hint" style="margin:0;font-size:11px;">${completos}/${itemsConDatos.length} recibidos${parciales?` · ${parciales} parcial(es)`:''}</span>`
+      : '';
     return `<tr data-verreq="${r.id}" style="cursor:pointer;">
       <td>${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
       <td><strong>${esc(r.areaSeccion)||'—'}</strong></td>
       <td>${esc(r.nombreSolicitante)||'—'}</td>
-      <td>${(r.items||[]).filter(it=>it.descripcion).length}</td>
+      <td>${itemsConDatos.length}${resumenRecepcion}</td>
       <td><span class="pill ${pillClase}">${esc(estado)}</span></td>
       <td><div class="row-actions">
         ${estado!=='Entregado' ? `<button class="ghost" data-recibido="${r.id}" style="color:var(--green);border-color:var(--green);">✅ Recibido</button>` : ''}
@@ -7060,7 +7072,7 @@ document.getElementById('btnCerrarPapeleraReq').addEventListener('click', ()=>{
   document.getElementById('reqPapeleraWrap').style.display = 'none';
 });
 
-const REQ_ITEM_VACIO = ()=>({descripcion:'', especificaciones:'', cantidadSolicitada:'', cantidadAutorizada:'', uso:''});
+const REQ_ITEM_VACIO = ()=>({descripcion:'', especificaciones:'', cantidadSolicitada:'', cantidadAutorizada:'', uso:'', cantidadRecibida:''});
 
 function openReqEditor(reqId){
   const r = reqId ? requisiciones.find(x=>x.id===reqId) : null;
@@ -7169,12 +7181,28 @@ function syncReqItemsFromDOM(){
     cantidadSolicitada: tr.querySelector('[data-reqf="cantidadSolicitada"]').value.trim(),
     cantidadAutorizada: tr.querySelector('[data-reqf="cantidadAutorizada"]').value.trim(),
     uso: tr.querySelector('[data-reqf="uso"]').value.trim(),
+    cantidadRecibida: tr.querySelector('[data-reqf="cantidadRecibida"]').value.trim(),
   }));
+}
+
+/* Estado de recepción de una línea: se calcula solo, comparando lo
+   recibido contra lo autorizado (o lo solicitado si no hay autorizada
+   todavía) — así se puede marcar cada material como recibido parcial o
+   completo, sin depender del estado general de toda la requisición. */
+function estadoRecepcionItem(it){
+  const esperado = Number(it.cantidadAutorizada||it.cantidadSolicitada||0);
+  const recibido = Number(it.cantidadRecibida||0);
+  if(!esperado) return {texto:'Sin cantidad', clase:''};
+  if(recibido<=0) return {texto:'Pendiente', clase:'pill-Pendiente'};
+  if(recibido<esperado) return {texto:'Parcial', clase:'pill-En_proceso'};
+  return {texto:'Completo', clase:'pill-Finalizado'};
 }
 
 function renderReqItemsTable(){
   const tbody = document.getElementById('reqItemsBody');
-  tbody.innerHTML = currentReqItems.map((it,idx)=>`
+  tbody.innerHTML = currentReqItems.map((it,idx)=>{
+    const estado = estadoRecepcionItem(it);
+    return `
     <div class="req-item-card">
       <span class="req-item-num">${idx+1}</span>
       <div class="req-item-field">
@@ -7200,12 +7228,37 @@ function renderReqItemsTable(){
       <div class="req-item-del-wrap">
         <span class="entry-del" data-delreqitem="${idx}" title="Quitar línea" style="cursor:pointer;">✕ Quitar</span>
       </div>
-    </div>`).join('');
+      <div class="req-item-recibido-row">
+        <div class="req-item-field req-item-field-cant">
+          <label>Cant. Recibida</label>
+          <input type="text" data-reqf="cantidadRecibida" value="${esc(it.cantidadRecibida)}" style="text-align:center;" data-idxrecibido="${idx}">
+        </div>
+        ${estado.clase ? `<span class="pill ${estado.clase}">${estado.texto}</span>` : ''}
+        <button type="button" class="ghost" data-completoreq="${idx}" style="font-size:11.5px;padding:6px 10px;">✔ Marcar completo</button>
+      </div>
+    </div>`;
+  }).join('');
   tbody.querySelectorAll('[data-delreqitem]').forEach(el=>{
     el.addEventListener('click', ()=>{
       syncReqItemsFromDOM();
       currentReqItems.splice(Number(el.dataset.delreqitem), 1);
       if(!currentReqItems.length) currentReqItems.push(REQ_ITEM_VACIO());
+      renderReqItemsTable();
+    });
+  });
+  tbody.querySelectorAll('[data-completoreq]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      syncReqItemsFromDOM();
+      const idx = Number(el.dataset.completoreq);
+      const it = currentReqItems[idx];
+      it.cantidadRecibida = String(Number(it.cantidadAutorizada||it.cantidadSolicitada||0));
+      renderReqItemsTable();
+    });
+  });
+  tbody.querySelectorAll('[data-idxrecibido]').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      // refleja el cambio de estado (Pendiente/Parcial/Completo) al salir del campo
+      syncReqItemsFromDOM();
       renderReqItemsTable();
     });
   });
