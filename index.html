@@ -5513,22 +5513,42 @@ function renderSolicitudesRecibidas(){
     btn.addEventListener('click', async ()=>{
       const s = solicitudesRecibidas.find(x=>x.id===btn.dataset.convertir);
       if(!s) return;
-      openReqEditor(null);
-      document.getElementById('reqFecha').value = s.fecha_solicitud || todayISO();
-      document.getElementById('reqArea').value = s.area_seccion || '';
-      document.getElementById('reqCentroCostos').value = s.centro_costos || '';
-      document.getElementById('reqSolicitante').value = s.nombre_solicitante || '';
-      currentReqItems = (Array.isArray(s.items) && s.items.length) ? s.items.map(it=>({
+
+      // "Convertir" ahora sí crea y guarda la requisición de una vez —
+      // antes solo abría el formulario y había que darle "Guardar" aparte,
+      // lo que hacía parecer que el botón no hacía nada. La cantidad
+      // autorizada se precarga igual a la solicitada (un punto de partida
+      // razonable), y queda 100% editable después si hace falta ajustarla.
+      const itemsConvertidos = (Array.isArray(s.items) && s.items.length) ? s.items.filter(it=>it.descripcion).map(it=>({
         descripcion: it.descripcion||'', especificaciones: it.especificaciones||'',
-        cantidadSolicitada: it.cantidad||'', cantidadAutorizada: '', uso: it.uso||''
-      })) : Array.from({length:5}, REQ_ITEM_VACIO);
-      renderReqItemsTable();
-      showToast('Solicitud cargada en el formulario. Revisa las cantidades, autoriza lo que corresponda y guarda.');
+        cantidadSolicitada: it.cantidad||'', cantidadAutorizada: it.cantidad||'', uso: it.uso||''
+      })) : [];
+      if(!itemsConvertidos.length){ showToast('Esta solicitud no tiene materiales para convertir.'); return; }
+
+      const nuevaReqId = uid();
+      requisiciones.push({
+        id: nuevaReqId,
+        fechaSolicitud: s.fecha_solicitud || todayISO(),
+        areaSeccion: s.area_seccion || '',
+        centroCostos: s.centro_costos || '',
+        nombreSolicitante: s.nombre_solicitante || '',
+        items: itemsConvertidos,
+        createdAt: new Date().toISOString()
+      });
 
       try{
+        await saveRequisiciones();
         await supabaseAPI.from('solicitudes_requisicion').update({estado:'Convertida'}).eq('id', s.id);
         s.estado = 'Convertida';
-      }catch(e){ console.error(e); }
+        renderSolicitudesRecibidas();
+        renderReqLista();
+        showToast('Requisición creada — ya aparece en "Requisiciones de Materiales". Ajusta las cantidades autorizadas si hace falta.');
+        openReqEditor(nuevaReqId);
+      }catch(e){
+        console.error(e);
+        requisiciones = requisiciones.filter(r=>r.id!==nuevaReqId);
+        showToast('No se pudo convertir la solicitud. Intenta de nuevo.');
+      }
     });
   });
   tbody.querySelectorAll('[data-descartar]').forEach(btn=>{
