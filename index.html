@@ -5546,11 +5546,17 @@ function syncRevisarSolItemsFromDOM(){
     cantidad: tr.querySelector('[data-revf="cantidadSolicitada"]').value.trim(),
     cantidadAutorizada: tr.querySelector('[data-revf="cantidadAutorizada"]').value.trim(),
     uso: tr.querySelector('[data-revf="uso"]').value.trim(),
+    cantidadRecibida: tr.querySelector('[data-revf="cantidadRecibida"]').value.trim(),
   }));
 }
 function renderRevisarSolItems(){
   const tbody = document.getElementById('revItemsBody');
-  tbody.innerHTML = revisarSolItems.map((it,idx)=>`
+  tbody.innerHTML = revisarSolItems.map((it,idx)=>{
+    // estadoRecepcionItem espera "cantidadSolicitada", pero aquí el campo se
+    // llama "cantidad" — se le pasa un objeto ya emparejado para que el
+    // cálculo de Pendiente/Parcial/Completo funcione igual que en el editor.
+    const estado = estadoRecepcionItem({cantidadAutorizada: it.cantidadAutorizada, cantidadSolicitada: it.cantidad, cantidadRecibida: it.cantidadRecibida});
+    return `
     <div class="req-item-card">
       <span class="req-item-num">${idx+1}</span>
       <div class="req-item-field">
@@ -5576,19 +5582,43 @@ function renderRevisarSolItems(){
       <div class="req-item-del-wrap">
         <span class="entry-del" data-delrevitem="${idx}" title="Quitar línea" style="cursor:pointer;">✕ Quitar</span>
       </div>
-    </div>`).join('');
+      <div class="req-item-recibido-row">
+        <div class="req-item-field req-item-field-cant">
+          <label>Cant. Recibida</label>
+          <input type="text" data-revf="cantidadRecibida" value="${esc(it.cantidadRecibida)}" style="text-align:center;" data-idxrecrev="${idx}">
+        </div>
+        ${estado.clase ? `<span class="pill ${estado.clase}">${estado.texto}</span>` : ''}
+        <button type="button" class="ghost" data-completorev="${idx}" style="font-size:11.5px;padding:6px 10px;">✔ Marcar completo</button>
+      </div>
+    </div>`;
+  }).join('');
+  tbody.querySelectorAll('[data-completorev]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      syncRevisarSolItemsFromDOM();
+      const idx = Number(el.dataset.completorev);
+      const it = revisarSolItems[idx];
+      it.cantidadRecibida = String(Number(it.cantidadAutorizada||it.cantidad||0));
+      renderRevisarSolItems();
+    });
+  });
+  tbody.querySelectorAll('[data-idxrecrev]').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      syncRevisarSolItemsFromDOM();
+      renderRevisarSolItems();
+    });
+  });
   tbody.querySelectorAll('[data-delrevitem]').forEach(el=>{
     el.addEventListener('click', ()=>{
       syncRevisarSolItemsFromDOM();
       revisarSolItems.splice(Number(el.dataset.delrevitem), 1);
-      if(!revisarSolItems.length) revisarSolItems.push({descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:''});
+      if(!revisarSolItems.length) revisarSolItems.push({descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:'',cantidadRecibida:''});
       renderRevisarSolItems();
     });
   });
 }
 document.getElementById('btnAgregarLineaRev').addEventListener('click', ()=>{
   syncRevisarSolItemsFromDOM();
-  revisarSolItems.push({descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:''});
+  revisarSolItems.push({descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:'',cantidadRecibida:''});
   renderRevisarSolItems();
 });
 
@@ -5612,8 +5642,9 @@ function openRevisarSolicitud(id){
 
   revisarSolItems = (s && Array.isArray(s.items) && s.items.length) ? s.items.map(it=>({
     descripcion: it.descripcion||'', especificaciones: it.especificaciones||'',
-    cantidad: it.cantidad||'', cantidadAutorizada: it.cantidadAutorizada||'', uso: it.uso||''
-  })) : [{descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:''}];
+    cantidad: it.cantidad||'', cantidadAutorizada: it.cantidadAutorizada||'', uso: it.uso||'',
+    cantidadRecibida: it.cantidadRecibida||''
+  })) : [{descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:'',cantidadRecibida:''}];
   renderRevisarSolItems();
 
   document.getElementById('revisarSolModalBg').classList.add('active');
