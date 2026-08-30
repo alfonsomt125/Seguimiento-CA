@@ -976,14 +976,16 @@
         <h2 style="margin:0;">Solicitudes recibidas del personal</h2>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="ghost" id="btnRefrescarSolicitudes">↻ Actualizar</button>
+          <button class="primary" id="btnUnificarSolicitudes" style="display:none;">🔗 Unificar seleccionadas</button>
           <button class="primary" id="btnNuevaSolicitud">+ Nueva solicitud</button>
         </div>
       </div>
-      <p class="hint" style="margin:0 0 14px;">Lo que llega desde el formulario público, más las que registres tú mismo con "+ Nueva solicitud". Toca "Revisar" para editarla, o "Convertir" para pasarla a una requisición formal con cantidades autorizadas.</p>
+      <p class="hint" style="margin:0 0 6px;">Lo que llega desde el formulario público, más las que registres tú mismo con "+ Nueva solicitud". Toca "Revisar" para editarla, o "Convertir" para pasarla a una requisición formal con cantidades autorizadas.</p>
+      <p class="hint" style="margin:0 0 14px;">Si la misma persona hizo varias solicitudes cercanas, marca las casillas y usa "Unificar seleccionadas" para juntarlas en una sola antes de tramitarla.</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Recibida</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th>Estado</th><th></th></tr></thead>
-          <tbody id="solicitudesBody"><tr><td colspan="6" class="empty">Cargando...</td></tr></tbody>
+          <thead><tr><th style="width:30px;"></th><th>Recibida</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="solicitudesBody"><tr><td colspan="7" class="empty">Cargando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -5470,13 +5472,20 @@ async function cargarSolicitudesRecibidas(){
   }
 }
 
+let solicitudesSeleccionadas = new Set();
+let solicitudesAUnificarIds = [];
+
 function renderSolicitudesRecibidas(){
   const tbody = document.getElementById('solicitudesBody');
   const pendientes = solicitudesRecibidas.filter(s=>s.estado!=='Descartada');
+  // limpiar de la seleccion cualquier id que ya no este visible (fue descartada, etc.)
+  solicitudesSeleccionadas.forEach(id=>{ if(!pendientes.find(s=>s.id===id)) solicitudesSeleccionadas.delete(id); });
+
   tbody.innerHTML = pendientes.length ? pendientes.map(s=>{
     const fechaRecibida = s.created_at ? new Date(s.created_at).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
     const nItems = Array.isArray(s.items) ? s.items.length : 0;
     return `<tr>
+      <td><input type="checkbox" data-checksol="${s.id}" ${solicitudesSeleccionadas.has(s.id)?'checked':''}></td>
       <td>${fechaRecibida}</td>
       <td><strong>${esc(s.area_seccion)||'—'}</strong></td>
       <td>${esc(s.nombre_solicitante)}</td>
@@ -5488,8 +5497,15 @@ function renderSolicitudesRecibidas(){
         <button class="ghost danger" data-descartar="${s.id}">Descartar</button>
       </div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="6" class="empty">No has recibido solicitudes del personal todavía.</td></tr>`;
+  }).join('') : `<tr><td colspan="7" class="empty">No has recibido solicitudes del personal todavía.</td></tr>`;
 
+  tbody.querySelectorAll('[data-checksol]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      if(cb.checked) solicitudesSeleccionadas.add(cb.dataset.checksol);
+      else solicitudesSeleccionadas.delete(cb.dataset.checksol);
+      actualizarBotonUnificar();
+    });
+  });
   tbody.querySelectorAll('[data-revisar]').forEach(btn=>{
     btn.addEventListener('click', ()=>openRevisarSolicitud(btn.dataset.revisar));
   });
@@ -5526,8 +5542,51 @@ function renderSolicitudesRecibidas(){
       }catch(e){ console.error(e); showToast('No se pudo descartar. Intenta de nuevo.'); }
     });
   });
+  actualizarBotonUnificar();
 }
 document.getElementById('btnRefrescarSolicitudes').addEventListener('click', cargarSolicitudesRecibidas);
+
+/* --- Unificar varias solicitudes de la misma persona en una sola: se
+   combinan todos los materiales de las solicitudes marcadas y se abre el
+   modal de "Nueva solicitud" ya prellenado con todo junto. Al guardar, las
+   solicitudes originales quedan descartadas (su contenido ya está en la
+   nueva, unificada). --- */
+function actualizarBotonUnificar(){
+  const btn = document.getElementById('btnUnificarSolicitudes');
+  if(solicitudesSeleccionadas.size>=2){
+    btn.style.display = 'inline-block';
+    btn.textContent = `🔗 Unificar seleccionadas (${solicitudesSeleccionadas.size})`;
+  }else{
+    btn.style.display = 'none';
+  }
+}
+document.getElementById('btnUnificarSolicitudes').addEventListener('click', ()=>{
+  const seleccionadas = [...solicitudesSeleccionadas].map(id=>solicitudesRecibidas.find(s=>s.id===id)).filter(Boolean);
+  if(seleccionadas.length<2){ showToast('Selecciona al menos 2 solicitudes.'); return; }
+  const nombres = new Set(seleccionadas.map(s=>s.nombre_solicitante));
+  if(nombres.size>1){ showToast('Solo puedes unificar solicitudes de la misma persona. Revisa la selección.'); return; }
+
+  const itemsCombinados = [];
+  seleccionadas.forEach(s=>{ (s.items||[]).forEach(it=>{ if(it.descripcion) itemsCombinados.push({...it}); }); });
+  const ordenadas = [...seleccionadas].sort((a,b)=>(a.fecha_solicitud||'').localeCompare(b.fecha_solicitud||''));
+  const areaRef = ordenadas.find(s=>s.area_seccion)?.area_seccion || '';
+  const centroRef = ordenadas.find(s=>s.centro_costos)?.centro_costos || '';
+
+  openRevisarSolicitud(null);
+  document.getElementById('revFecha').value = todayISO();
+  document.getElementById('revSolicitante').value = [...nombres][0];
+  document.getElementById('revArea').value = areaRef;
+  document.getElementById('revCentroCostos').value = centroRef;
+  revisarSolItems = itemsCombinados.length ? itemsCombinados.map(it=>({
+    descripcion: it.descripcion||'', especificaciones: it.especificaciones||'',
+    cantidad: it.cantidad||'', cantidadAutorizada: it.cantidadAutorizada||'', uso: it.uso||'',
+    cantidadRecibida: ''
+  })) : [{descripcion:'',especificaciones:'',cantidad:'',cantidadAutorizada:'',uso:'',cantidadRecibida:''}];
+  renderRevisarSolItems();
+  document.getElementById('revisarSolInfo').textContent = `Uniendo ${seleccionadas.length} solicitudes de ${[...nombres][0]} en una sola. Al guardar, las originales quedan descartadas.`;
+
+  solicitudesAUnificarIds = seleccionadas.map(s=>s.id);
+});
 
 /* --- Modal "Revisar solicitud": editar en el momento lo que llegó del
    formulario público (incluyendo completar Área/Centro de Costos/Periodo,
@@ -5653,6 +5712,7 @@ document.getElementById('btnNuevaSolicitud').addEventListener('click', ()=>openR
 document.getElementById('btnCerrarRevisarSol').addEventListener('click', ()=>{
   document.getElementById('revisarSolModalBg').classList.remove('active');
   revisarSolId = null;
+  solicitudesAUnificarIds = [];
 });
 
 function leerCamposRevisar(){
@@ -5683,6 +5743,23 @@ document.getElementById('btnGuardarRevisarSol').addEventListener('click', async 
       solicitudesRecibidas.unshift(data);
       revisarSolId = data.id;
       showToast('Solicitud registrada correctamente.');
+
+      // si esta solicitud viene de "Unificar seleccionadas", las originales
+      // ya quedaron representadas aquí — se descartan para no duplicar.
+      if(solicitudesAUnificarIds.length){
+        try{
+          await Promise.all(solicitudesAUnificarIds.map(id=>
+            supabaseAPI.from('solicitudes_requisicion').update({estado:'Descartada'}).eq('id', id)
+          ));
+          solicitudesAUnificarIds.forEach(id=>{
+            const s = solicitudesRecibidas.find(x=>x.id===id);
+            if(s) s.estado = 'Descartada';
+          });
+          showToast(`Solicitud unificada. Las ${solicitudesAUnificarIds.length} originales quedaron descartadas.`);
+        }catch(e){ console.error(e); }
+        solicitudesAUnificarIds = [];
+        solicitudesSeleccionadas.clear();
+      }
     }
     renderSolicitudesRecibidas();
   }catch(e){
