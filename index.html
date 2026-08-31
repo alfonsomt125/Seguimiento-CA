@@ -2259,6 +2259,37 @@
         <textarea id="aiObs"></textarea>
       </div>
     </div>
+
+    <div id="reutilizarAireWrap" style="display:none;margin-top:6px;padding:14px;border:1px dashed var(--line);border-radius:12px;background:var(--paper-2,#f4f5f8);">
+      <button type="button" class="ghost" id="btnMostrarReutilizarAire">♻️ Reutilizar este equipo en otro espacio</button>
+      <div id="reutilizarAireForm" style="display:none;margin-top:12px;">
+        <p class="hint" style="margin:0 0 10px;">Elige el nuevo espacio donde va a quedar este equipo. Al aplicar, el estado vuelve a "Operativo" — recuerda darle "Guardar" para que quede hecho.</p>
+        <div class="grid-2">
+          <div class="field">
+            <label>Nuevo bloque</label>
+            <select id="aiNuevoBloque">
+              <option value="">Selecciona un bloque...</option>
+              <option value="Bloque A">Bloque A</option>
+              <option value="Bloque B">Bloque B</option>
+              <option value="Bloque C">Bloque C</option>
+              <option value="Bloque D">Bloque D</option>
+              <option value="Bloque J">Bloque J</option>
+              <option value="Bloque K">Bloque K</option>
+              <option value="Paraninfo">Paraninfo</option>
+              <option value="Administrativo">Administrativo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Nuevo salón / ubicación</label>
+            <input type="text" id="aiNuevaUbicacion" placeholder="Ej: Aula 205">
+          </div>
+        </div>
+        <div class="modal-actions" style="justify-content:flex-start;margin-top:10px;">
+          <button type="button" class="ghost" id="btnCancelarReutilizarAire">Cancelar</button>
+          <button type="button" class="primary" id="btnAplicarReutilizarAire">✔ Aplicar reubicación</button>
+        </div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="ghost" id="btnCancelAireModal">Cancelar</button>
       <button class="primary" id="btnSaveAireModal">Guardar</button>
@@ -4926,11 +4957,48 @@ function openAireModal(id){
   document.getElementById('aiUltimoMant').value = a?.ultimoMant||'';
   document.getElementById('aiFrecuencia').value = a?.frecuencia||3;
   document.getElementById('aiObs').value = a?.obs||'';
+  document.getElementById('reutilizarAireWrap').style.display = (a?.estado==='De baja') ? 'block' : 'none';
+  document.getElementById('reutilizarAireForm').style.display = 'none';
+  document.getElementById('aiNuevoBloque').value = '';
+  document.getElementById('aiNuevaUbicacion').value = '';
+  aireReubicacionInfo = null;
   document.getElementById('aireModalBg').classList.add('active');
 }
 function closeAireModal(){ document.getElementById('aireModalBg').classList.remove('active'); }
 document.getElementById('btnNewAire').addEventListener('click', ()=>openAireModal(null));
 document.getElementById('btnNewAire2').addEventListener('click', ()=>openAireModal(null));
+
+/* Reutilizar un equipo dado de baja en otro espacio: se guarda la
+   ubicación anterior antes de aplicar el cambio, para poder dejar
+   registrado en el historial de dónde a dónde se movió. */
+let aireReubicacionInfo = null;
+document.getElementById('aiEstado').addEventListener('change', (e)=>{
+  document.getElementById('reutilizarAireWrap').style.display = e.target.value==='De baja' ? 'block' : 'none';
+  if(e.target.value!=='De baja') document.getElementById('reutilizarAireForm').style.display = 'none';
+});
+document.getElementById('btnMostrarReutilizarAire').addEventListener('click', ()=>{
+  document.getElementById('reutilizarAireForm').style.display = 'block';
+});
+document.getElementById('btnCancelarReutilizarAire').addEventListener('click', ()=>{
+  document.getElementById('reutilizarAireForm').style.display = 'none';
+});
+document.getElementById('btnAplicarReutilizarAire').addEventListener('click', ()=>{
+  const nuevoBloque = document.getElementById('aiNuevoBloque').value;
+  const nuevaUbicacion = document.getElementById('aiNuevaUbicacion').value.trim();
+  if(!nuevaUbicacion){ showToast('Escribe el salón / ubicación nuevo.'); return; }
+  aireReubicacionInfo = {
+    desdeBloque: document.getElementById('aiBloque').value,
+    desdeUbicacion: document.getElementById('aiUbicacion').value,
+    haciaBloque: nuevoBloque,
+    haciaUbicacion: nuevaUbicacion
+  };
+  document.getElementById('aiBloque').value = nuevoBloque;
+  document.getElementById('aiUbicacion').value = nuevaUbicacion;
+  document.getElementById('aiEstado').value = 'Operativo';
+  document.getElementById('reutilizarAireWrap').style.display = 'none';
+  document.getElementById('reutilizarAireForm').style.display = 'none';
+  showToast('Reubicación aplicada. No olvides darle "Guardar" para dejarlo hecho.');
+});
 
 /* Exportar TODOS los equipos a Excel. Se genera como CSV (formato de texto
    con columnas separadas por punto y coma) en vez de un .xlsx real armado
@@ -4999,6 +5067,18 @@ document.getElementById('btnSaveAireModal').addEventListener('click', async ()=>
     airesAcondicionados.push({id: equipoId, ...data});
   }
   await saveAiresAcondicionados();
+
+  // si se aplicó "Reutilizar en otro espacio", queda registrado en el
+  // historial del equipo de dónde a dónde se movió, para tener trazabilidad.
+  if(aireReubicacionInfo){
+    aireHistorial.push({
+      id: uid(), aireId: equipoId, fecha: todayISO(), tipo: 'Reubicación', responsable: '',
+      descripcion: `Reutilizado en otro espacio — pasó de "${aireReubicacionInfo.desdeUbicacion || 'sin ubicación'}${aireReubicacionInfo.desdeBloque ? ' / '+aireReubicacionInfo.desdeBloque : ''}" (dado de baja) a "${aireReubicacionInfo.haciaUbicacion}${aireReubicacionInfo.haciaBloque ? ' / '+aireReubicacionInfo.haciaBloque : ''}".`,
+      createdAt: new Date().toISOString()
+    });
+    await saveAireHistorial();
+    aireReubicacionInfo = null;
+  }
 
   // el campo "Último mantenimiento" de este formulario es solo un dato
   // manual — para que de verdad cuente en la alerta de los 3 meses (que se
