@@ -2313,6 +2313,7 @@
     <div class="modal-actions" style="flex-wrap:wrap;margin-top:10px;">
       <button class="ghost danger" id="btnAireDetailDelete">Eliminar equipo</button>
       <button class="ghost" id="btnAireDetailEdit">Editar</button>
+      <button class="ghost" id="btnAireDarBajaSinReemplazo" style="color:var(--gray);border-color:var(--gray);">⛔ Dar de baja (sin reemplazo)</button>
       <button class="ghost" id="btnAireReemplazar" style="color:var(--orange);border-color:var(--orange);">🔄 Reemplazar por deterioro</button>
       <button class="ghost" id="btnAireExportarPDF">⬇ Exportar hoja de vida a PDF</button>
     </div>
@@ -5132,6 +5133,7 @@ function openAireDetail(id){
   document.getElementById('aireDetailInfo').innerHTML = fields.map(([label,value])=>`
     <div class="pd-item"><span class="pd-label">${label}</span><span class="pd-value"${label==='Próximo mantenimiento'&&vencido?' style="color:var(--red);"':''}>${esc(String(value))}</span></div>
   `).join('') + (a.obs?`<div class="pd-item" style="grid-column:1/-1;"><span class="pd-label">Observaciones</span><span class="pd-value" style="font-weight:400;">${esc(a.obs)}</span></div>`:'');
+  document.getElementById('btnAireDarBajaSinReemplazo').style.display = a.estado==='De baja' ? 'none' : 'inline-block';
 
   const linajeEl = document.getElementById('aireDetailLinaje');
   const predecesor = a.reemplazaAId ? airesAcondicionados.find(x=>x.id===a.reemplazaAId) : null;
@@ -5186,6 +5188,23 @@ document.getElementById('btnAireDetailDelete').addEventListener('click', async (
    se pidan. Ambos quedan enlazados para poder ver el histórico completo del
    salón (equipo anterior → equipo nuevo). */
 let aireReemplazoOrigenId = null;
+document.getElementById('btnAireDarBajaSinReemplazo').addEventListener('click', async ()=>{
+  const a = airesAcondicionados.find(x=>x.id===aireDetailId);
+  if(!a) return;
+  if(!await customConfirm(`¿Dar de baja el equipo de "${a.ubicacion||'este salón'}"? No hace falta registrar uno nuevo — puedes hacerlo después con "Reutilizar en otro espacio" si vuelve a servir en otro lado.`)) return;
+  a.estado = 'De baja';
+  await saveAiresAcondicionados();
+  aireHistorial.push({
+    id: uid(), aireId: a.id, fecha: todayISO(), tipo: 'Baja', responsable: '',
+    descripcion: `Equipo dado de baja (sin registrar reemplazo).`,
+    createdAt: new Date().toISOString()
+  });
+  await saveAireHistorial();
+  openAireDetail(a.id);
+  renderAireEquiposTable();
+  renderAireDashboard();
+  showToast('Equipo dado de baja.');
+});
 document.getElementById('btnAireReemplazar').addEventListener('click', ()=>{
   const a = airesAcondicionados.find(x=>x.id===aireDetailId);
   if(!a) return;
