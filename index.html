@@ -1010,7 +1010,14 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th>Compras</th><th></th></tr></thead>
+          <thead><tr>
+            <th class="sortable" data-reqsort="fechaSolicitud">Fecha</th>
+            <th class="sortable" data-reqsort="areaSeccion">Área / Sección</th>
+            <th class="sortable" data-reqsort="nombreSolicitante">Solicitante</th>
+            <th class="sortable" data-reqsort="items">Ítems</th>
+            <th class="sortable" data-reqsort="estadoCompras">Compras</th>
+            <th></th>
+          </tr></thead>
           <tbody id="reqListaBody"></tbody>
         </table>
       </div>
@@ -7164,6 +7171,45 @@ document.getElementById('btnGuardarLimitesHE').addEventListener('click', async (
 });
 
 let filtroEstadoReqActual = '';
+let reqSort = {key:'fechaSolicitud', dir:-1};
+const REQ_ESTADO_RANK = {'Pendiente':0,'Solicitado':1,'Entregado':2};
+
+function sortReqRows(rows){
+  const {key, dir} = reqSort;
+  if(!key) return [...rows].sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
+  return [...rows].sort((a,b)=>{
+    let va, vb;
+    if(key==='estadoCompras'){ va=REQ_ESTADO_RANK[a.estadoCompras||'Pendiente']??9; vb=REQ_ESTADO_RANK[b.estadoCompras||'Pendiente']??9; }
+    else if(key==='items'){ va=(a.items||[]).filter(it=>it.descripcion).length; vb=(b.items||[]).filter(it=>it.descripcion).length; }
+    else if(key==='fechaSolicitud'){ va=a.fechaSolicitud||''; vb=b.fechaSolicitud||''; }
+    else { va=(a[key]||'').toString().toLowerCase(); vb=(b[key]||'').toString().toLowerCase(); }
+    if(va<vb) return -1*dir;
+    if(va>vb) return 1*dir;
+    return 0;
+  });
+}
+function updateReqSortHeaders(){
+  document.querySelectorAll('th[data-reqsort]').forEach(th=>{
+    th.classList.remove('sort-active');
+    const old = th.querySelector('.sort-arrow');
+    if(old) old.remove();
+    if(th.dataset.reqsort===reqSort.key){
+      th.classList.add('sort-active');
+      const arrow = document.createElement('span');
+      arrow.className = 'sort-arrow';
+      arrow.textContent = reqSort.dir===1 ? '▲' : '▼';
+      th.appendChild(arrow);
+    }
+  });
+}
+document.querySelectorAll('th[data-reqsort]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.reqsort;
+    if(reqSort.key===key){ reqSort.dir *= -1; } else { reqSort = {key, dir:1}; }
+    renderReqLista();
+  });
+});
+
 function renderReqLista(){
   const tbody = document.getElementById('reqListaBody');
   let filas = requisiciones.filter(r=>!r.eliminada);
@@ -7172,7 +7218,8 @@ function renderReqLista(){
   }else if(filtroEstadoReqActual){
     filas = filas.filter(r=>(r.estadoCompras||'Pendiente')===filtroEstadoReqActual);
   }
-  filas = filas.sort((a,b)=>(b.fechaSolicitud||'').localeCompare(a.fechaSolicitud||''));
+  filas = sortReqRows(filas);
+  updateReqSortHeaders();
 
   tbody.innerHTML = filas.length ? filas.map(r=>{
     const estado = r.estadoCompras || 'Pendiente';
