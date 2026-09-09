@@ -1869,14 +1869,16 @@
         <h2 style="margin:0;">Inventario Disponible</h2>
         <button class="ghost" id="btnExportarInventarioPDF">⬇ Exportar a PDF</button>
       </div>
+      <div class="year-pills" id="panelModuloTabs" data-value="" style="margin-bottom:12px;">
+        <button class="year-pill active" data-panelmodulo="">Todos</button>
+        <button class="year-pill" data-panelmodulo="Cafetería">☕ Cafetería</button>
+        <button class="year-pill" data-panelmodulo="Aseo">🧹 Aseo</button>
+        <button class="year-pill" data-panelmodulo="Papelería">📎 Papelería</button>
+      </div>
       <div class="filters" style="margin-bottom:14px;">
         <div class="field" style="flex:2;min-width:200px;">
           <label>Buscar</label>
           <input type="text" id="panelSearch" placeholder="Nombre del insumo...">
-        </div>
-        <div class="field">
-          <label>Categoría</label>
-          <select id="panelCategoria"><option value="">Todas</option></select>
         </div>
         <div class="field">
           <label>Stock</label>
@@ -2129,8 +2131,12 @@
       </div>
       <div class="field">
         <label>Categoría</label>
-        <input type="text" id="iiCategoria" list="invInsCategoriaList" placeholder="Ej: Aseo, Ferretería, Papelería">
-        <datalist id="invInsCategoriaList"></datalist>
+        <select id="iiCategoria">
+          <option value="">Sin categoría</option>
+          <option value="Cafetería">☕ Cafetería</option>
+          <option value="Aseo">🧹 Aseo</option>
+          <option value="Papelería">📎 Papelería</option>
+        </select>
       </div>
       <div class="field">
         <label>Unidad</label>
@@ -8480,13 +8486,6 @@ document.querySelectorAll('[data-back]').forEach(btn=>{
    INVENTARIO — FILTROS COMPARTIDOS
    ============================================================ */
 function populateInvFilters(){
-  const catsIns = [...new Set(insumos.map(i=>i.categoria).filter(Boolean))].sort();
-  const panelCatSel = document.getElementById('panelCategoria');
-  const prevPanelCat = panelCatSel.value;
-  panelCatSel.innerHTML = '<option value="">Todas</option>' + catsIns.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
-  if(catsIns.includes(prevPanelCat)) panelCatSel.value = prevPanelCat;
-  document.getElementById('invInsCategoriaList').innerHTML = catsIns.map(c=>`<option value="${esc(c)}">`).join('');
-
   populateMovSelects();
 }
 
@@ -8560,11 +8559,19 @@ document.getElementById('btnSaveInsModal').addEventListener('click', async ()=>{
 /* ============================================================
    INVENTARIO — PANEL (vista tipo dashboard, tarjetas por producto)
    ============================================================ */
+let panelModuloActual = '';
+document.querySelectorAll('#panelModuloTabs [data-panelmodulo]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    panelModuloActual = btn.dataset.panelmodulo;
+    document.querySelectorAll('#panelModuloTabs [data-panelmodulo]').forEach(b=>b.classList.toggle('active', b===btn));
+    renderPanelCards();
+  });
+});
 function renderPanelCards(){
   renderInvDashboard();
 
   const search = document.getElementById('panelSearch').value.toLowerCase().trim();
-  const catF = document.getElementById('panelCategoria').value;
+  const catF = panelModuloActual;
   const stockF = document.getElementById('panelStockFilter').value;
   const rows = insumos.filter(i=>{
     if(search && !i.nombre.toLowerCase().includes(search)) return false;
@@ -8752,7 +8759,8 @@ function renderInvDashboard(){
           openMesDetalle(mesActual.key, `${mesActual.label} ${mesActual.key.slice(0,4)}`);
         }else{
           document.getElementById('panelSearch').value = '';
-          document.getElementById('panelCategoria').value = '';
+          panelModuloActual = '';
+          document.querySelectorAll('#panelModuloTabs [data-panelmodulo]').forEach(b=>b.classList.toggle('active', b.dataset.panelmodulo===''));
           document.getElementById('panelStockFilter').value = '';
           renderPanelCards();
           document.getElementById('panelBody').closest('.table-wrap').scrollIntoView({behavior:'smooth', block:'center'});
@@ -8779,7 +8787,8 @@ function renderInvDashboard(){
       </div>`;
     const irAPanelConStock = (valorFiltro)=>{
       document.getElementById('panelSearch').value = '';
-      document.getElementById('panelCategoria').value = '';
+      panelModuloActual = '';
+      document.querySelectorAll('#panelModuloTabs [data-panelmodulo]').forEach(b=>b.classList.toggle('active', b.dataset.panelmodulo===''));
       document.getElementById('panelStockFilter').value = valorFiltro;
       renderPanelCards();
       document.getElementById('panelBody').closest('.table-wrap').scrollIntoView({behavior:'smooth', block:'center'});
@@ -8926,7 +8935,6 @@ document.getElementById('btnPanelDetailDelete').addEventListener('click', async 
 });
 
 document.getElementById('panelSearch').addEventListener('input', renderPanelCards);
-document.getElementById('panelCategoria').addEventListener('change', renderPanelCards);
 document.getElementById('panelStockFilter').addEventListener('change', renderPanelCards);
 
 /* Arma el HTML del documento imprimible del pedido sugerido (encabezado
@@ -9032,7 +9040,7 @@ document.getElementById('btnImprimirPedido').addEventListener('click', exportarP
    depender de ninguna librería externa. */
 function construirInventarioDisponibleHTML(){
   const search = document.getElementById('panelSearch').value.toLowerCase().trim();
-  const catF = document.getElementById('panelCategoria').value;
+  const catF = panelModuloActual;
   const stockF = document.getElementById('panelStockFilter').value;
   const rows = insumos.filter(i=>{
     if(search && !i.nombre.toLowerCase().includes(search)) return false;
