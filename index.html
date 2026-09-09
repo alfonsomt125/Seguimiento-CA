@@ -1891,7 +1891,7 @@
       <p class="hint" style="margin:0 0 14px;">Haz clic en una fila para ver el detalle completo del producto.</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Producto</th><th>Stock</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Stock</th><th>Consumo mensual</th></tr></thead>
           <tbody id="panelBody"></tbody>
         </table>
       </div>
@@ -8581,10 +8581,24 @@ function renderPanelCards(){
     <tr class="panel-row" data-panelrow="${i.id}">
       <td><strong>${esc(i.nombre)}</strong></td>
       <td class="${bajo?'stock-low':'stock-ok'}">${i.cantidad} ${esc(i.unidad)||''}${bajo?' ⚠':''}</td>
+      <td>
+        <input type="number" min="0" step="0.1" value="${i.consumoMensual??''}" placeholder="—"
+          data-consumomensual="${i.id}" style="width:90px;padding:6px 8px;font-size:13px;"
+          onclick="event.stopPropagation()">
+      </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="2" class="empty">No hay insumos que coincidan con el filtro.</td></tr>`;
+  }).join('') : `<tr><td colspan="3" class="empty">No hay insumos que coincidan con el filtro.</td></tr>`;
 
   tbody.querySelectorAll('[data-panelrow]').forEach(r=>r.addEventListener('click', ()=>openPanelDetail(r.dataset.panelrow)));
+  tbody.querySelectorAll('[data-consumomensual]').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const i = insumos.find(x=>x.id===inp.dataset.consumomensual);
+      if(!i) return;
+      i.consumoMensual = Number(inp.value)||0;
+      await saveInsumos();
+      showToast('Consumo mensual actualizado.');
+    });
+  });
 }
 
 /* Dashboard de disponibilidad: KPIs, consumo mes a mes (barras) y
