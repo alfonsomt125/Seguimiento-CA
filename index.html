@@ -1884,13 +1884,13 @@
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
         <h2 style="margin:0;">Inventario Disponible</h2>
-        <button class="ghost" id="btnExportarInventarioPDF">⬇ Exportar a PDF</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="ghost" id="btnGestionarCategorias">⚙️ Categorías</button>
+          <button class="ghost" id="btnExportarInventarioPDF">⬇ Exportar a PDF</button>
+        </div>
       </div>
       <div class="year-pills" id="panelModuloTabs" data-value="" style="margin-bottom:12px;">
         <button class="year-pill active" data-panelmodulo="">Todos</button>
-        <button class="year-pill" data-panelmodulo="Cafetería">☕ Cafetería</button>
-        <button class="year-pill" data-panelmodulo="Aseo">🧹 Aseo</button>
-        <button class="year-pill" data-panelmodulo="Papelería">📎 Papelería</button>
       </div>
       <div class="filters" style="margin-bottom:14px;">
         <div class="field" style="flex:2;min-width:200px;">
@@ -2148,12 +2148,7 @@
       </div>
       <div class="field">
         <label>Categoría</label>
-        <select id="iiCategoria">
-          <option value="">Sin categoría</option>
-          <option value="Cafetería">☕ Cafetería</option>
-          <option value="Aseo">🧹 Aseo</option>
-          <option value="Papelería">📎 Papelería</option>
-        </select>
+        <select id="iiCategoria"><option value="">Sin categoría</option></select>
       </div>
       <div class="field">
         <label>Unidad</label>
@@ -2191,6 +2186,25 @@
     <div class="modal-actions">
       <button class="ghost" id="btnCancelInsModal">Cancelar</button>
       <button class="primary" id="btnSaveInsModal">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: gestionar las categorías (módulos) de insumos -->
+<div class="modal-bg" id="categoriasModalBg">
+  <div class="modal" style="max-width:440px;">
+    <h3>Categorías de insumos</h3>
+    <p class="hint" style="margin:8px 0 14px;">Organiza los productos por módulo (Cafetería, Aseo, Papelería, o los que necesites). Si renombras una, se actualiza automáticamente en todos los insumos que la usan.</p>
+    <div id="listaCategoriasGestion"></div>
+    <div class="field" style="margin-top:16px;">
+      <label>Nueva categoría</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="nuevaCategoriaInput" placeholder="Ej: Ferretería" style="flex:1;">
+        <button class="primary" id="btnAgregarCategoria">+ Agregar</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" id="btnCerrarCategorias">Cerrar</button>
     </div>
   </div>
 </div>
@@ -3132,6 +3146,7 @@ let bitacora = [];
 let editingActivityId = null;
 let usedSeed = false;
 let insumos = [];
+let categoriasInsumos = [];
 let editingInsumoId = null;
 let deletedNames = [];
 let movimientos = [];
@@ -3274,7 +3289,7 @@ async function safeSetVersion(key, value){
    en la propia tabla de Supabase, para no volver a pisar datos nuevos con
    datos viejos en arranques futuros. */
 const CLAVES_A_MIGRAR = [
-  'activities','bitacora','insumos','movimientos','trabajadores','entregas',
+  'activities','bitacora','insumos','categoriasInsumos','movimientos','trabajadores','entregas',
   'deletedNames','deletedInsumoNames','deletedTrabajadorNames',
   'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones',
   'extintores','trampasRatones','puntosEncuentro','flechasEvacuacion',
@@ -3333,6 +3348,14 @@ async function loadAll(){
     const ins = await storageAPI.get('insumos');
     insumos = JSON.parse(ins.value);
   }catch(e){ insumos = []; }
+  try{
+    const cats = await storageAPI.get('categoriasInsumos');
+    categoriasInsumos = JSON.parse(cats.value);
+  }catch(e){ categoriasInsumos = ['Cafetería','Aseo','Papelería']; }
+  // por si algún insumo trae una categoría (de datos viejos, texto libre) que
+  // todavía no está en la lista oficial de categorías — se incorpora sola,
+  // para no perder de vista productos ya clasificados.
+  insumos.forEach(i=>{ if(i.categoria && !categoriasInsumos.includes(i.categoria)) categoriasInsumos.push(i.categoria); });
   try{
     const dn = await storageAPI.get('deletedNames');
     deletedNames = JSON.parse(dn.value);
@@ -3465,6 +3488,10 @@ async function saveDeletedNames(){
 async function saveInsumos(){
   try{ await storageAPI.set('insumos', JSON.stringify(insumos)); }
   catch(e){ showToast('No se pudo guardar (insumos). Intenta de nuevo.'); }
+}
+async function saveCategoriasInsumos(){
+  try{ await storageAPI.set('categoriasInsumos', JSON.stringify(categoriasInsumos)); }
+  catch(e){ showToast('No se pudo guardar (categorías). Intenta de nuevo.'); }
 }
 function seedActivities(){
   return SEED_ACTIVITIES.map((a,i)=>({id:'seed-'+i, ...a}));
@@ -8635,7 +8662,7 @@ function openInsumoModal(id){
   const i = id ? insumos.find(x=>x.id===id) : null;
   document.getElementById('invInsModalTitle').textContent = id ? 'Editar insumo' : 'Nuevo insumo';
   document.getElementById('iiNombre').value = i?.nombre||'';
-  document.getElementById('iiCategoria').value = i?.categoria||'';
+  renderCategoriaSelectInsumo(i?.categoria||'');
   document.getElementById('iiUnidad').value = i?.unidad||'';
   document.getElementById('iiCantidad').value = i?.cantidad??'';
   document.getElementById('iiFechaIngreso').value = i?.fechaIngreso||'';
@@ -8697,15 +8724,111 @@ document.getElementById('btnSaveInsModal').addEventListener('click', async ()=>{
    INVENTARIO — PANEL (vista tipo dashboard, tarjetas por producto)
    ============================================================ */
 let panelModuloActual = '';
-document.querySelectorAll('#panelModuloTabs [data-panelmodulo]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    panelModuloActual = btn.dataset.panelmodulo;
-    document.querySelectorAll('#panelModuloTabs [data-panelmodulo]').forEach(b=>b.classList.toggle('active', b===btn));
-    renderPanelCards();
+const ICONOS_CATEGORIA_DEFAULT = {'Cafetería':'☕', 'Aseo':'🧹', 'Papelería':'📎'};
+function iconoCategoria(cat){ return ICONOS_CATEGORIA_DEFAULT[cat] || '📦'; }
+
+function renderCategoriaTabs(){
+  const wrap = document.getElementById('panelModuloTabs');
+  wrap.innerHTML = `<button class="year-pill${panelModuloActual===''?' active':''}" data-panelmodulo="">Todos</button>` +
+    categoriasInsumos.map(cat=>`<button class="year-pill${panelModuloActual===cat?' active':''}" data-panelmodulo="${esc(cat)}">${iconoCategoria(cat)} ${esc(cat)}</button>`).join('');
+  wrap.querySelectorAll('[data-panelmodulo]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      panelModuloActual = btn.dataset.panelmodulo;
+      wrap.querySelectorAll('[data-panelmodulo]').forEach(b=>b.classList.toggle('active', b===btn));
+      renderPanelCards();
+    });
   });
+}
+function renderCategoriaSelectInsumo(valorActual){
+  const sel = document.getElementById('iiCategoria');
+  sel.innerHTML = '<option value="">Sin categoría</option>' +
+    categoriasInsumos.map(cat=>`<option value="${esc(cat)}">${iconoCategoria(cat)} ${esc(cat)}</option>`).join('');
+  sel.value = valorActual || '';
+}
+
+/* Gestionar categorías: crear nuevas, renombrar (se actualiza en cadena en
+   todos los insumos que la usan) o eliminar (los insumos que la tenían
+   quedan "Sin categoría", nunca se borran ni se pierden). */
+function renderCategoriasGestionModal(){
+  const wrap = document.getElementById('listaCategoriasGestion');
+  if(!categoriasInsumos.length){
+    wrap.innerHTML = '<p class="hint">Aún no has creado ninguna categoría.</p>';
+    return;
+  }
+  wrap.innerHTML = categoriasInsumos.map(cat=>{
+    const cuenta = insumos.filter(i=>i.categoria===cat).length;
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);">
+      <input type="text" value="${esc(cat)}" data-catoriginal="${esc(cat)}" style="flex:1;padding:7px 9px;font-size:13px;">
+      <span class="hint" style="margin:0;white-space:nowrap;">${cuenta} prod.</span>
+      <button class="ghost" data-guardarcat="${esc(cat)}" style="font-size:12px;padding:6px 9px;">Guardar</button>
+      <button class="ghost danger" data-eliminarcat="${esc(cat)}" style="font-size:12px;padding:6px 9px;">✕</button>
+    </div>`;
+  }).join('');
+  wrap.querySelectorAll('[data-guardarcat]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const original = btn.dataset.guardarcat;
+      const input = wrap.querySelector(`[data-catoriginal="${CSS.escape(original)}"]`);
+      const nuevoNombre = input.value.trim();
+      if(!nuevoNombre){ showToast('El nombre no puede quedar vacío.'); return; }
+      if(nuevoNombre===original){ showToast('No hubo cambios.'); return; }
+      if(categoriasInsumos.includes(nuevoNombre)){ showToast('Ya existe una categoría con ese nombre.'); return; }
+      const idx = categoriasInsumos.indexOf(original);
+      categoriasInsumos[idx] = nuevoNombre;
+      insumos.forEach(i=>{ if(i.categoria===original) i.categoria = nuevoNombre; });
+      await saveCategoriasInsumos();
+      await saveInsumos();
+      if(panelModuloActual===original) panelModuloActual = nuevoNombre;
+      renderCategoriasGestionModal();
+      renderCategoriaTabs();
+      renderPanelCards();
+      showToast(`Categoría renombrada a "${nuevoNombre}".`);
+    });
+  });
+  wrap.querySelectorAll('[data-eliminarcat]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const cat = btn.dataset.eliminarcat;
+      const cuenta = insumos.filter(i=>i.categoria===cat).length;
+      const mensaje = cuenta
+        ? `¿Eliminar la categoría "${cat}"? Los ${cuenta} producto(s) que la tienen quedan sin categoría — no se borra ningún insumo.`
+        : `¿Eliminar la categoría "${cat}"?`;
+      if(!await customConfirm(mensaje)) return;
+      categoriasInsumos = categoriasInsumos.filter(c=>c!==cat);
+      insumos.forEach(i=>{ if(i.categoria===cat) i.categoria = ''; });
+      await saveCategoriasInsumos();
+      await saveInsumos();
+      if(panelModuloActual===cat){ panelModuloActual = ''; }
+      renderCategoriasGestionModal();
+      renderCategoriaTabs();
+      renderPanelCards();
+      showToast('Categoría eliminada.');
+    });
+  });
+}
+document.getElementById('btnGestionarCategorias').addEventListener('click', ()=>{
+  renderCategoriasGestionModal();
+  document.getElementById('categoriasModalBg').classList.add('active');
 });
+document.getElementById('btnCerrarCategorias').addEventListener('click', ()=>{
+  document.getElementById('categoriasModalBg').classList.remove('active');
+});
+document.getElementById('btnAgregarCategoria').addEventListener('click', async ()=>{
+  const input = document.getElementById('nuevaCategoriaInput');
+  const nombre = input.value.trim();
+  if(!nombre){ showToast('Escribe el nombre de la categoría.'); return; }
+  if(categoriasInsumos.includes(nombre)){ showToast('Ya existe una categoría con ese nombre.'); return; }
+  categoriasInsumos.push(nombre);
+  await saveCategoriasInsumos();
+  input.value = '';
+  renderCategoriasGestionModal();
+  renderCategoriaTabs();
+  renderCategoriaSelectInsumo(document.getElementById('iiCategoria').value);
+  showToast(`Categoría "${nombre}" creada.`);
+});
+
 function renderPanelCards(){
   renderInvDashboard();
+  renderCategoriaTabs();
 
   const search = document.getElementById('panelSearch').value.toLowerCase().trim();
   const catF = panelModuloActual;
