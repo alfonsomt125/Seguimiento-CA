@@ -1048,7 +1048,7 @@
       <p class="hint" style="margin:0 0 14px;">Las eliminadas quedan aquí. Puedes recuperarlas o borrarlas definitivamente.</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Eliminada</th><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th></th></tr></thead>
+          <thead><tr><th>Eliminada</th><th>Código</th><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th></th></tr></thead>
           <tbody id="reqPapeleraBody"></tbody>
         </table>
       </div>
@@ -1124,7 +1124,7 @@
       </div>
 
       <div id="reqComprasWrap" style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px;">
-        <h3 style="margin:0 0 8px;font-size:14px;color:var(--navy);">Seguimiento con Compras</h3>
+        <h3 style="margin:0 0 8px;font-size:14px;color:var(--navy);" id="reqComprasTitulo">Seguimiento con Compras</h3>
         <p class="hint" id="reqComprasEstadoTexto" style="margin:0 0 12px;">Guarda la requisición primero para poder darle seguimiento.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
           <button class="ghost" id="btnMarcarSolicitadoCompras" style="display:none;">📤 Marcar como solicitado a Compras</button>
@@ -7562,7 +7562,7 @@ function abrirMarcarRecibido(id){
   const r = requisiciones.find(x=>x.id===id);
   if(!r) return;
   recibidoReqId = id;
-  document.getElementById('marcarRecibidoInfo').textContent = `${r.areaSeccion||r.nombreSolicitante||''} — ${(r.items||[]).filter(it=>it.descripcion).length} ítem(s).`;
+  document.getElementById('marcarRecibidoInfo').textContent = `${r.codigo||''} — ${r.areaSeccion||r.nombreSolicitante||''} — ${(r.items||[]).filter(it=>it.descripcion).length} ítem(s).`;
   document.getElementById('recibidoFecha').value = todayISO();
   document.getElementById('marcarRecibidoModalBg').classList.add('active');
 }
@@ -7600,6 +7600,7 @@ function renderReqPapelera(){
     const eliminadaStr = r.eliminadaEn ? new Date(r.eliminadaEn).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
     return `<tr>
       <td>${eliminadaStr}</td>
+      <td><strong style="color:var(--navy);">${esc(r.codigo)||'—'}</strong></td>
       <td>${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
       <td><strong>${esc(r.areaSeccion)||'—'}</strong></td>
       <td>${esc(r.nombreSolicitante)||'—'}</td>
@@ -7609,7 +7610,7 @@ function renderReqPapelera(){
         <button class="ghost danger" data-borrarreq="${r.id}">Eliminar definitivamente</button>
       </div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="6" class="empty">La papelera está vacía.</td></tr>`;
+  }).join('') : `<tr><td colspan="7" class="empty">La papelera está vacía.</td></tr>`;
 
   tbody.querySelectorAll('[data-restaurarreq]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
@@ -7680,17 +7681,20 @@ document.getElementById('reqEsCompraDirecta').addEventListener('change', (e)=>{
    necesidad de tocar "Guardar requisición" aparte. */
 function actualizarUIComprasSeguimiento(r){
   const texto = document.getElementById('reqComprasEstadoTexto');
+  const titulo = document.getElementById('reqComprasTitulo');
   const btnSolicitado = document.getElementById('btnMarcarSolicitadoCompras');
   const btnEntregado = document.getElementById('btnMarcarEntregadoCompras');
   const btnReabrir = document.getElementById('btnReabrirCompras');
 
   if(!r){
+    titulo.textContent = 'Seguimiento con Compras';
     texto.textContent = 'Guarda la requisición primero para poder darle seguimiento.';
     btnSolicitado.style.display = 'none';
     btnEntregado.style.display = 'none';
     btnReabrir.style.display = 'none';
     return;
   }
+  titulo.innerHTML = `Seguimiento con Compras — <span style="color:var(--teal);">${esc(r.codigo)||''}</span>`;
 
   const estado = r.estadoCompras || 'Pendiente';
   if(estado==='Entregado'){
@@ -7884,7 +7888,9 @@ document.getElementById('btnGuardarRequisicion').addEventListener('click', async
   await saveRequisiciones();
   showToast('Requisición guardada correctamente.');
   document.getElementById('btnEliminarRequisicion').style.display = 'inline-block';
-  document.getElementById('reqEditTitulo').textContent = `Editar requisición — ${requisiciones.find(r=>r.id===currentReqId)?.codigo||''}`;
+  const rGuardada = requisiciones.find(r=>r.id===currentReqId);
+  document.getElementById('reqEditTitulo').textContent = `Editar requisición — ${rGuardada?.codigo||''}`;
+  actualizarUIComprasSeguimiento(rGuardada);
 });
 
 document.getElementById('btnEliminarRequisicion').addEventListener('click', async ()=>{
