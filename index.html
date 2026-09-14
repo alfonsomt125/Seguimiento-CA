@@ -991,23 +991,6 @@
     </div>
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
-        <h2 style="margin:0;">📋 Pendientes de Compras</h2>
-        <button class="ghost" id="btnExportarPendientesCompras">⬇ Exportar a PDF</button>
-      </div>
-      <p class="hint" style="margin:0 0 12px;">Todo lo que aún no te ha entregado Compras — completo o parcial — de todas las requisiciones, con quién lo pidió y cuándo.</p>
-      <div class="kpis" id="pendientesComprasKpiRow" style="margin-bottom:14px;"></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Pedido</th><th>Insumo</th><th>Solicitante</th><th>Área</th><th>Fecha pedida</th>
-            <th>Solicitada</th><th>Autorizada</th><th>Recibida</th><th>Pendiente</th><th>Estado</th>
-          </tr></thead>
-          <tbody id="pendientesComprasBody"></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
         <h2 style="margin:0;">Requisiciones de Materiales</h2>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="ghost" id="btnVerPapeleraReq">🗑️ Papelera (<span id="reqPapeleraCount">0</span>)</button>
@@ -1050,6 +1033,23 @@
         <table>
           <thead><tr><th>Eliminada</th><th>Código</th><th>Fecha</th><th>Área / Sección</th><th>Solicitante</th><th>Ítems</th><th></th></tr></thead>
           <tbody id="reqPapeleraBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+        <h2 style="margin:0;">📋 Pendientes de Compras</h2>
+        <button class="ghost" id="btnExportarPendientesCompras">⬇ Exportar a PDF</button>
+      </div>
+      <p class="hint" style="margin:0 0 12px;">Todo lo que aún no te ha entregado Compras — completo o parcial — de todas las requisiciones, con quién lo pidió y cuándo.</p>
+      <div class="kpis" id="pendientesComprasKpiRow" style="margin-bottom:14px;"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Pedido</th><th>Insumo</th><th>Solicitante</th><th>Área</th><th>Fecha pedida</th>
+            <th>Solicitada</th><th>Autorizada</th><th>Recibida</th><th>Pendiente</th><th>Estado</th>
+          </tr></thead>
+          <tbody id="pendientesComprasBody"></tbody>
         </table>
       </div>
     </div>
