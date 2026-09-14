@@ -3426,6 +3426,24 @@ async function loadAll(){
     }
     try{ await storageAPI.set('reqNumeracionBase015', JSON.stringify(true)); }catch(e2){}
   }
+  // otro ajuste de una sola vez: cerrar los "huecos" en la numeración que
+  // dejan las requisiciones eliminadas (ej. si la REQ-016 se borró, la que
+  // sigue visible pasa de REQ-017 a REQ-016) — solo se renumeran las
+  // ACTIVAS, en el mismo orden en que se crearon, para que la secuencia que
+  // ves quede corrida sin saltos. Las eliminadas conservan su código viejo,
+  // ya que de todas formas no se muestran en ningún listado.
+  try{
+    await storageAPI.get('reqCerrarHuecosNumeracion');
+  }catch(e){
+    const activas = requisiciones.filter(r=>!r.eliminada)
+      .sort((a,b)=>(a.createdAt||a.fechaSolicitud||'').localeCompare(b.createdAt||b.fechaSolicitud||''));
+    if(activas.length){
+      let n = 15;
+      activas.forEach(r=>{ r.codigo = 'REQ-'+String(n).padStart(3,'0'); n++; });
+      await saveRequisiciones();
+    }
+    try{ await storageAPI.set('reqCerrarHuecosNumeracion', JSON.stringify(true)); }catch(e2){}
+  }
   try{
     const ex = await storageAPI.get('extintores');
     extintores = JSON.parse(ex.value);
@@ -7631,7 +7649,13 @@ function renderReqPapelera(){
   tbody.querySelectorAll('[data-restaurarreq]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const idx = requisiciones.findIndex(r=>r.id===btn.dataset.restaurarreq);
-      if(idx!==-1){ requisiciones[idx] = {...requisiciones[idx], eliminada:false, eliminadaEn:null}; }
+      if(idx!==-1){
+        // le toca un código nuevo (el siguiente disponible entre las
+        // activas) — su código viejo podría ya estar en uso por otra
+        // requisición, ya que los huecos que dejó al eliminarse se cierran
+        // solos entre las que quedaron activas.
+        requisiciones[idx] = {...requisiciones[idx], eliminada:false, eliminadaEn:null, codigo: siguienteCodigoRequisicion()};
+      }
       await saveRequisiciones();
       renderReqPapelera();
       renderReqLista();
@@ -7871,7 +7895,7 @@ document.getElementById('btnVolverListaReq').addEventListener('click', showReqLi
 
 function siguienteCodigoRequisicion(){
   let maxN = 0;
-  requisiciones.forEach(r=>{
+  requisiciones.filter(r=>!r.eliminada).forEach(r=>{
     if(r.codigo){ const m = r.codigo.match(/(\d+)$/); if(m) maxN = Math.max(maxN, parseInt(m[1],10)); }
   });
   return 'REQ-'+String(maxN+1).padStart(3,'0');
