@@ -1088,7 +1088,10 @@
           <label>Fecha de solicitud</label>
           <input type="date" id="reqFecha">
         </div>
-        <div class="field"></div>
+        <div class="field">
+          <label>Código</label>
+          <input type="text" id="reqCodigo" placeholder="Ej: REQ-036">
+        </div>
         <div class="field">
           <label>Área o sección</label>
           <input type="text" id="reqArea" placeholder="Ej: Servicios Generales">
@@ -7689,6 +7692,7 @@ function openReqEditor(reqId){
   currentReqId = reqId || null;
 
   document.getElementById('reqEditTitulo').textContent = r ? `Editar requisición — ${r.codigo||''}` : 'Nueva requisición';
+  document.getElementById('reqCodigo').value = r?.codigo || siguienteCodigoRequisicion();
   document.getElementById('reqFecha').value = r?.fechaSolicitud || todayISO();
   document.getElementById('reqArea').value = r?.areaSeccion || '';
   document.getElementById('reqCentroCostos').value = r?.centroCostos || '';
@@ -7906,9 +7910,19 @@ document.getElementById('btnGuardarRequisicion').addEventListener('click', async
   const nombreSolicitante = document.getElementById('reqSolicitante').value.trim();
   if(!areaSeccion || !nombreSolicitante){ showToast('El área/sección y el nombre del solicitante son obligatorios.'); return; }
 
+  // el código se puede escribir a mano (ej. si tienes que seguir en 036
+  // para que coincida con tu control aparte) — si solo pones el número, se
+  // completa solo con el formato "REQ-XXX".
+  let codigoTexto = document.getElementById('reqCodigo').value.trim();
+  if(codigoTexto && /^\d+$/.test(codigoTexto)) codigoTexto = 'REQ-'+codigoTexto.padStart(3,'0');
+  if(!codigoTexto) codigoTexto = siguienteCodigoRequisicion();
+  const chocaConOtra = requisiciones.some(r=>!r.eliminada && r.id!==currentReqId && r.codigo===codigoTexto);
+  if(chocaConOtra){ showToast(`Ya existe otra requisición activa con el código "${codigoTexto}". Usa uno distinto.`); return; }
+
   const itemsConDatos = currentReqItems.filter(it=>it.descripcion || it.especificaciones || it.cantidadSolicitada || it.cantidadAutorizada || it.uso);
 
   const data = {
+    codigo: codigoTexto,
     fechaSolicitud: document.getElementById('reqFecha').value || todayISO(),
     areaSeccion,
     centroCostos: document.getElementById('reqCentroCostos').value.trim(),
@@ -7923,13 +7937,14 @@ document.getElementById('btnGuardarRequisicion').addEventListener('click', async
     requisiciones[idx] = {...requisiciones[idx], ...data};
   }else{
     currentReqId = uid();
-    requisiciones.push({id: currentReqId, codigo: siguienteCodigoRequisicion(), ...data, createdAt: new Date().toISOString()});
+    requisiciones.push({id: currentReqId, ...data, createdAt: new Date().toISOString()});
   }
   await saveRequisiciones();
   showToast('Requisición guardada correctamente.');
   document.getElementById('btnEliminarRequisicion').style.display = 'inline-block';
   const rGuardada = requisiciones.find(r=>r.id===currentReqId);
   document.getElementById('reqEditTitulo').textContent = `Editar requisición — ${rGuardada?.codigo||''}`;
+  document.getElementById('reqCodigo').value = rGuardada?.codigo || '';
   actualizarUIComprasSeguimiento(rGuardada);
 });
 
