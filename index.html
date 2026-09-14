@@ -3410,6 +3410,22 @@ async function loadAll(){
     sinCodigo.forEach(r=>{ maxN++; r.codigo = 'REQ-'+String(maxN).padStart(3,'0'); });
     await saveRequisiciones();
   }
+  // ajuste de una sola vez: correr la numeración para que empiece en
+  // REQ-015 en vez de REQ-001, para que coincida con el control en la nube
+  // de la empresa (que ya tenía pedidos numerados hasta el 014 por fuera de
+  // esta app). Se guarda una marca para que esto no se repita en cada carga.
+  try{
+    await storageAPI.get('reqNumeracionBase015');
+  }catch(e){
+    if(requisiciones.length){
+      const ordenCronologico = [...requisiciones].sort((a,b)=>
+        (a.createdAt||a.fechaSolicitud||'').localeCompare(b.createdAt||b.fechaSolicitud||''));
+      let n = 15;
+      ordenCronologico.forEach(r=>{ r.codigo = 'REQ-'+String(n).padStart(3,'0'); n++; });
+      await saveRequisiciones();
+    }
+    try{ await storageAPI.set('reqNumeracionBase015', JSON.stringify(true)); }catch(e2){}
+  }
   try{
     const ex = await storageAPI.get('extintores');
     extintores = JSON.parse(ex.value);
