@@ -999,7 +999,7 @@
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Insumo</th><th>Solicitante</th><th>Área</th><th>Fecha pedida</th>
+            <th>Pedido</th><th>Insumo</th><th>Solicitante</th><th>Área</th><th>Fecha pedida</th>
             <th>Solicitada</th><th>Autorizada</th><th>Recibida</th><th>Pendiente</th><th>Estado</th>
           </tr></thead>
           <tbody id="pendientesComprasBody"></tbody>
@@ -1028,6 +1028,7 @@
       <div class="table-wrap">
         <table>
           <thead><tr>
+            <th class="sortable" data-reqsort="codigo">Código</th>
             <th class="sortable" data-reqsort="fechaSolicitud">Fecha</th>
             <th class="sortable" data-reqsort="areaSeccion">Área / Sección</th>
             <th class="sortable" data-reqsort="nombreSolicitante">Solicitante</th>
@@ -3396,6 +3397,19 @@ async function loadAll(){
     const rq = await storageAPI.get('requisiciones');
     requisiciones = JSON.parse(rq.value);
   }catch(e){ requisiciones = []; }
+  // a las requisiciones que ya existían antes de este código (o que por lo
+  // que sea no tienen), se les asigna uno siguiendo el orden en que se
+  // crearon — así todo el histórico también queda identificado desde REQ-001.
+  if(requisiciones.some(r=>!r.codigo)){
+    let maxN = 0;
+    requisiciones.forEach(r=>{
+      if(r.codigo){ const m = r.codigo.match(/(\d+)$/); if(m) maxN = Math.max(maxN, parseInt(m[1],10)); }
+    });
+    const sinCodigo = [...requisiciones].filter(r=>!r.codigo)
+      .sort((a,b)=>(a.createdAt||a.fechaSolicitud||'').localeCompare(b.createdAt||b.fechaSolicitud||''));
+    sinCodigo.forEach(r=>{ maxN++; r.codigo = 'REQ-'+String(maxN).padStart(3,'0'); });
+    await saveRequisiciones();
+  }
   try{
     const ex = await storageAPI.get('extintores');
     extintores = JSON.parse(ex.value);
@@ -5708,6 +5722,7 @@ function renderSolicitudesRecibidas(){
       const nuevaReqId = uid();
       requisiciones.push({
         id: nuevaReqId,
+        codigo: siguienteCodigoRequisicion(),
         fechaSolicitud: s.fecha_solicitud || todayISO(),
         areaSeccion: s.area_seccion || '',
         centroCostos: s.centro_costos || '',
@@ -7292,6 +7307,7 @@ function listaPendientesCompras(){
         const esperado = Number(it.cantidadAutorizada||it.cantidadSolicitada||0);
         const recibido = Number(it.cantidadRecibida||0);
         filas.push({
+          reqId: r.id, codigo: r.codigo||'—',
           insumo: it.descripcion, especificaciones: it.especificaciones||'',
           solicitante: r.nombreSolicitante||'—', area: r.areaSeccion||'—',
           fecha: r.fechaSolicitud||'', cantidadSolicitada: it.cantidadSolicitada||'—',
@@ -7321,6 +7337,7 @@ function renderPendientesCompras(){
   tbody.innerHTML = filas.length ? filas.map(f=>{
     const pillClase = f.estadoTexto==='Parcial' ? 'pill-En_proceso' : 'pill-Pendiente';
     return `<tr>
+      <td><button class="ghost" data-irareq="${f.reqId}" style="font-size:12px;padding:5px 9px;white-space:nowrap;">${esc(f.codigo)}</button></td>
       <td><strong>${esc(f.insumo)}</strong>${f.especificaciones?`<br><span class="hint" style="margin:0;">${esc(f.especificaciones)}</span>`:''}</td>
       <td>${esc(f.solicitante)}</td>
       <td>${esc(f.area)}</td>
@@ -7331,13 +7348,16 @@ function renderPendientesCompras(){
       <td style="text-align:center;font-weight:700;">${f.pendiente}</td>
       <td><span class="pill ${pillClase}">${f.estadoTexto}</span></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="9" class="empty">No hay materiales pendientes por recibir. 🎉</td></tr>`;
+  }).join('') : `<tr><td colspan="10" class="empty">No hay materiales pendientes por recibir. 🎉</td></tr>`;
+  tbody.querySelectorAll('[data-irareq]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openReqEditor(btn.dataset.irareq));
+  });
 }
 function construirPendientesComprasHTML(){
   const filas = listaPendientesCompras();
   const totalUnidadesPendientes = filas.reduce((s,f)=>s+f.pendiente,0);
-  const filasTabla = filas.map((f,i)=>`<tr>
-    <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${i+1}</td>
+  const filasTabla = filas.map((f)=>`<tr>
+    <td style="border:1px solid #000;padding:5px 6px;text-align:center;font-weight:700;">${esc(f.codigo)}</td>
     <td style="border:1px solid #000;padding:5px 6px;">${esc(f.insumo)}${f.especificaciones?' — '+esc(f.especificaciones):''}</td>
     <td style="border:1px solid #000;padding:5px 6px;">${esc(f.solicitante)}</td>
     <td style="border:1px solid #000;padding:5px 6px;">${esc(f.area)}</td>
@@ -7371,7 +7391,7 @@ function construirPendientesComprasHTML(){
   </div>
   <table>
     <thead><tr style="background:#BDD7EE;font-weight:700;">
-      <th style="border:1px solid #000;padding:6px;width:26px;">No.</th>
+      <th style="border:1px solid #000;padding:6px;width:58px;">Pedido</th>
       <th style="border:1px solid #000;padding:6px;">Insumo</th>
       <th style="border:1px solid #000;padding:6px;">Solicitante</th>
       <th style="border:1px solid #000;padding:6px;">Área</th>
@@ -7423,6 +7443,7 @@ function renderReqLista(){
       ? `<br><span class="pill" style="background:${r.legalizada?'var(--green-bg)':'#FDF0DC'};color:${r.legalizada?'var(--green)':'#B45309'};margin-top:4px;">🧾 ${r.legalizada?'Legalizada':'Por legalizar'}</span>`
       : '';
     return `<tr data-verreq="${r.id}" style="cursor:pointer;">
+      <td><strong style="color:var(--navy);">${esc(r.codigo)||'—'}</strong></td>
       <td>${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
       <td><strong>${esc(r.areaSeccion)||'—'}</strong></td>
       <td>${esc(r.nombreSolicitante)||'—'}</td>
@@ -7435,7 +7456,7 @@ function renderReqLista(){
         <button class="ghost danger" data-delreq="${r.id}">Eliminar</button>
       </div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="6" class="empty">${filtroEstadoReqActual ? 'No hay requisiciones que coincidan con este filtro.' : 'Aún no has creado ninguna requisición.'}</td></tr>`;
+  }).join('') : `<tr><td colspan="7" class="empty">${filtroEstadoReqActual ? 'No hay requisiciones que coincidan con este filtro.' : 'Aún no has creado ninguna requisición.'}</td></tr>`;
 
   document.getElementById('reqPapeleraCount').textContent = requisiciones.filter(r=>r.eliminada).length;
 
@@ -7626,7 +7647,7 @@ function openReqEditor(reqId){
   const r = reqId ? requisiciones.find(x=>x.id===reqId) : null;
   currentReqId = reqId || null;
 
-  document.getElementById('reqEditTitulo').textContent = r ? 'Editar requisición' : 'Nueva requisición';
+  document.getElementById('reqEditTitulo').textContent = r ? `Editar requisición — ${r.codigo||''}` : 'Nueva requisición';
   document.getElementById('reqFecha').value = r?.fechaSolicitud || todayISO();
   document.getElementById('reqArea').value = r?.areaSeccion || '';
   document.getElementById('reqCentroCostos').value = r?.centroCostos || '';
@@ -7828,6 +7849,13 @@ document.getElementById('btnAgregarLineaReq').addEventListener('click', ()=>{
 
 document.getElementById('btnVolverListaReq').addEventListener('click', showReqLista);
 
+function siguienteCodigoRequisicion(){
+  let maxN = 0;
+  requisiciones.forEach(r=>{
+    if(r.codigo){ const m = r.codigo.match(/(\d+)$/); if(m) maxN = Math.max(maxN, parseInt(m[1],10)); }
+  });
+  return 'REQ-'+String(maxN+1).padStart(3,'0');
+}
 document.getElementById('btnGuardarRequisicion').addEventListener('click', async ()=>{
   syncReqItemsFromDOM();
   const areaSeccion = document.getElementById('reqArea').value.trim();
@@ -7851,12 +7879,12 @@ document.getElementById('btnGuardarRequisicion').addEventListener('click', async
     requisiciones[idx] = {...requisiciones[idx], ...data};
   }else{
     currentReqId = uid();
-    requisiciones.push({id: currentReqId, ...data, createdAt: new Date().toISOString()});
+    requisiciones.push({id: currentReqId, codigo: siguienteCodigoRequisicion(), ...data, createdAt: new Date().toISOString()});
   }
   await saveRequisiciones();
   showToast('Requisición guardada correctamente.');
   document.getElementById('btnEliminarRequisicion').style.display = 'inline-block';
-  document.getElementById('reqEditTitulo').textContent = 'Editar requisición';
+  document.getElementById('reqEditTitulo').textContent = `Editar requisición — ${requisiciones.find(r=>r.id===currentReqId)?.codigo||''}`;
 });
 
 document.getElementById('btnEliminarRequisicion').addEventListener('click', async ()=>{
