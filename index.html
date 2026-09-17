@@ -1385,6 +1385,12 @@
     </div>
     <p class="hint" style="margin:0 0 14px;" id="heLimitesTexto"></p>
     <p class="hint" style="margin:0 0 6px;">Período de corte a revisar (por defecto del 15 al 15, pero lo puedes ajustar cualquier mes que el corte sea distinto — ej. del 20 al 15):</p>
+    <div class="year-pills" id="heCortesRapidos" style="margin-bottom:12px;">
+      <button class="year-pill" data-corte="2026-08-20|2026-09-15">20 ago – 15 sep</button>
+      <button class="year-pill" data-corte="2026-09-16|2026-10-15">16 sep – 15 oct</button>
+      <button class="year-pill" data-corte="2026-10-16|2026-11-15">16 oct – 15 nov</button>
+      <button class="year-pill" data-corte="2026-11-16|2026-12-15">16 nov – 15 dic</button>
+    </div>
     <div class="grid-2" style="max-width:420px;margin-bottom:14px;">
       <div class="field">
         <label>Desde</label>
@@ -1403,9 +1409,19 @@
       <h2 style="margin:0;">Registros de horas extras</h2>
       <button class="primary" id="btnNuevaHoraExtra">+ Agregar</button>
     </div>
+    <div class="field" style="max-width:280px;margin-bottom:14px;">
+      <label>Buscar</label>
+      <input type="text" id="heBuscar" placeholder="Trabajador o motivo...">
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Fecha</th><th>Trabajador</th><th>Horas</th><th>Motivo</th><th></th></tr></thead>
+        <thead><tr>
+          <th class="sortable" data-hesort="fecha">Fecha</th>
+          <th class="sortable" data-hesort="trabajadorNombre">Trabajador</th>
+          <th class="sortable" data-hesort="horas">Horas</th>
+          <th class="sortable" data-hesort="motivo">Motivo</th>
+          <th></th>
+        </tr></thead>
         <tbody id="heListaBody"></tbody>
       </table>
     </div>
@@ -7185,6 +7201,50 @@ function periodoActualHE(){
   return { desde: document.getElementById('heDesdePeriodo').value, hasta: document.getElementById('heHastaPeriodo').value };
 }
 
+let heSort = {key:'fecha', dir:-1};
+function sortHeRows(rows){
+  const {key, dir} = heSort;
+  return [...rows].sort((a,b)=>{
+    let va, vb;
+    if(key==='horas'){ va=Number(a.horas||0); vb=Number(b.horas||0); }
+    else { va=(a[key]||'').toString().toLowerCase(); vb=(b[key]||'').toString().toLowerCase(); }
+    if(va<vb) return -1*dir;
+    if(va>vb) return 1*dir;
+    return 0;
+  });
+}
+function updateHeSortHeaders(){
+  document.querySelectorAll('th[data-hesort]').forEach(th=>{
+    th.classList.remove('sort-active');
+    const old = th.querySelector('.sort-arrow');
+    if(old) old.remove();
+    if(th.dataset.hesort===heSort.key){
+      th.classList.add('sort-active');
+      const arrow = document.createElement('span');
+      arrow.className = 'sort-arrow';
+      arrow.textContent = heSort.dir===1 ? '▲' : '▼';
+      th.appendChild(arrow);
+    }
+  });
+}
+document.querySelectorAll('th[data-hesort]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.hesort;
+    if(heSort.key===key){ heSort.dir *= -1; } else { heSort = {key, dir: key==='fecha'?-1:1}; }
+    renderHorasExtra();
+  });
+});
+document.getElementById('heBuscar').addEventListener('input', renderHorasExtra);
+document.querySelectorAll('#heCortesRapidos [data-corte]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const [desde, hasta] = btn.dataset.corte.split('|');
+    document.getElementById('heDesdePeriodo').value = desde;
+    document.getElementById('heHastaPeriodo').value = hasta;
+    document.querySelectorAll('#heCortesRapidos [data-corte]').forEach(b=>b.classList.toggle('active', b===btn));
+    renderHorasExtra();
+  });
+});
+
 function renderHorasExtra(){
   actualizarTextoLimitesHE();
   if(!document.getElementById('heDesdePeriodo').value || !document.getElementById('heHastaPeriodo').value){
@@ -7193,6 +7253,9 @@ function renderHorasExtra(){
     document.getElementById('heHastaPeriodo').value = def.hasta;
   }
   const {desde, hasta} = periodoActualHE();
+  document.querySelectorAll('#heCortesRapidos [data-corte]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.corte===`${desde}|${hasta}`);
+  });
 
   const resumenWrap = document.getElementById('heResumenPorTrabajador');
   const filas = trabajadores.map(t=>{
@@ -7212,10 +7275,15 @@ function renderHorasExtra(){
       <span class="count" style="width:auto;min-width:96px;font-weight:700;color:${f.color};">${f.total}h / ${limitesHorasExtras.mensual}h</span>
     </div>`).join('') : '<p class="empty">Aún no hay trabajadores registrados (se agregan desde Salida de Insumos).</p>';
 
-  const registrosDelPeriodo = (desde && hasta ? horasExtras.filter(h=>h.fecha && h.fecha>=desde && h.fecha<=hasta) : [])
-    .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const registrosDelPeriodo = (desde && hasta ? horasExtras.filter(h=>h.fecha && h.fecha>=desde && h.fecha<=hasta) : []);
+  const busqueda = document.getElementById('heBuscar').value.toLowerCase().trim();
+  const registrosFiltrados = busqueda
+    ? registrosDelPeriodo.filter(h=>(h.trabajadorNombre||'').toLowerCase().includes(busqueda) || (h.motivo||'').toLowerCase().includes(busqueda))
+    : registrosDelPeriodo;
+  const registrosOrdenados = sortHeRows(registrosFiltrados);
+  updateHeSortHeaders();
   const tbody = document.getElementById('heListaBody');
-  tbody.innerHTML = registrosDelPeriodo.length ? registrosDelPeriodo.map(h=>`
+  tbody.innerHTML = registrosOrdenados.length ? registrosOrdenados.map(h=>`
     <tr>
       <td>${fmtDate(h.fecha)}</td>
       <td>${esc(h.trabajadorNombre)}</td>
@@ -7225,7 +7293,7 @@ function renderHorasExtra(){
         <button class="ghost" data-editarhe="${h.id}">Editar</button>
         <button class="ghost danger" data-eliminarhe="${h.id}">Eliminar</button>
       </div></td>
-    </tr>`).join('') : `<tr><td colspan="5" class="empty">No hay horas extras registradas en este período.</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="5" class="empty">${busqueda ? 'Nada coincide con la búsqueda.' : 'No hay horas extras registradas en este período.'}</td></tr>`;
 
   tbody.querySelectorAll('[data-editarhe]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
