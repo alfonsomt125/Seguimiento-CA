@@ -430,6 +430,12 @@
   table{width:100%;border-collapse:collapse;font-size:12.5px;}
   th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--gray);border-bottom:2px solid var(--navy);padding:8px 8px;white-space:nowrap;}
   th.sortable{cursor:pointer;user-select:none;transition:color .15s;}
+  .he-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .he-cal-dow{font-size:10px;font-weight:700;color:var(--gray);text-align:center;text-transform:uppercase;padding:4px 0;}
+  .he-cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;font-size:13px;border:1px solid var(--line);background:#fff;transition:background .1s;}
+  .he-cal-day:hover{background:#e8ecf3;}
+  .he-cal-day.selected{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700;}
+  .he-cal-day.empty{visibility:hidden;cursor:default;}
   th.sortable:hover{color:var(--navy);}
   th.sortable .sort-arrow{display:inline-block;margin-left:4px;font-size:9px;color:var(--teal);}
   th.sortable.sort-active{color:var(--navy);}
@@ -1408,13 +1414,24 @@
         <label>Trabajador</label>
         <select id="heTrabajador"></select>
       </div>
-      <div class="field" style="margin-top:14px;">
+      <div class="field" style="margin-top:14px;" id="heFechaWrap">
         <label id="heFechaLabel">Fecha</label>
         <input type="date" id="heFecha">
       </div>
-      <div class="field" style="margin-top:14px;" id="heFechaFinWrap">
-        <label>Fecha de fin (opcional — mismo horario varios días seguidos)</label>
-        <input type="date" id="heFechaFin">
+      <div class="field" style="margin-top:14px;" id="heModoVariosDiasWrap">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+          <input type="checkbox" id="heModoVariosDias" style="width:16px;height:16px;">
+          📅 Elegir varios días en un calendario (no tienen que ser seguidos)
+        </label>
+      </div>
+      <div id="heCalendarioWrap" style="display:none;margin-top:10px;padding:12px;border:1px dashed var(--line);border-radius:12px;background:var(--paper-2,#f4f5f8);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <button type="button" class="ghost" id="heCalPrev" style="padding:6px 12px;">←</button>
+          <strong id="heCalMesLabel" style="color:var(--navy);text-transform:capitalize;"></strong>
+          <button type="button" class="ghost" id="heCalNext" style="padding:6px 12px;">→</button>
+        </div>
+        <div id="heCalGrid" class="he-cal-grid"></div>
+        <p class="hint" id="heDiasSeleccionadosTexto" style="margin:10px 0 0;"></p>
       </div>
       <div class="field" style="margin-top:14px;">
         <label>Horas</label>
@@ -7196,9 +7213,12 @@ function abrirHEModal(registro){
   document.getElementById('heModalTitulo').textContent = registro ? 'Editar hora extra' : 'Nueva hora extra';
   document.getElementById('heTrabajador').value = registro ? registro.trabajadorId : (trabajadores[0]?.id || '');
   document.getElementById('heFecha').value = registro ? registro.fecha : todayISO();
-  document.getElementById('heFechaFin').value = '';
-  document.getElementById('heFechaLabel').textContent = registro ? 'Fecha' : 'Fecha de inicio';
-  document.getElementById('heFechaFinWrap').style.display = registro ? 'none' : 'block';
+  document.getElementById('heFechaLabel').textContent = registro ? 'Fecha' : 'Fecha (o marca varios días abajo)';
+  document.getElementById('heModoVariosDias').checked = false;
+  document.getElementById('heModoVariosDiasWrap').style.display = registro ? 'none' : 'block';
+  document.getElementById('heFechaWrap').style.display = 'block';
+  document.getElementById('heCalendarioWrap').style.display = 'none';
+  heDiasSeleccionados = new Set();
   document.getElementById('heHoras').value = registro ? registro.horas : '';
   document.getElementById('heMotivo').value = registro ? (registro.motivo||'') : '';
   document.getElementById('btnEliminarHE').style.display = registro ? 'inline-block' : 'none';
@@ -7214,28 +7234,65 @@ document.getElementById('btnCancelarHE').addEventListener('click', ()=>{
   heEditandoId = null;
 });
 
-function fechasEnRango(desde, hasta){
-  const fechas = [];
-  let d = new Date(desde+'T00:00:00');
-  const fin = new Date(hasta+'T00:00:00');
-  while(d<=fin){ fechas.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
-  return fechas;
+let heCalMesActual = new Date();
+let heDiasSeleccionados = new Set();
+
+function renderCalendarioHE(){
+  const grid = document.getElementById('heCalGrid');
+  const year = heCalMesActual.getFullYear();
+  const month = heCalMesActual.getMonth();
+  document.getElementById('heCalMesLabel').textContent = heCalMesActual.toLocaleDateString('es-CO', {month:'long', year:'numeric'});
+  const diasEnMes = new Date(year, month+1, 0).getDate();
+  const offsetInicio = (new Date(year, month, 1).getDay()+6)%7; // lunes=0
+  let html = ['L','M','X','J','V','S','D'].map(d=>`<div class="he-cal-dow">${d}</div>`).join('');
+  for(let i=0;i<offsetInicio;i++) html += `<div class="he-cal-day empty"></div>`;
+  for(let d=1; d<=diasEnMes; d++){
+    const fechaStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    html += `<div class="he-cal-day${heDiasSeleccionados.has(fechaStr)?' selected':''}" data-fecha="${fechaStr}">${d}</div>`;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('[data-fecha]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const f = el.dataset.fecha;
+      if(heDiasSeleccionados.has(f)) heDiasSeleccionados.delete(f); else heDiasSeleccionados.add(f);
+      renderCalendarioHE();
+      actualizarAvisoLimiteHE();
+    });
+  });
 }
+document.getElementById('heCalPrev').addEventListener('click', ()=>{ heCalMesActual.setMonth(heCalMesActual.getMonth()-1); renderCalendarioHE(); });
+document.getElementById('heCalNext').addEventListener('click', ()=>{ heCalMesActual.setMonth(heCalMesActual.getMonth()+1); renderCalendarioHE(); });
+document.getElementById('heModoVariosDias').addEventListener('change', (e)=>{
+  const activo = e.target.checked;
+  document.getElementById('heFechaWrap').style.display = activo ? 'none' : 'block';
+  document.getElementById('heCalendarioWrap').style.display = activo ? 'block' : 'none';
+  if(activo){
+    heDiasSeleccionados = new Set();
+    heCalMesActual = new Date();
+    renderCalendarioHE();
+  }
+  actualizarAvisoLimiteHE();
+});
+
 function actualizarAvisoLimiteHE(){
   const trabajadorId = document.getElementById('heTrabajador').value;
-  const fecha = document.getElementById('heFecha').value;
-  const fechaFin = document.getElementById('heFechaFin').value;
   const horas = Number(document.getElementById('heHoras').value) || 0;
   const aviso = document.getElementById('heAvisoLimite');
-  if(!trabajadorId || !fecha || !horas){ aviso.textContent = ''; return; }
+  const modoVariosDias = !heEditandoId && document.getElementById('heModoVariosDias').checked;
 
-  if(!heEditandoId && fechaFin && fechaFin > fecha){
-    const dias = fechasEnRango(fecha, fechaFin);
-    aviso.textContent = `Se van a crear ${dias.length} registros de ${horas}h cada día (del ${fmtDate(fecha)} al ${fmtDate(fechaFin)}) — ${(dias.length*horas).toFixed(1)}h en total.`;
+  if(modoVariosDias){
+    const dias = [...heDiasSeleccionados].sort();
+    document.getElementById('heDiasSeleccionadosTexto').textContent = dias.length
+      ? `${dias.length} día(s) elegido(s): ${dias.map(f=>fmtDate(f)).join(', ')}`
+      : 'Todavía no has elegido ningún día en el calendario.';
+    if(!trabajadorId || !horas || !dias.length){ aviso.textContent = ''; return; }
+    aviso.textContent = `Se van a crear ${dias.length} registro(s) de ${horas}h cada uno — ${(dias.length*horas).toFixed(1)}h en total.`;
     aviso.style.color = 'var(--gray)';
     return;
   }
 
+  const fecha = document.getElementById('heFecha').value;
+  if(!trabajadorId || !fecha || !horas){ aviso.textContent = ''; return; }
   const totalDia = horasDelDia(trabajadorId, fecha, heEditandoId) + horas;
   const totalMes = horasDelMes(trabajadorId, fecha.slice(0,7), heEditandoId) + horas;
   const problemas = [];
@@ -7250,29 +7307,30 @@ function actualizarAvisoLimiteHE(){
     aviso.style.color = 'var(--gray)';
   }
 }
-['heTrabajador','heFecha','heFechaFin','heHoras'].forEach(id=>{
+['heTrabajador','heFecha','heHoras'].forEach(id=>{
   document.getElementById(id).addEventListener('input', actualizarAvisoLimiteHE);
   document.getElementById(id).addEventListener('change', actualizarAvisoLimiteHE);
 });
 
 document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
   const trabajadorId = document.getElementById('heTrabajador').value;
-  const fecha = document.getElementById('heFecha').value;
-  const fechaFin = document.getElementById('heFechaFin').value;
   const horas = Number(document.getElementById('heHoras').value);
   const motivo = document.getElementById('heMotivo').value.trim();
   if(!trabajadorId){ showToast('Elige un trabajador.'); return; }
-  if(!fecha){ showToast('Elige una fecha.'); return; }
   if(!horas || horas<=0){ showToast('Escribe cuántas horas fueron.'); return; }
 
   const trabajador = trabajadores.find(t=>t.id===trabajadorId);
+  const modoVariosDias = !heEditandoId && document.getElementById('heModoVariosDias').checked;
 
-  // modo rango: mismo horario para varios días seguidos — se crea un
-  // registro independiente por cada día (no uno solo con horas sumadas),
-  // así el historial y los reportes por día quedan igual de exactos que si
-  // los hubieras metido uno por uno.
-  if(!heEditandoId && fechaFin && fechaFin > fecha){
-    const dias = fechasEnRango(fecha, fechaFin);
+  // modo calendario: eliges los días que quieras del mes (no tienen que ser
+  // seguidos) — se crea un registro independiente por cada uno (no uno
+  // solo con las horas sumadas), así el historial y los reportes por día
+  // quedan igual de exactos que si los hubieras metido uno por uno. Para
+  // días con horario distinto dentro de la misma semana, se repite el
+  // proceso con esos otros días y sus propias horas.
+  if(modoVariosDias){
+    const dias = [...heDiasSeleccionados].sort();
+    if(!dias.length){ showToast('Marca al menos un día en el calendario.'); return; }
     const diasQueExceden = [];
     const acumuladoPorMes = {};
     dias.forEach(f=>{
@@ -7295,6 +7353,9 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
     showToast(`${dias.length} registros guardados.`);
     return;
   }
+
+  const fecha = document.getElementById('heFecha').value;
+  if(!fecha){ showToast('Elige una fecha.'); return; }
 
   const totalDia = horasDelDia(trabajadorId, fecha, heEditandoId) + horas;
   const totalMes = horasDelMes(trabajadorId, fecha.slice(0,7), heEditandoId) + horas;
