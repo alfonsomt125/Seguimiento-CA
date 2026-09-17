@@ -1409,8 +1409,12 @@
         <select id="heTrabajador"></select>
       </div>
       <div class="field" style="margin-top:14px;">
-        <label>Fecha</label>
+        <label id="heFechaLabel">Fecha</label>
         <input type="date" id="heFecha">
+      </div>
+      <div class="field" style="margin-top:14px;" id="heFechaFinWrap">
+        <label>Fecha de fin (opcional — mismo horario varios días seguidos)</label>
+        <input type="date" id="heFechaFin">
       </div>
       <div class="field" style="margin-top:14px;">
         <label>Horas</label>
@@ -7192,6 +7196,9 @@ function abrirHEModal(registro){
   document.getElementById('heModalTitulo').textContent = registro ? 'Editar hora extra' : 'Nueva hora extra';
   document.getElementById('heTrabajador').value = registro ? registro.trabajadorId : (trabajadores[0]?.id || '');
   document.getElementById('heFecha').value = registro ? registro.fecha : todayISO();
+  document.getElementById('heFechaFin').value = '';
+  document.getElementById('heFechaLabel').textContent = registro ? 'Fecha' : 'Fecha de inicio';
+  document.getElementById('heFechaFinWrap').style.display = registro ? 'none' : 'block';
   document.getElementById('heHoras').value = registro ? registro.horas : '';
   document.getElementById('heMotivo').value = registro ? (registro.motivo||'') : '';
   document.getElementById('btnEliminarHE').style.display = registro ? 'inline-block' : 'none';
@@ -7207,12 +7214,27 @@ document.getElementById('btnCancelarHE').addEventListener('click', ()=>{
   heEditandoId = null;
 });
 
+function fechasEnRango(desde, hasta){
+  const fechas = [];
+  let d = new Date(desde+'T00:00:00');
+  const fin = new Date(hasta+'T00:00:00');
+  while(d<=fin){ fechas.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
+  return fechas;
+}
 function actualizarAvisoLimiteHE(){
   const trabajadorId = document.getElementById('heTrabajador').value;
   const fecha = document.getElementById('heFecha').value;
+  const fechaFin = document.getElementById('heFechaFin').value;
   const horas = Number(document.getElementById('heHoras').value) || 0;
   const aviso = document.getElementById('heAvisoLimite');
   if(!trabajadorId || !fecha || !horas){ aviso.textContent = ''; return; }
+
+  if(!heEditandoId && fechaFin && fechaFin > fecha){
+    const dias = fechasEnRango(fecha, fechaFin);
+    aviso.textContent = `Se van a crear ${dias.length} registros de ${horas}h cada día (del ${fmtDate(fecha)} al ${fmtDate(fechaFin)}) — ${(dias.length*horas).toFixed(1)}h en total.`;
+    aviso.style.color = 'var(--gray)';
+    return;
+  }
 
   const totalDia = horasDelDia(trabajadorId, fecha, heEditandoId) + horas;
   const totalMes = horasDelMes(trabajadorId, fecha.slice(0,7), heEditandoId) + horas;
@@ -7228,7 +7250,7 @@ function actualizarAvisoLimiteHE(){
     aviso.style.color = 'var(--gray)';
   }
 }
-['heTrabajador','heFecha','heHoras'].forEach(id=>{
+['heTrabajador','heFecha','heFechaFin','heHoras'].forEach(id=>{
   document.getElementById(id).addEventListener('input', actualizarAvisoLimiteHE);
   document.getElementById(id).addEventListener('change', actualizarAvisoLimiteHE);
 });
@@ -7236,11 +7258,43 @@ function actualizarAvisoLimiteHE(){
 document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
   const trabajadorId = document.getElementById('heTrabajador').value;
   const fecha = document.getElementById('heFecha').value;
+  const fechaFin = document.getElementById('heFechaFin').value;
   const horas = Number(document.getElementById('heHoras').value);
   const motivo = document.getElementById('heMotivo').value.trim();
   if(!trabajadorId){ showToast('Elige un trabajador.'); return; }
   if(!fecha){ showToast('Elige una fecha.'); return; }
   if(!horas || horas<=0){ showToast('Escribe cuántas horas fueron.'); return; }
+
+  const trabajador = trabajadores.find(t=>t.id===trabajadorId);
+
+  // modo rango: mismo horario para varios días seguidos — se crea un
+  // registro independiente por cada día (no uno solo con horas sumadas),
+  // así el historial y los reportes por día quedan igual de exactos que si
+  // los hubieras metido uno por uno.
+  if(!heEditandoId && fechaFin && fechaFin > fecha){
+    const dias = fechasEnRango(fecha, fechaFin);
+    const diasQueExceden = [];
+    const acumuladoPorMes = {};
+    dias.forEach(f=>{
+      const mesKey = f.slice(0,7);
+      const totalDia = horasDelDia(trabajadorId, f, null) + horas;
+      if(!(mesKey in acumuladoPorMes)) acumuladoPorMes[mesKey] = horasDelMes(trabajadorId, mesKey, null);
+      acumuladoPorMes[mesKey] += horas;
+      if(totalDia > limitesHorasExtras.diario || acumuladoPorMes[mesKey] > limitesHorasExtras.mensual) diasQueExceden.push(f);
+    });
+    if(diasQueExceden.length){
+      if(!await customConfirm(`${diasQueExceden.length} de los ${dias.length} día(s) superarían el límite diario y/o mensual configurado. ¿Registrarlos de todas formas?`)) return;
+    }
+    dias.forEach(f=>{
+      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, motivo, createdAt: new Date().toISOString()});
+    });
+    await saveHorasExtras();
+    document.getElementById('heModalBg').classList.remove('active');
+    heEditandoId = null;
+    renderHorasExtra();
+    showToast(`${dias.length} registros guardados.`);
+    return;
+  }
 
   const totalDia = horasDelDia(trabajadorId, fecha, heEditandoId) + horas;
   const totalMes = horasDelMes(trabajadorId, fecha.slice(0,7), heEditandoId) + horas;
@@ -7248,7 +7302,6 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
     if(!await customConfirm('Esto supera el límite diario y/o mensual configurado. ¿Registrarlo de todas formas?')) return;
   }
 
-  const trabajador = trabajadores.find(t=>t.id===trabajadorId);
   if(heEditandoId){
     const idx = horasExtras.findIndex(h=>h.id===heEditandoId);
     if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, motivo};
