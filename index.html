@@ -1434,8 +1434,21 @@
         <p class="hint" id="heDiasSeleccionadosTexto" style="margin:10px 0 0;"></p>
       </div>
       <div class="field" style="margin-top:14px;">
-        <label>Horas</label>
-        <input type="number" id="heHoras" min="0.5" step="0.5" placeholder="Ej: 2">
+        <label>Hora de inicio</label>
+        <div style="display:flex;gap:6px;">
+          <select id="heHoraInicioH" style="flex:1;"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select>
+          <select id="heHoraInicioM" style="flex:1;"><option value="00">00</option><option value="05">05</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option><option value="40">40</option><option value="45">45</option><option value="50">50</option><option value="55">55</option></select>
+          <select id="heHoraInicioAP" style="flex:1;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Hora de finalización</label>
+        <div style="display:flex;gap:6px;">
+          <select id="heHoraFinH" style="flex:1;"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select>
+          <select id="heHoraFinM" style="flex:1;"><option value="00">00</option><option value="05">05</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option><option value="35">35</option><option value="40">40</option><option value="45">45</option><option value="50">50</option><option value="55">55</option></select>
+          <select id="heHoraFinAP" style="flex:1;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+        <p class="hint" id="heDuracionCalculada" style="margin:6px 0 0;"></p>
       </div>
       <div class="field" style="margin-top:14px;">
         <label>Motivo</label>
@@ -7177,7 +7190,7 @@ function renderHorasExtra(){
     <tr>
       <td>${fmtDate(h.fecha)}</td>
       <td>${esc(h.trabajadorNombre)}</td>
-      <td>${h.horas}</td>
+      <td>${h.horaInicio ? `${hora24aTexto12(h.horaInicio)} – ${hora24aTexto12(h.horaFin)}<br><span class="hint" style="margin:0;">${h.horas}h</span>` : h.horas+'h'}</td>
       <td>${esc(h.motivo)||'—'}</td>
       <td><div class="row-actions">
         <button class="ghost" data-editarhe="${h.id}">Editar</button>
@@ -7219,7 +7232,9 @@ function abrirHEModal(registro){
   document.getElementById('heFechaWrap').style.display = 'block';
   document.getElementById('heCalendarioWrap').style.display = 'none';
   heDiasSeleccionados = new Set();
-  document.getElementById('heHoras').value = registro ? registro.horas : '';
+  ponerHoraEnSelects('heHoraInicio', registro?.horaInicio || '15:00');
+  ponerHoraEnSelects('heHoraFin', registro?.horaFin || '16:00');
+  actualizarDuracionCalculadaHE();
   document.getElementById('heMotivo').value = registro ? (registro.motivo||'') : '';
   document.getElementById('btnEliminarHE').style.display = registro ? 'inline-block' : 'none';
   document.getElementById('heModalBg').classList.add('active');
@@ -7232,6 +7247,53 @@ document.getElementById('btnNuevaHoraExtra').addEventListener('click', ()=>{
 document.getElementById('btnCancelarHE').addEventListener('click', ()=>{
   document.getElementById('heModalBg').classList.remove('active');
   heEditandoId = null;
+});
+
+/* Hora de inicio/fin en selects de 12h con AM/PM (para que siempre se vea
+   así sin importar el idioma/configuración del navegador), pero por dentro
+   se guarda en formato 24h "HH:MM" — más fácil de comparar y ordenar. */
+function selectsAHora24(h12, min, ampm){
+  let h = Number(h12)%12;
+  if(ampm==='PM') h += 12;
+  return String(h).padStart(2,'0')+':'+min;
+}
+function hora24aSelects(hora24){
+  if(!hora24) return {h12:'3', min:'00', ampm:'PM'};
+  const [h,m] = hora24.split(':').map(Number);
+  const ampm = h>=12 ? 'PM' : 'AM';
+  let h12 = h%12; if(h12===0) h12=12;
+  return {h12:String(h12), min:String(m).padStart(2,'0'), ampm};
+}
+function hora24aTexto12(hora24){
+  if(!hora24) return '';
+  const {h12,min,ampm} = hora24aSelects(hora24);
+  return `${h12}:${min} ${ampm}`;
+}
+function leerHoraInicioSelects(){ return selectsAHora24(document.getElementById('heHoraInicioH').value, document.getElementById('heHoraInicioM').value, document.getElementById('heHoraInicioAP').value); }
+function leerHoraFinSelects(){ return selectsAHora24(document.getElementById('heHoraFinH').value, document.getElementById('heHoraFinM').value, document.getElementById('heHoraFinAP').value); }
+function ponerHoraEnSelects(prefijo, hora24){
+  const {h12,min,ampm} = hora24aSelects(hora24);
+  document.getElementById(prefijo+'H').value = h12;
+  document.getElementById(prefijo+'M').value = min;
+  document.getElementById(prefijo+'AP').value = ampm;
+}
+function horasEntre(inicio24, fin24){
+  const [hi,mi] = inicio24.split(':').map(Number);
+  const [hf,mf] = fin24.split(':').map(Number);
+  const minutos = (hf*60+mf) - (hi*60+mi);
+  return minutos>0 ? minutos/60 : null;
+}
+function actualizarDuracionCalculadaHE(){
+  const inicio = leerHoraInicioSelects();
+  const fin = leerHoraFinSelects();
+  const horas = horasEntre(inicio, fin);
+  const el = document.getElementById('heDuracionCalculada');
+  el.textContent = horas===null ? '⚠ La hora de fin debe ser después de la hora de inicio.' : `Duración: ${horas}h`;
+  el.style.color = horas===null ? 'var(--red)' : 'var(--gray)';
+  actualizarAvisoLimiteHE();
+}
+['heHoraInicioH','heHoraInicioM','heHoraInicioAP','heHoraFinH','heHoraFinM','heHoraFinAP'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', actualizarDuracionCalculadaHE);
 });
 
 let heCalMesActual = new Date();
@@ -7276,7 +7338,7 @@ document.getElementById('heModoVariosDias').addEventListener('change', (e)=>{
 
 function actualizarAvisoLimiteHE(){
   const trabajadorId = document.getElementById('heTrabajador').value;
-  const horas = Number(document.getElementById('heHoras').value) || 0;
+  const horas = horasEntre(leerHoraInicioSelects(), leerHoraFinSelects()) || 0;
   const aviso = document.getElementById('heAvisoLimite');
   const modoVariosDias = !heEditandoId && document.getElementById('heModoVariosDias').checked;
 
@@ -7307,17 +7369,19 @@ function actualizarAvisoLimiteHE(){
     aviso.style.color = 'var(--gray)';
   }
 }
-['heTrabajador','heFecha','heHoras'].forEach(id=>{
+['heTrabajador','heFecha'].forEach(id=>{
   document.getElementById(id).addEventListener('input', actualizarAvisoLimiteHE);
   document.getElementById(id).addEventListener('change', actualizarAvisoLimiteHE);
 });
 
 document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
   const trabajadorId = document.getElementById('heTrabajador').value;
-  const horas = Number(document.getElementById('heHoras').value);
+  const horaInicio = leerHoraInicioSelects();
+  const horaFin = leerHoraFinSelects();
+  const horas = horasEntre(horaInicio, horaFin);
   const motivo = document.getElementById('heMotivo').value.trim();
   if(!trabajadorId){ showToast('Elige un trabajador.'); return; }
-  if(!horas || horas<=0){ showToast('Escribe cuántas horas fueron.'); return; }
+  if(horas===null){ showToast('La hora de fin debe ser después de la hora de inicio.'); return; }
 
   const trabajador = trabajadores.find(t=>t.id===trabajadorId);
   const modoVariosDias = !heEditandoId && document.getElementById('heModoVariosDias').checked;
@@ -7344,7 +7408,7 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
       if(!await customConfirm(`${diasQueExceden.length} de los ${dias.length} día(s) superarían el límite diario y/o mensual configurado. ¿Registrarlos de todas formas?`)) return;
     }
     dias.forEach(f=>{
-      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, motivo, createdAt: new Date().toISOString()});
+      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, createdAt: new Date().toISOString()});
     });
     await saveHorasExtras();
     document.getElementById('heModalBg').classList.remove('active');
@@ -7365,9 +7429,9 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
 
   if(heEditandoId){
     const idx = horasExtras.findIndex(h=>h.id===heEditandoId);
-    if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, motivo};
+    if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo};
   }else{
-    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, motivo, createdAt: new Date().toISOString()});
+    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, createdAt: new Date().toISOString()});
   }
   await saveHorasExtras();
   document.getElementById('heModalBg').classList.remove('active');
