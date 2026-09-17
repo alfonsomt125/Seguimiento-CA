@@ -1380,13 +1380,20 @@
 
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
-      <h2 style="margin:0;">Horas extras — resumen del mes</h2>
+      <h2 style="margin:0;">Horas extras — resumen del período</h2>
       <button class="ghost" id="btnConfigLimitesHE">⚙ Configurar límites</button>
     </div>
     <p class="hint" style="margin:0 0 14px;" id="heLimitesTexto"></p>
-    <div class="field" style="max-width:220px;margin-bottom:14px;">
-      <label>Mes a revisar</label>
-      <input type="month" id="heMesFiltro">
+    <p class="hint" style="margin:0 0 6px;">Período de corte a revisar (por defecto del 15 al 15, pero lo puedes ajustar cualquier mes que el corte sea distinto — ej. del 20 al 15):</p>
+    <div class="grid-2" style="max-width:420px;margin-bottom:14px;">
+      <div class="field">
+        <label>Desde</label>
+        <input type="date" id="heDesdePeriodo">
+      </div>
+      <div class="field">
+        <label>Hasta</label>
+        <input type="date" id="heHastaPeriodo">
+      </div>
     </div>
     <div id="heResumenPorTrabajador"></div>
   </div>
@@ -1467,13 +1474,13 @@
   <div class="modal-bg" id="heLimitesModalBg">
     <div class="modal" style="max-width:380px;">
       <h3>Límites de horas extras</h3>
-      <p class="hint" style="margin:6px 0 16px;">Por ley colombiana el máximo diario es 2 horas. El límite mensual no está fijado explícitamente en la ley (sí uno semanal de 12h) — ajústalo según la política del colegio.</p>
+      <p class="hint" style="margin:6px 0 16px;">Por ley colombiana el máximo diario es 2 horas. El límite por período (el corte de nómina, no el mes calendario) no está fijado explícitamente en la ley (sí uno semanal de 12h) — ajústalo según la política del colegio.</p>
       <div class="field">
         <label>Límite diario (horas)</label>
         <input type="number" id="heLimiteDiario" min="0.5" step="0.5">
       </div>
       <div class="field" style="margin-top:14px;">
-        <label>Límite mensual (horas)</label>
+        <label>Límite por período (horas)</label>
         <input type="number" id="heLimiteMensual" min="1" step="1">
       </div>
       <div class="modal-actions">
@@ -7140,35 +7147,56 @@ document.getElementById('imgMapaEvacuacion').closest('.mapa-inner').addEventList
 });
 
 /* ============================================================
-   HORAS EXTRAS DEL PERSONAL — control automático de límites diario y
-   mensual (Código Sustantivo del Trabajo: máx. 2h/día por ley; el límite
-   mensual es configurable, ya que la ley no fija uno explícito — sí uno
-   semanal de 12h). Usa la misma lista de trabajadores de Salida de
-   Insumos, así no hay que mantener dos listas de personal aparte.
+   HORAS EXTRAS DEL PERSONAL — control automático de límites diario y por
+   período de corte (Código Sustantivo del Trabajo: máx. 2h/día por ley;
+   el límite del período es configurable, ya que la ley no fija uno
+   explícito para el mes — sí uno semanal de 12h). El "mes" de nómina del
+   colegio no es el mes calendario: corta del 15 al 15 (algún mes puede
+   variar, ej. del 20 al 15), así que el período se elige a mano en vez de
+   asumir siempre el 1 al 30/31. Usa la misma lista de trabajadores de
+   Salida de Insumos, así no hay que mantener dos listas de personal aparte.
    ============================================================ */
+function periodoPorDefecto(){
+  // sugerencia inicial: el corte típico de 16 a 15 que contiene hoy — se
+  // puede cambiar libremente en los campos Desde/Hasta para el mes que
+  // tenga un corte distinto.
+  const hoy = new Date();
+  const y = hoy.getFullYear(), m = hoy.getMonth(), d = hoy.getDate();
+  const fmt = dt => dt.toISOString().slice(0,10);
+  if(d<=15) return { desde: fmt(new Date(y, m-1, 16)), hasta: fmt(new Date(y, m, 15)) };
+  return { desde: fmt(new Date(y, m, 16)), hasta: fmt(new Date(y, m+1, 15)) };
+}
 function actualizarTextoLimitesHE(){
   document.getElementById('heLimitesTexto').textContent =
-    `Límite diario: ${limitesHorasExtras.diario}h por persona · Límite mensual: ${limitesHorasExtras.mensual}h por persona.`;
+    `Límite diario: ${limitesHorasExtras.diario}h por persona · Límite por período: ${limitesHorasExtras.mensual}h por persona.`;
 }
 function horasDelDia(trabajadorId, fecha, excluirId){
   return horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha===fecha && h.id!==excluirId)
     .reduce((s,h)=>s+Number(h.horas||0), 0);
 }
-function horasDelMes(trabajadorId, mesKey, excluirId){
-  return horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha.slice(0,7)===mesKey && h.id!==excluirId)
+function horasDelPeriodo(trabajadorId, desde, hasta, excluirId){
+  return horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha>=desde && h.fecha<=hasta && h.id!==excluirId)
     .reduce((s,h)=>s+Number(h.horas||0), 0);
+}
+// el período que se está revisando en el panel — es también el que se usa
+// para chequear el límite al agregar una hora extra nueva, así el
+// resumen y la validación siempre hablan del mismo corte.
+function periodoActualHE(){
+  return { desde: document.getElementById('heDesdePeriodo').value, hasta: document.getElementById('heHastaPeriodo').value };
 }
 
 function renderHorasExtra(){
   actualizarTextoLimitesHE();
-  if(!document.getElementById('heMesFiltro').value){
-    document.getElementById('heMesFiltro').value = todayISO().slice(0,7);
+  if(!document.getElementById('heDesdePeriodo').value || !document.getElementById('heHastaPeriodo').value){
+    const def = periodoPorDefecto();
+    document.getElementById('heDesdePeriodo').value = def.desde;
+    document.getElementById('heHastaPeriodo').value = def.hasta;
   }
-  const mesKey = document.getElementById('heMesFiltro').value;
+  const {desde, hasta} = periodoActualHE();
 
   const resumenWrap = document.getElementById('heResumenPorTrabajador');
   const filas = trabajadores.map(t=>{
-    const total = horasDelMes(t.id, mesKey);
+    const total = horasDelPeriodo(t.id, desde, hasta);
     const pct = Math.min(100, total/limitesHorasExtras.mensual*100);
     const excedido = total > limitesHorasExtras.mensual;
     const color = excedido ? 'var(--red)' : pct>=80 ? 'var(--orange)' : 'var(--green)';
@@ -7184,9 +7212,10 @@ function renderHorasExtra(){
       <span class="count" style="width:auto;min-width:96px;font-weight:700;color:${f.color};">${f.total}h / ${limitesHorasExtras.mensual}h</span>
     </div>`).join('') : '<p class="empty">Aún no hay trabajadores registrados (se agregan desde Salida de Insumos).</p>';
 
-  const registrosDelMes = horasExtras.filter(h=>h.fecha && h.fecha.slice(0,7)===mesKey).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const registrosDelPeriodo = (desde && hasta ? horasExtras.filter(h=>h.fecha && h.fecha>=desde && h.fecha<=hasta) : [])
+    .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   const tbody = document.getElementById('heListaBody');
-  tbody.innerHTML = registrosDelMes.length ? registrosDelMes.map(h=>`
+  tbody.innerHTML = registrosDelPeriodo.length ? registrosDelPeriodo.map(h=>`
     <tr>
       <td>${fmtDate(h.fecha)}</td>
       <td>${esc(h.trabajadorNombre)}</td>
@@ -7196,7 +7225,7 @@ function renderHorasExtra(){
         <button class="ghost" data-editarhe="${h.id}">Editar</button>
         <button class="ghost danger" data-eliminarhe="${h.id}">Eliminar</button>
       </div></td>
-    </tr>`).join('') : `<tr><td colspan="5" class="empty">No hay horas extras registradas en este mes.</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="5" class="empty">No hay horas extras registradas en este período.</td></tr>`;
 
   tbody.querySelectorAll('[data-editarhe]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -7214,7 +7243,8 @@ function renderHorasExtra(){
     });
   });
 }
-document.getElementById('heMesFiltro').addEventListener('change', renderHorasExtra);
+document.getElementById('heDesdePeriodo').addEventListener('change', renderHorasExtra);
+document.getElementById('heHastaPeriodo').addEventListener('change', renderHorasExtra);
 
 let heEditandoId = null;
 function poblarSelectTrabajadoresHE(){
@@ -7355,17 +7385,18 @@ function actualizarAvisoLimiteHE(){
 
   const fecha = document.getElementById('heFecha').value;
   if(!trabajadorId || !fecha || !horas){ aviso.textContent = ''; return; }
+  const {desde, hasta} = periodoActualHE();
   const totalDia = horasDelDia(trabajadorId, fecha, heEditandoId) + horas;
-  const totalMes = horasDelMes(trabajadorId, fecha.slice(0,7), heEditandoId) + horas;
+  const totalMes = horasDelPeriodo(trabajadorId, desde, hasta, heEditandoId) + horas;
   const problemas = [];
   if(totalDia > limitesHorasExtras.diario) problemas.push(`ese día llegaría a ${totalDia}h (límite: ${limitesHorasExtras.diario}h)`);
-  if(totalMes > limitesHorasExtras.mensual) problemas.push(`ese mes llegaría a ${totalMes}h (límite: ${limitesHorasExtras.mensual}h)`);
+  if(totalMes > limitesHorasExtras.mensual) problemas.push(`ese período llegaría a ${totalMes}h (límite: ${limitesHorasExtras.mensual}h)`);
 
   if(problemas.length){
     aviso.textContent = `⚠ Esto excede el límite: ${problemas.join(' y ')}.`;
     aviso.style.color = 'var(--red)';
   }else{
-    aviso.textContent = `Día: ${totalDia}h / ${limitesHorasExtras.diario}h · Mes: ${totalMes}h / ${limitesHorasExtras.mensual}h`;
+    aviso.textContent = `Día: ${totalDia}h / ${limitesHorasExtras.diario}h · Período: ${totalMes}h / ${limitesHorasExtras.mensual}h`;
     aviso.style.color = 'var(--gray)';
   }
 }
@@ -7395,17 +7426,16 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
   if(modoVariosDias){
     const dias = [...heDiasSeleccionados].sort();
     if(!dias.length){ showToast('Marca al menos un día en el calendario.'); return; }
+    const {desde, hasta} = periodoActualHE();
     const diasQueExceden = [];
-    const acumuladoPorMes = {};
+    let acumuladoPeriodo = horasDelPeriodo(trabajadorId, desde, hasta, null);
     dias.forEach(f=>{
-      const mesKey = f.slice(0,7);
       const totalDia = horasDelDia(trabajadorId, f, null) + horas;
-      if(!(mesKey in acumuladoPorMes)) acumuladoPorMes[mesKey] = horasDelMes(trabajadorId, mesKey, null);
-      acumuladoPorMes[mesKey] += horas;
-      if(totalDia > limitesHorasExtras.diario || acumuladoPorMes[mesKey] > limitesHorasExtras.mensual) diasQueExceden.push(f);
+      acumuladoPeriodo += horas;
+      if(totalDia > limitesHorasExtras.diario || (f>=desde && f<=hasta && acumuladoPeriodo > limitesHorasExtras.mensual)) diasQueExceden.push(f);
     });
     if(diasQueExceden.length){
-      if(!await customConfirm(`${diasQueExceden.length} de los ${dias.length} día(s) superarían el límite diario y/o mensual configurado. ¿Registrarlos de todas formas?`)) return;
+      if(!await customConfirm(`${diasQueExceden.length} de los ${dias.length} día(s) superarían el límite diario y/o del período configurado. ¿Registrarlos de todas formas?`)) return;
     }
     dias.forEach(f=>{
       horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, createdAt: new Date().toISOString()});
@@ -7421,10 +7451,11 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
   const fecha = document.getElementById('heFecha').value;
   if(!fecha){ showToast('Elige una fecha.'); return; }
 
+  const {desde: desdeP, hasta: hastaP} = periodoActualHE();
   const totalDia = horasDelDia(trabajadorId, fecha, heEditandoId) + horas;
-  const totalMes = horasDelMes(trabajadorId, fecha.slice(0,7), heEditandoId) + horas;
+  const totalMes = horasDelPeriodo(trabajadorId, desdeP, hastaP, heEditandoId) + horas;
   if(totalDia > limitesHorasExtras.diario || totalMes > limitesHorasExtras.mensual){
-    if(!await customConfirm('Esto supera el límite diario y/o mensual configurado. ¿Registrarlo de todas formas?')) return;
+    if(!await customConfirm('Esto supera el límite diario y/o del período configurado. ¿Registrarlo de todas formas?')) return;
   }
 
   if(heEditandoId){
