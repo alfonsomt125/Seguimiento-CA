@@ -1430,6 +1430,24 @@
   <!-- ===================== /SUB-MÓDULO HORAS EXTRAS DEL PERSONAL ===================== -->
 
   <!-- Modal: agregar/editar un registro de horas extras -->
+  <div class="modal-bg" id="heDetalleModalBg">
+    <div class="modal" style="max-width:640px;">
+      <h3 id="heDetalleTitulo">Detalle de horas extras</h3>
+      <p class="hint" id="heDetalleSubtitulo" style="margin:4px 0 14px;"></p>
+      <div class="kpis" id="heDetalleKpis" style="margin-bottom:14px;"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Horario</th><th>Tipo</th><th>Motivo</th></tr></thead>
+          <tbody id="heDetalleBody"></tbody>
+        </table>
+      </div>
+      <p class="hint" style="margin:12px 0 0;">Clasificación según el Código Sustantivo del Trabajo (Ley 2466 de 2025): jornada nocturna de 7:00 p.m. a 6:00 a.m. No incluye festivos, solo domingos.</p>
+      <div class="modal-actions">
+        <button class="ghost" id="btnCerrarHeDetalle">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-bg" id="heModalBg">
     <div class="modal" style="max-width:420px;">
       <h3 id="heModalTitulo">Nueva hora extra</h3>
@@ -7194,6 +7212,73 @@ function horasDelPeriodo(trabajadorId, desde, hasta, excluirId){
   return horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha>=desde && h.fecha<=hasta && h.id!==excluirId)
     .reduce((s,h)=>s+Number(h.horas||0), 0);
 }
+
+/* Clasificación legal de cada hora extra (Ordinaria / Nocturna / Dominical /
+   Nocturna dominical) según el Código Sustantivo del Trabajo modificado por
+   la Ley 2466 de 2025: la jornada nocturna va de 7:00 p.m. a 6:00 a.m.
+   (vigente desde el 25 de dic. 2025, con el recargo dominical subiendo a
+   90% desde el 1 de jul. 2026). No se tienen en cuenta festivos (solo
+   domingo por día de la semana), porque la app no maneja un calendario de
+   festivos todavía. */
+const HE_NOCHE_INICIO_MIN = 19*60; // 7:00 p.m.
+const HE_NOCHE_FIN_MIN = 6*60;     // 6:00 a.m.
+function clasificarHorasExtra(fecha, horaInicio, horaFin, horasTotal){
+  const esDomingo = new Date(fecha+'T00:00:00').getDay()===0;
+  if(!horaInicio || !horaFin){
+    return esDomingo
+      ? {ordinaria:0, nocturna:0, dominical:horasTotal, nocturnaDominical:0}
+      : {ordinaria:horasTotal, nocturna:0, dominical:0, nocturnaDominical:0};
+  }
+  const [hi,mi] = horaInicio.split(':').map(Number);
+  const [hf,mf] = horaFin.split(':').map(Number);
+  const inicioMin = hi*60+mi, finMin = hf*60+mf;
+  let minNoche = 0, minDia = 0;
+  for(let t=inicioMin; t<finMin; t++){
+    if(t>=HE_NOCHE_INICIO_MIN || t<HE_NOCHE_FIN_MIN) minNoche++; else minDia++;
+  }
+  const horasNoche = minNoche/60, horasDia = minDia/60;
+  return esDomingo
+    ? {ordinaria:0, nocturna:0, dominical:horasDia, nocturnaDominical:horasNoche}
+    : {ordinaria:horasDia, nocturna:horasNoche, dominical:0, nocturnaDominical:0};
+}
+const HE_TIPO_LABEL = {ordinaria:'Ordinaria', nocturna:'Nocturna', dominical:'Dominical', nocturnaDominical:'Nocturna dominical'};
+const HE_TIPO_COLOR = {ordinaria:'pill-Finalizado', nocturna:'pill-En_proceso', dominical:'pill-Pendiente', nocturnaDominical:''};
+
+function abrirDetalleHE(trabajadorId){
+  const trabajador = trabajadores.find(t=>t.id===trabajadorId);
+  const {desde, hasta} = periodoActualHE();
+  const registros = horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha>=desde && h.fecha<=hasta)
+    .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+
+  const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
+  const filasTabla = registros.map(h=>{
+    const clasif = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
+    Object.keys(totales).forEach(k=>totales[k]+=clasif[k]);
+    const badges = Object.keys(clasif).filter(k=>clasif[k]>0)
+      .map(k=>`<span class="pill ${HE_TIPO_COLOR[k]}" style="margin:2px 4px 2px 0;">${HE_TIPO_LABEL[k]}: ${clasif[k]}h</span>`).join('');
+    return `<tr>
+      <td>${fmtDate(h.fecha)}</td>
+      <td>${h.horaInicio ? `${hora24aTexto12(h.horaInicio)} – ${hora24aTexto12(h.horaFin)}` : h.horas+'h'}</td>
+      <td>${badges || '—'}</td>
+      <td>${esc(h.motivo)||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('heDetalleTitulo').textContent = `Detalle de horas extras — ${trabajador?.nombre||''}`;
+  document.getElementById('heDetalleSubtitulo').textContent = `Período: ${fmtDate(desde)} al ${fmtDate(hasta)}`;
+  document.getElementById('heDetalleKpis').innerHTML = `
+    <div class="kpi"><div class="num">${totales.ordinaria}</div><div class="lbl">Ordinarias</div></div>
+    <div class="kpi"><div class="num">${totales.nocturna}</div><div class="lbl">Nocturnas</div></div>
+    <div class="kpi"><div class="num">${totales.dominical}</div><div class="lbl">Dominicales</div></div>
+    <div class="kpi"><div class="num">${totales.nocturnaDominical}</div><div class="lbl">Nocturnas dominicales</div></div>
+  `;
+  document.getElementById('heDetalleBody').innerHTML = filasTabla || `<tr><td colspan="4" class="empty">No hay horas extras en este período.</td></tr>`;
+  document.getElementById('heDetalleModalBg').classList.add('active');
+}
+document.getElementById('btnCerrarHeDetalle').addEventListener('click', ()=>{
+  document.getElementById('heDetalleModalBg').classList.remove('active');
+});
+
 // el período que se está revisando en el panel — es también el que se usa
 // para chequear el límite al agregar una hora extra nueva, así el
 // resumen y la validación siempre hablan del mismo corte.
@@ -7269,11 +7354,14 @@ function renderHorasExtra(){
   const aMostrar = conHoras.length ? conHoras : filas;
 
   resumenWrap.innerHTML = aMostrar.length ? aMostrar.map(f=>`
-    <div class="bar-row" style="align-items:center;">
+    <div class="bar-row" style="align-items:center;cursor:pointer;" data-vertrabajadorhe="${f.t.id}">
       <span class="name" style="width:140px;flex-shrink:0;" title="${esc(f.t.nombre)}">${esc(f.t.nombre)}</span>
       <div class="bar-track" style="flex:1;"><div class="bar-fill" style="width:${f.pct}%;background:${f.color};"></div></div>
       <span class="count" style="width:auto;min-width:96px;font-weight:700;color:${f.color};">${f.total}h / ${limitesHorasExtras.mensual}h</span>
     </div>`).join('') : '<p class="empty">Aún no hay trabajadores registrados (se agregan desde Salida de Insumos).</p>';
+  resumenWrap.querySelectorAll('[data-vertrabajadorhe]').forEach(el=>{
+    el.addEventListener('click', ()=>abrirDetalleHE(el.dataset.vertrabajadorhe));
+  });
 
   const registrosDelPeriodo = (desde && hasta ? horasExtras.filter(h=>h.fecha && h.fecha>=desde && h.fecha<=hasta) : []);
   const busqueda = document.getElementById('heBuscar').value.toLowerCase().trim();
@@ -10736,7 +10824,8 @@ const BOTON_CIERRE_POR_MODAL = {
   marcarRecibidoModalBg: 'btnCancelarRecibido',
   marcadorModalBg: 'btnCancelarMarcador',
   heModalBg: 'btnCancelarHE',
-  heLimitesModalBg: 'btnCancelarLimitesHE'
+  heLimitesModalBg: 'btnCancelarLimitesHE',
+  heDetalleModalBg: 'btnCerrarHeDetalle'
 };
 function cerrarModalPorId(modalId){
   const btnId = BOTON_CIERRE_POR_MODAL[modalId];
