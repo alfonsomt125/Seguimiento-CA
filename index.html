@@ -1381,6 +1381,7 @@
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
       <h2 style="margin:0;">Horas extras — resumen del período</h2>
+      <button class="ghost" id="btnExportarResumenHE">⬇ Exportar a PDF</button>
       <button class="ghost" id="btnConfigLimitesHE">⚙ Configurar límites</button>
     </div>
     <p class="hint" style="margin:0 0 14px;" id="heLimitesTexto"></p>
@@ -1430,6 +1431,26 @@
   <!-- ===================== /SUB-MÓDULO HORAS EXTRAS DEL PERSONAL ===================== -->
 
   <!-- Modal: agregar/editar un registro de horas extras -->
+  <div class="modal-bg" id="heExportModalBg">
+    <div class="modal" style="max-width:520px;">
+      <h3>Exportar resumen de horas extras</h3>
+      <p class="hint" id="heExportSubtitulo" style="margin:6px 0 14px;"></p>
+      <div id="heExportListaPersonas" style="max-height:240px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px;"></div>
+      <div class="field" style="margin-top:14px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+          <input type="checkbox" id="heExportLiquidar" style="width:16px;height:16px;">
+          💰 Incluir liquidación monetaria (opcional) — según Ley 2466 de 2025
+        </label>
+        <p class="hint" style="margin:6px 0 0;">Pide el salario mensual de cada persona seleccionada (se guarda para la próxima vez) y calcula el valor de cada tipo de hora extra, en una hoja aparte por persona.</p>
+      </div>
+      <div id="heExportSalariosWrap" style="display:none;margin-top:12px;"></div>
+      <div class="modal-actions">
+        <button class="ghost" id="btnCerrarHeExport">Cancelar</button>
+        <button class="primary" id="btnGenerarHeExport">Exportar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-bg" id="heDetalleModalBg">
     <div class="modal" style="max-width:640px;">
       <h3 id="heDetalleTitulo">Detalle de horas extras</h3>
@@ -7279,6 +7300,159 @@ document.getElementById('btnCerrarHeDetalle').addEventListener('click', ()=>{
   document.getElementById('heDetalleModalBg').classList.remove('active');
 });
 
+/* Liquidación monetaria opcional (Ley 2466 de 2025, vigente jul. 2026):
+   divisor mensual 210h (jornada 42h/semana) y factores de hora extra —
+   ya incluyen el 100% de la hora base, porque una hora extra siempre se
+   paga completa, no solo el recargo. */
+const HE_DIVISOR_MENSUAL = 210;
+const HE_FACTOR = {ordinaria:1.25, nocturna:1.75, dominical:2.15, nocturnaDominical:2.65};
+
+function renderHeExportListaPersonas(){
+  const wrap = document.getElementById('heExportListaPersonas');
+  wrap.innerHTML = trabajadores.map(t=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
+      <input type="checkbox" class="he-export-persona" value="${t.id}" checked style="width:15px;height:15px;">
+      ${esc(t.nombre)}
+    </label>`).join('') || '<p class="empty">No hay trabajadores registrados.</p>';
+  wrap.querySelectorAll('.he-export-persona').forEach(cb=>cb.addEventListener('change', renderHeExportSalarios));
+}
+function renderHeExportSalarios(){
+  const activo = document.getElementById('heExportLiquidar').checked;
+  const wrap = document.getElementById('heExportSalariosWrap');
+  wrap.style.display = activo ? 'block' : 'none';
+  if(!activo) return;
+  const idsSeleccionados = [...document.querySelectorAll('.he-export-persona:checked')].map(cb=>cb.value);
+  wrap.innerHTML = idsSeleccionados.map(id=>{
+    const t = trabajadores.find(x=>x.id===id);
+    return `<div class="field" style="margin-top:8px;">
+      <label>Salario mensual — ${esc(t?.nombre||'')}</label>
+      <input type="number" min="0" step="1000" class="he-export-salario" data-personaid="${id}" value="${t?.salario||''}" placeholder="Ej: 1750905">
+    </div>`;
+  }).join('');
+}
+document.getElementById('btnExportarResumenHE').addEventListener('click', ()=>{
+  const {desde, hasta} = periodoActualHE();
+  document.getElementById('heExportSubtitulo').textContent = `Período: ${fmtDate(desde)} al ${fmtDate(hasta)}. Elige quiénes van en el reporte.`;
+  document.getElementById('heExportLiquidar').checked = false;
+  document.getElementById('heExportSalariosWrap').style.display = 'none';
+  renderHeExportListaPersonas();
+  document.getElementById('heExportModalBg').classList.add('active');
+});
+document.getElementById('heExportLiquidar').addEventListener('change', renderHeExportSalarios);
+document.getElementById('btnCerrarHeExport').addEventListener('click', ()=>{
+  document.getElementById('heExportModalBg').classList.remove('active');
+});
+document.getElementById('btnGenerarHeExport').addEventListener('click', async ()=>{
+  const idsSeleccionados = [...document.querySelectorAll('.he-export-persona:checked')].map(cb=>cb.value);
+  if(!idsSeleccionados.length){ showToast('Selecciona al menos una persona.'); return; }
+  const conLiquidacion = document.getElementById('heExportLiquidar').checked;
+
+  if(conLiquidacion){
+    // guarda el salario de cada quien para no tener que pedirlo de nuevo la proxima vez
+    document.querySelectorAll('.he-export-salario').forEach(inp=>{
+      const t = trabajadores.find(x=>x.id===inp.dataset.personaid);
+      if(t) t.salario = Number(inp.value)||0;
+    });
+    await saveTrabajadores();
+  }
+
+  const {desde, hasta} = periodoActualHE();
+  const win = window.open('', '_blank');
+  if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
+  win.document.open();
+  win.document.write(construirResumenHEHtml(idsSeleccionados, desde, hasta, conLiquidacion));
+  win.document.close();
+  document.getElementById('heExportModalBg').classList.remove('active');
+  showToast('Se abrió una pestaña nueva con el reporte. Ahí eliges "Guardar como PDF".');
+});
+
+function construirResumenHEHtml(idsSeleccionados, desde, hasta, conLiquidacion){
+  const personas = idsSeleccionados.map(id=>{
+    const t = trabajadores.find(x=>x.id===id);
+    const registros = horasExtras.filter(h=>h.trabajadorId===id && h.fecha>=desde && h.fecha<=hasta);
+    const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
+    registros.forEach(h=>{
+      const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
+      Object.keys(totales).forEach(k=>totales[k]+=c[k]);
+    });
+    const totalHoras = Object.values(totales).reduce((a,b)=>a+b,0);
+    let valorHora = 0, subtotales = {}, totalPagar = 0;
+    if(conLiquidacion){
+      valorHora = (t?.salario||0)/HE_DIVISOR_MENSUAL;
+      Object.keys(totales).forEach(k=>{ subtotales[k] = Math.round(totales[k]*HE_FACTOR[k]*valorHora); totalPagar += subtotales[k]; });
+    }
+    return {t, totales, totalHoras, valorHora, subtotales, totalPagar};
+  });
+
+  const fmtCOP = n => '$'+Math.round(n).toLocaleString('es-CO');
+  const filasResumen = personas.map(p=>`<tr>
+    <td style="border:1px solid #000;padding:5px 6px;">${esc(p.t?.nombre||'')}</td>
+    <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${p.totales.ordinaria}</td>
+    <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${p.totales.nocturna}</td>
+    <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${p.totales.dominical}</td>
+    <td style="border:1px solid #000;padding:5px 6px;text-align:center;">${p.totales.nocturnaDominical}</td>
+    <td style="border:1px solid #000;padding:5px 6px;text-align:center;font-weight:700;">${p.totalHoras}</td>
+    ${conLiquidacion ? `<td style="border:1px solid #000;padding:5px 6px;text-align:right;font-weight:700;">${fmtCOP(p.totalPagar)}</td>` : ''}
+  </tr>`).join('');
+
+  const paginasLiquidacion = !conLiquidacion ? '' : personas.map(p=>{
+    const filasTipo = Object.keys(HE_FACTOR).map(k=>`<tr>
+      <td style="border:1px solid #000;padding:6px 8px;">${HE_TIPO_LABEL[k]} (factor ${HE_FACTOR[k]})</td>
+      <td style="border:1px solid #000;padding:6px 8px;text-align:center;">${p.totales[k]}</td>
+      <td style="border:1px solid #000;padding:6px 8px;text-align:right;">${fmtCOP(p.subtotales[k])}</td>
+    </tr>`).join('');
+    return `
+    <div style="page-break-before:always;padding-top:10mm;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+      <div style="font-size:19px;font-weight:700;color:#011632;margin:5px 0 3px;">Liquidación de horas extras — ${esc(p.t?.nombre||'')}</div>
+      <div style="font-size:11px;color:#6B7280;margin-bottom:14px;">Período: ${fmtDate(desde)} al ${fmtDate(hasta)}. Salario mensual: ${fmtCOP(p.t?.salario||0)} · Valor hora ordinaria: ${fmtCOP(p.valorHora)}.</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:#BDD7EE;font-weight:700;">
+          <th style="border:1px solid #000;padding:6px 8px;">Tipo de hora</th>
+          <th style="border:1px solid #000;padding:6px 8px;">Horas</th>
+          <th style="border:1px solid #000;padding:6px 8px;">Valor</th>
+        </tr></thead>
+        <tbody>${filasTipo}</tbody>
+        <tfoot><tr style="font-weight:700;background:#F4F5F8;">
+          <td style="border:1px solid #000;padding:6px 8px;" colspan="2">Total a pagar</td>
+          <td style="border:1px solid #000;padding:6px 8px;text-align:right;">${fmtCOP(p.totalPagar)}</td>
+        </tr></tfoot>
+      </table>
+      <p style="font-size:10px;color:#6B7280;margin-top:14px;">Cálculo según el Código Sustantivo del Trabajo modificado por la Ley 2466 de 2025 (jornada nocturna 7:00 p.m.–6:00 a.m., recargo dominical 90% vigente desde jul. 2026, divisor mensual 210 horas). No incluye festivos, solo domingos. Verificar contra la nómina oficial antes de pagar.</p>
+    </div>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resumen de horas extras — ${todayISO()}</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;color:#1E2A28;margin:14mm 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  .btn-volver-noprint{position:fixed;top:14px;left:14px;z-index:999;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  @media print{ .btn-volver-noprint{display:none !important;} body{margin:8mm 10mm;} }
+</style></head><body>
+  <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Resumen de horas extras por persona</div>
+  <div style="font-size:11px;color:#6B7280;margin-bottom:14px;">Período: ${fmtDate(desde)} al ${fmtDate(hasta)}. Clasificación según Ley 2466 de 2025 (nocturno desde 7:00 p.m., no incluye festivos).</div>
+  <table>
+    <thead><tr style="background:#BDD7EE;font-weight:700;">
+      <th style="border:1px solid #000;padding:6px;">Trabajador</th>
+      <th style="border:1px solid #000;padding:6px;">Ordinaria</th>
+      <th style="border:1px solid #000;padding:6px;">Nocturna</th>
+      <th style="border:1px solid #000;padding:6px;">Dominical</th>
+      <th style="border:1px solid #000;padding:6px;">Noct. dominical</th>
+      <th style="border:1px solid #000;padding:6px;">Total h</th>
+      ${conLiquidacion ? '<th style="border:1px solid #000;padding:6px;">Valor a pagar</th>' : ''}
+    </tr></thead>
+    <tbody>${filasResumen || `<tr><td colspan="${conLiquidacion?7:6}" style="border:1px solid #000;padding:10px;text-align:center;color:#6B7280;">Sin datos.</td></tr>`}</tbody>
+  </table>
+  ${paginasLiquidacion}
+  <script>
+    window.addEventListener('load', function(){ setTimeout(function(){ window.focus(); window.print(); }, 400); });
+  <\/script>
+</body></html>`;
+}
+
 // el período que se está revisando en el panel — es también el que se usa
 // para chequear el límite al agregar una hora extra nueva, así el
 // resumen y la validación siempre hablan del mismo corte.
@@ -10837,7 +11011,8 @@ const BOTON_CIERRE_POR_MODAL = {
   marcadorModalBg: 'btnCancelarMarcador',
   heModalBg: 'btnCancelarHE',
   heLimitesModalBg: 'btnCancelarLimitesHE',
-  heDetalleModalBg: 'btnCerrarHeDetalle'
+  heDetalleModalBg: 'btnCerrarHeDetalle',
+  heExportModalBg: 'btnCerrarHeExport'
 };
 function cerrarModalPorId(modalId){
   const btnId = BOTON_CIERRE_POR_MODAL[modalId];
