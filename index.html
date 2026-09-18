@@ -7276,12 +7276,12 @@ function actualizarTextoLimitesHE(){
     `Límite diario: ${limitesHorasExtras.diario}h por persona · Límite por período: ${limitesHorasExtras.mensual}h por persona.`;
 }
 function horasDelDia(trabajadorId, fecha, excluirId){
-  return horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha===fecha && h.id!==excluirId)
-    .reduce((s,h)=>s+Number(h.horas||0), 0);
+  return r2(horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha===fecha && h.id!==excluirId)
+    .reduce((s,h)=>s+Number(h.horas||0), 0));
 }
 function horasDelPeriodo(trabajadorId, desde, hasta, excluirId){
-  return horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha>=desde && h.fecha<=hasta && h.id!==excluirId)
-    .reduce((s,h)=>s+Number(h.horas||0), 0);
+  return r2(horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha>=desde && h.fecha<=hasta && h.id!==excluirId)
+    .reduce((s,h)=>s+Number(h.horas||0), 0));
 }
 
 /* Clasificación legal de cada hora extra (Ordinaria / Nocturna / Dominical /
@@ -7296,9 +7296,10 @@ const HE_NOCHE_FIN_MIN = 6*60;     // 6:00 a.m.
 function clasificarHorasExtra(fecha, horaInicio, horaFin, horasTotal){
   const esDomingo = new Date(fecha+'T00:00:00').getDay()===0;
   if(!horaInicio || !horaFin){
+    const ht = r2(horasTotal);
     return esDomingo
-      ? {ordinaria:0, nocturna:0, dominical:horasTotal, nocturnaDominical:0}
-      : {ordinaria:horasTotal, nocturna:0, dominical:0, nocturnaDominical:0};
+      ? {ordinaria:0, nocturna:0, dominical:ht, nocturnaDominical:0}
+      : {ordinaria:ht, nocturna:0, dominical:0, nocturnaDominical:0};
   }
   const [hi,mi] = horaInicio.split(':').map(Number);
   const [hf,mf] = horaFin.split(':').map(Number);
@@ -7307,7 +7308,7 @@ function clasificarHorasExtra(fecha, horaInicio, horaFin, horasTotal){
   for(let t=inicioMin; t<finMin; t++){
     if(t>=HE_NOCHE_INICIO_MIN || t<HE_NOCHE_FIN_MIN) minNoche++; else minDia++;
   }
-  const horasNoche = minNoche/60, horasDia = minDia/60;
+  const horasNoche = r2(minNoche/60), horasDia = r2(minDia/60);
   return esDomingo
     ? {ordinaria:0, nocturna:0, dominical:horasDia, nocturnaDominical:horasNoche}
     : {ordinaria:horasDia, nocturna:horasNoche, dominical:0, nocturnaDominical:0};
@@ -7338,10 +7339,10 @@ function abrirDetalleHE(trabajadorId){
   document.getElementById('heDetalleTitulo').textContent = `Detalle de horas extras — ${trabajador?.nombre||''}`;
   document.getElementById('heDetalleSubtitulo').textContent = `Período: ${fmtDate(desde)} al ${fmtDate(hasta)}`;
   document.getElementById('heDetalleKpis').innerHTML = `
-    <div class="kpi"><div class="num">${totales.ordinaria}</div><div class="lbl">Ordinarias</div></div>
-    <div class="kpi"><div class="num">${totales.nocturna}</div><div class="lbl">Nocturnas</div></div>
-    <div class="kpi"><div class="num">${totales.dominical}</div><div class="lbl">Dominicales</div></div>
-    <div class="kpi"><div class="num">${totales.nocturnaDominical}</div><div class="lbl">Nocturnas dominicales</div></div>
+    <div class="kpi"><div class="num">${r2(totales.ordinaria)}</div><div class="lbl">Ordinarias</div></div>
+    <div class="kpi"><div class="num">${r2(totales.nocturna)}</div><div class="lbl">Nocturnas</div></div>
+    <div class="kpi"><div class="num">${r2(totales.dominical)}</div><div class="lbl">Dominicales</div></div>
+    <div class="kpi"><div class="num">${r2(totales.nocturnaDominical)}</div><div class="lbl">Nocturnas dominicales</div></div>
   `;
   document.getElementById('heDetalleBody').innerHTML = filasTabla || `<tr><td colspan="4" class="empty">No hay horas extras en este período.</td></tr>`;
   document.getElementById('heDetalleModalBg').classList.add('active');
@@ -7383,7 +7384,8 @@ function calcularHEPorPersona(desde, hasta){
       const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
       Object.keys(totales).forEach(k=>totales[k]+=c[k]);
     });
-    const totalHoras = Object.values(totales).reduce((a,b)=>a+b,0);
+    Object.keys(totales).forEach(k=>totales[k]=r2(totales[k]));
+    const totalHoras = r2(Object.values(totales).reduce((a,b)=>a+b,0));
     const valorHora = (t.salario||SMMLV_2026)/HE_DIVISOR_MENSUAL;
     let totalPagar = 0;
     Object.keys(totales).forEach(k=>totalPagar += totales[k]*HE_FACTOR[k]*valorHora);
@@ -7401,7 +7403,7 @@ function renderHeDashboard(desde, hasta){
   const conHoras = datos.filter(d=>d.totalHoras>0).sort((a,b)=>b.totalHoras-a.totalHoras);
 
   const promedio = conHoras.length ? (conHoras.reduce((s,d)=>s+d.totalHoras,0)/conHoras.length) : 0;
-  document.getElementById('heDashPromedio').textContent = conHoras.length ? `Promedio: ${promedio.toFixed(1)}h por persona (entre ${conHoras.length} persona(s) con horas en el período).` : 'Nadie tiene horas extras registradas en este período.';
+  document.getElementById('heDashPromedio').textContent = conHoras.length ? `Promedio: ${promedio.toFixed(2)}h por persona (entre ${conHoras.length} persona(s) con horas en el período).` : 'Nadie tiene horas extras registradas en este período.';
 
   const maxHoras = Math.max(1, ...conHoras.map(d=>d.totalHoras));
   document.getElementById('heDashBarsHoras').innerHTML = conHoras.length ? `
@@ -7439,7 +7441,7 @@ function renderHeDashboard(desde, hasta){
     </tr>`).join('') : `<tr><td colspan="8" class="empty">Nadie tiene horas extras registradas en este período.</td></tr>`;
 
   if(conHoras.length){
-    const sumaCol = k => conHoras.reduce((s,d)=>s+d.totales[k],0);
+    const sumaCol = k => r2(conHoras.reduce((s,d)=>s+d.totales[k],0));
     // quien se pasa de 50h no suma en "Total liquidado" — su plata va en
     // "Liquidado hasta 50h" en su lugar, para no mezclar lo normal con lo
     // que hay que revisar aparte por exceder el tope.
@@ -7452,7 +7454,7 @@ function renderHeDashboard(desde, hasta){
         <td style="text-align:center;">${sumaCol('nocturna')}</td>
         <td style="text-align:center;">${sumaCol('dominical')}</td>
         <td style="text-align:center;">${sumaCol('nocturnaDominical')}</td>
-        <td style="text-align:center;">${conHoras.reduce((s,d)=>s+d.totalHoras,0)}</td>
+        <td style="text-align:center;">${r2(conHoras.reduce((s,d)=>s+d.totalHoras,0))}</td>
         <td style="text-align:right;">$${sumaLiquidadoNormal.toLocaleString('es-CO')}</td>
         <td style="text-align:right;">$${sumaLiquidadoLimitado.toLocaleString('es-CO')}</td>
       </tr>`;
@@ -7540,7 +7542,8 @@ function construirResumenHEHtml(idsSeleccionados, desde, hasta, conLiquidacion){
       const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
       Object.keys(totales).forEach(k=>totales[k]+=c[k]);
     });
-    const totalHoras = Object.values(totales).reduce((a,b)=>a+b,0);
+    Object.keys(totales).forEach(k=>totales[k]=r2(totales[k]));
+    const totalHoras = r2(Object.values(totales).reduce((a,b)=>a+b,0));
     let valorHora = 0, subtotales = {}, totalPagar = 0;
     if(conLiquidacion){
       valorHora = (t?.salario||SMMLV_2026)/HE_DIVISOR_MENSUAL;
@@ -7815,11 +7818,12 @@ function ponerHoraEnSelects(prefijo, hora24){
   document.getElementById(prefijo+'M').value = min;
   document.getElementById(prefijo+'AP').value = ampm;
 }
+function r2(n){ return Math.round(n*100)/100; }
 function horasEntre(inicio24, fin24){
   const [hi,mi] = inicio24.split(':').map(Number);
   const [hf,mf] = fin24.split(':').map(Number);
   const minutos = (hf*60+mf) - (hi*60+mi);
-  return minutos>0 ? minutos/60 : null;
+  return minutos>0 ? r2(minutos/60) : null;
 }
 function actualizarDuracionCalculadaHE(){
   const inicio = leerHoraInicioSelects();
@@ -7886,7 +7890,7 @@ function actualizarAvisoLimiteHE(){
       ? `${dias.length} día(s) elegido(s): ${dias.map(f=>fmtDate(f)).join(', ')}`
       : 'Todavía no has elegido ningún día en el calendario.';
     if(!trabajadorId || !horas || !dias.length){ aviso.textContent = ''; return; }
-    aviso.textContent = `Se van a crear ${dias.length} registro(s) de ${horas}h cada uno — ${(dias.length*horas).toFixed(1)}h en total.`;
+    aviso.textContent = `Se van a crear ${dias.length} registro(s) de ${horas}h cada uno — ${r2(dias.length*horas).toFixed(2)}h en total.`;
     aviso.style.color = 'var(--gray)';
     return;
   }
