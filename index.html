@@ -7751,7 +7751,7 @@ function renderHorasExtra(){
   const tbody = document.getElementById('heListaBody');
   tbody.innerHTML = nombresOrdenados.length ? nombresOrdenados.map(nombre=>{
     const filas = grupos[nombre];
-    const totalPersona = filas.reduce((s,h)=>s+Number(h.horas||0),0);
+    const totalPersona = r2(filas.reduce((s,h)=>s+Number(h.horas||0),0));
     const filasHtml = filas.map(h=>`
     <tr>
       <td>${fmtDate(h.fecha)}</td>
