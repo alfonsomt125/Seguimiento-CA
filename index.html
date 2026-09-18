@@ -1425,6 +1425,7 @@
       <table>
         <thead><tr><th>Trabajador</th><th>Ordinaria</th><th>Nocturna</th><th>Dominical</th><th>Noct. dominical</th><th>Total h</th><th>Total liquidado</th><th>Liquidado hasta 50h</th></tr></thead>
         <tbody id="heLiquidacionBody"></tbody>
+        <tfoot id="heLiquidacionFooter"></tfoot>
       </table>
     </div>
   </div>
@@ -7436,6 +7437,28 @@ function renderHeDashboard(desde, hasta){
       <td style="text-align:right;font-weight:700;">$${d.totalPagar.toLocaleString('es-CO')}</td>
       <td style="text-align:right;font-weight:700;">${d.excede?`$${d.totalPagarLimitado.toLocaleString('es-CO')}`:'—'}</td>
     </tr>`).join('') : `<tr><td colspan="8" class="empty">Nadie tiene horas extras registradas en este período.</td></tr>`;
+
+  if(conHoras.length){
+    const sumaCol = k => conHoras.reduce((s,d)=>s+d.totales[k],0);
+    // quien se pasa de 50h no suma en "Total liquidado" — su plata va en
+    // "Liquidado hasta 50h" en su lugar, para no mezclar lo normal con lo
+    // que hay que revisar aparte por exceder el tope.
+    const sumaLiquidadoNormal = conHoras.filter(d=>!d.excede).reduce((s,d)=>s+d.totalPagar,0);
+    const sumaLiquidadoLimitado = conHoras.filter(d=>d.excede).reduce((s,d)=>s+d.totalPagarLimitado,0);
+    document.getElementById('heLiquidacionFooter').innerHTML = `
+      <tr style="font-weight:700;background:var(--paper-2,#f4f5f8);">
+        <td>Total</td>
+        <td style="text-align:center;">${sumaCol('ordinaria')}</td>
+        <td style="text-align:center;">${sumaCol('nocturna')}</td>
+        <td style="text-align:center;">${sumaCol('dominical')}</td>
+        <td style="text-align:center;">${sumaCol('nocturnaDominical')}</td>
+        <td style="text-align:center;">${conHoras.reduce((s,d)=>s+d.totalHoras,0)}</td>
+        <td style="text-align:right;">$${sumaLiquidadoNormal.toLocaleString('es-CO')}</td>
+        <td style="text-align:right;">$${sumaLiquidadoLimitado.toLocaleString('es-CO')}</td>
+      </tr>`;
+  }else{
+    document.getElementById('heLiquidacionFooter').innerHTML = '';
+  }
 }
 document.getElementById('btnExportarLiquidacionHE').addEventListener('click', ()=>{
   const {desde, hasta} = periodoActualHE();
