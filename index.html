@@ -7370,8 +7370,18 @@ function renderHorasExtra(){
     : registrosDelPeriodo;
   const registrosOrdenados = sortHeRows(registrosFiltrados);
   updateHeSortHeaders();
+  const grupos = {};
+  registrosOrdenados.forEach(h=>{
+    const nombre = h.trabajadorNombre||'Sin nombre';
+    if(!grupos[nombre]) grupos[nombre] = [];
+    grupos[nombre].push(h);
+  });
+  const nombresOrdenados = Object.keys(grupos).sort((a,b)=>a.localeCompare(b));
   const tbody = document.getElementById('heListaBody');
-  tbody.innerHTML = registrosOrdenados.length ? registrosOrdenados.map(h=>`
+  tbody.innerHTML = nombresOrdenados.length ? nombresOrdenados.map(nombre=>{
+    const filas = grupos[nombre];
+    const totalPersona = filas.reduce((s,h)=>s+Number(h.horas||0),0);
+    const filasHtml = filas.map(h=>`
     <tr>
       <td>${fmtDate(h.fecha)}</td>
       <td>${esc(h.trabajadorNombre)}</td>
@@ -7381,7 +7391,9 @@ function renderHorasExtra(){
         <button class="ghost" data-editarhe="${h.id}">Editar</button>
         <button class="ghost danger" data-eliminarhe="${h.id}">Eliminar</button>
       </div></td>
-    </tr>`).join('') : `<tr><td colspan="5" class="empty">${busqueda ? 'Nada coincide con la búsqueda.' : 'No hay horas extras registradas en este período.'}</td></tr>`;
+    </tr>`).join('');
+    return `<tr style="background:var(--paper-2,#f4f5f8);"><td colspan="5" style="font-weight:700;color:var(--navy);">${esc(nombre)} — ${totalPersona}h</td></tr>${filasHtml}`;
+  }).join('') : `<tr><td colspan="5" class="empty">${busqueda ? 'Nada coincide con la búsqueda.' : 'No hay horas extras registradas en este período.'}</td></tr>`;
 
   tbody.querySelectorAll('[data-editarhe]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
