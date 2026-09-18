@@ -7354,6 +7354,7 @@ document.getElementById('btnCerrarHeDetalle').addEventListener('click', ()=>{
    ya incluyen el 100% de la hora base, porque una hora extra siempre se
    paga completa, no solo el recargo. */
 const HE_DIVISOR_MENSUAL = 210;
+const SMMLV_2026 = 1750905; // salario mínimo mensual legal vigente 2026
 const HE_FACTOR = {ordinaria:1.25, nocturna:1.75, dominical:2.15, nocturnaDominical:2.65};
 
 /* Calcula, para cada trabajador, sus horas por tipo y su liquidación (si
@@ -7368,7 +7369,7 @@ function calcularHEPorPersona(desde, hasta){
       Object.keys(totales).forEach(k=>totales[k]+=c[k]);
     });
     const totalHoras = Object.values(totales).reduce((a,b)=>a+b,0);
-    const valorHora = (t.salario||0)/HE_DIVISOR_MENSUAL;
+    const valorHora = (t.salario||SMMLV_2026)/HE_DIVISOR_MENSUAL;
     let totalPagar = 0;
     Object.keys(totales).forEach(k=>totalPagar += totales[k]*HE_FACTOR[k]*valorHora);
     return {t, totales, totalHoras, totalPagar: Math.round(totalPagar)};
@@ -7402,10 +7403,9 @@ function renderHeDashboard(desde, hasta){
           <div class="vbar-fill" style="height:${Math.max(3, d.totalPagar/maxValor*140)}px;background:linear-gradient(180deg,var(--orange),#B45309);"></div>
           <span class="vbar-label" style="writing-mode:vertical-rl;text-orientation:mixed;height:60px;">${esc(d.t.nombre)}</span>
         </div>`).join('')}
-    </div>` : '<p class="empty">Nadie con salario guardado tiene horas en este período — agrega el salario exportando el resumen con la liquidación activada.</p>';
+    </div>` : '<p class="empty">Sin datos en este período.</p>';
 
-  const conSalario = conHoras.filter(d=>d.t.salario);
-  document.getElementById('heLiquidacionBody').innerHTML = conSalario.length ? conSalario.map(d=>`
+  document.getElementById('heLiquidacionBody').innerHTML = conHoras.length ? conHoras.map(d=>`
     <tr>
       <td>${esc(d.t.nombre)}</td>
       <td style="text-align:center;">${d.totales.ordinaria}</td>
@@ -7414,11 +7414,11 @@ function renderHeDashboard(desde, hasta){
       <td style="text-align:center;">${d.totales.nocturnaDominical}</td>
       <td style="text-align:center;font-weight:700;">${d.totalHoras}</td>
       <td style="text-align:right;font-weight:700;">$${d.totalPagar.toLocaleString('es-CO')}</td>
-    </tr>`).join('') : `<tr><td colspan="7" class="empty">Nadie con salario guardado tiene horas en este período.</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="7" class="empty">Nadie tiene horas extras registradas en este período.</td></tr>`;
 }
 document.getElementById('btnExportarLiquidacionHE').addEventListener('click', ()=>{
   const {desde, hasta} = periodoActualHE();
-  const ids = calcularHEPorPersona(desde, hasta).filter(d=>d.totalHoras>0 && d.t.salario).map(d=>d.t.id);
+  const ids = calcularHEPorPersona(desde, hasta).filter(d=>d.totalHoras>0).map(d=>d.t.id);
   if(!ids.length){ showToast('Nadie con salario guardado tiene horas en este período.'); return; }
   const win = window.open('', '_blank');
   if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
@@ -7447,7 +7447,7 @@ function renderHeExportSalarios(){
     const t = trabajadores.find(x=>x.id===id);
     return `<div class="field" style="margin-top:8px;">
       <label>Salario mensual — ${esc(t?.nombre||'')}</label>
-      <input type="number" min="0" step="1000" class="he-export-salario" data-personaid="${id}" value="${t?.salario||''}" placeholder="Ej: 1750905">
+      <input type="number" min="0" step="1000" class="he-export-salario" data-personaid="${id}" value="${t?.salario||SMMLV_2026}" placeholder="Ej: 1750905">
     </div>`;
   }).join('');
 }
@@ -7499,7 +7499,7 @@ function construirResumenHEHtml(idsSeleccionados, desde, hasta, conLiquidacion){
     const totalHoras = Object.values(totales).reduce((a,b)=>a+b,0);
     let valorHora = 0, subtotales = {}, totalPagar = 0;
     if(conLiquidacion){
-      valorHora = (t?.salario||0)/HE_DIVISOR_MENSUAL;
+      valorHora = (t?.salario||SMMLV_2026)/HE_DIVISOR_MENSUAL;
       Object.keys(totales).forEach(k=>{ subtotales[k] = Math.round(totales[k]*HE_FACTOR[k]*valorHora); totalPagar += subtotales[k]; });
     }
     return {t, totales, totalHoras, valorHora, subtotales, totalPagar};
@@ -7526,7 +7526,7 @@ function construirResumenHEHtml(idsSeleccionados, desde, hasta, conLiquidacion){
     <div style="page-break-before:always;padding-top:10mm;">
       <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
       <div style="font-size:19px;font-weight:700;color:#011632;margin:5px 0 3px;">Liquidación de horas extras — ${esc(p.t?.nombre||'')}</div>
-      <div style="font-size:11px;color:#6B7280;margin-bottom:14px;">Período: ${fmtDate(desde)} al ${fmtDate(hasta)}. Salario mensual: ${fmtCOP(p.t?.salario||0)} · Valor hora ordinaria: ${fmtCOP(p.valorHora)}.</div>
+      <div style="font-size:11px;color:#6B7280;margin-bottom:14px;">Período: ${fmtDate(desde)} al ${fmtDate(hasta)}. Salario mensual: ${fmtCOP(p.t?.salario||SMMLV_2026)} · Valor hora ordinaria: ${fmtCOP(p.valorHora)}.</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:#BDD7EE;font-weight:700;">
           <th style="border:1px solid #000;padding:6px 8px;">Tipo de hora</th>
