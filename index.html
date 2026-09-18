@@ -3543,6 +3543,31 @@ async function loadAll(){
     }
     try{ await storageAPI.set('reqCerrarHuecosNumeracion', JSON.stringify(true)); }catch(e2){}
   }
+  // ajuste de una sola vez: quitar del listado de trabajadores a quienes ya
+  // no deben aparecer (no hacen horas extras / son cuentas genéricas de
+  // área, no personas). Se guarda una marca para que no se repita.
+  try{
+    await storageAPI.get('trabQuitarLista1');
+  }catch(e){
+    const sinAcentos = s => (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const aQuitar = ['logistica','mantenimiento','alfonso monserrat','alejandro lopez','martha aleman',
+      'luz estela','gladys','capellania','valentina','erika','harry','estefani'].map(sinAcentos);
+    const quedan = [], quitados = [];
+    trabajadores.forEach(t=>{
+      const n = sinAcentos(t.nombre);
+      (aQuitar.some(q=>n.includes(q)) ? quitados : quedan).push(t);
+    });
+    if(quitados.length){
+      trabajadores = quedan;
+      quitados.forEach(t=>{
+        const n = normName(t.nombre);
+        if(!deletedTrabajadorNames.includes(n)) deletedTrabajadorNames.push(n);
+      });
+      await saveTrabajadores();
+      await saveDeletedTrabajadorNames();
+    }
+    try{ await storageAPI.set('trabQuitarLista1', JSON.stringify(true)); }catch(e2){}
+  }
   try{
     const ex = await storageAPI.get('extintores');
     extintores = JSON.parse(ex.value);
