@@ -1420,10 +1420,10 @@
       <h2 style="margin:0;">Detalle de liquidación por persona</h2>
       <button class="ghost" id="btnExportarLiquidacionHE">⬇ Exportar a PDF</button>
     </div>
-    <p class="hint" style="margin:0 0 14px;">Solo aparecen quienes tienen salario mensual guardado (se guarda al exportar desde "Exportar a PDF" arriba, con la liquidación activada).</p>
+    <p class="hint" style="margin:0 0 14px;">Usa el salario mínimo 2026 por defecto, salvo que hayas guardado uno distinto exportando con la liquidación activada. Quien supere 50h en el período aparece en rojo, con una columna aparte mostrando cuánto sería si se limitara a 50h — priorizando las horas dominicales y/o nocturnas (las de mayor recargo) sobre las ordinarias.</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Trabajador</th><th>Ordinaria</th><th>Nocturna</th><th>Dominical</th><th>Noct. dominical</th><th>Total h</th><th>Total liquidado</th></tr></thead>
+        <thead><tr><th>Trabajador</th><th>Ordinaria</th><th>Nocturna</th><th>Dominical</th><th>Noct. dominical</th><th>Total h</th><th>Total liquidado</th><th>Liquidado hasta 50h</th></tr></thead>
         <tbody id="heLiquidacionBody"></tbody>
       </table>
     </div>
@@ -7360,6 +7360,20 @@ const HE_FACTOR = {ordinaria:1.25, nocturna:1.75, dominical:2.15, nocturnaDomini
 /* Calcula, para cada trabajador, sus horas por tipo y su liquidación (si
    tiene salario guardado) dentro del período dado. La comparten el
    dashboard y la tabla de detalle de liquidación. */
+const HE_LIMITE_ALERTA = 50;
+function limitarHorasPriorizandoRecargos(totales, limite){
+  // recorta al límite manteniendo primero lo que vale más (nocturna
+  // dominical > dominical > nocturna > ordinaria) — lo que se recorta
+  // primero es la ordinaria, que es la de menor recargo.
+  let restante = limite;
+  const limitado = {};
+  ['nocturnaDominical','dominical','nocturna','ordinaria'].forEach(k=>{
+    const usar = Math.min(totales[k], restante);
+    limitado[k] = usar;
+    restante -= usar;
+  });
+  return limitado;
+}
 function calcularHEPorPersona(desde, hasta){
   return trabajadores.map(t=>{
     const registros = horasExtras.filter(h=>h.trabajadorId===t.id && h.fecha>=desde && h.fecha<=hasta);
@@ -7372,7 +7386,13 @@ function calcularHEPorPersona(desde, hasta){
     const valorHora = (t.salario||SMMLV_2026)/HE_DIVISOR_MENSUAL;
     let totalPagar = 0;
     Object.keys(totales).forEach(k=>totalPagar += totales[k]*HE_FACTOR[k]*valorHora);
-    return {t, totales, totalHoras, totalPagar: Math.round(totalPagar)};
+    const excede = totalHoras > HE_LIMITE_ALERTA;
+    let totalPagarLimitado = null;
+    if(excede){
+      const limitado = limitarHorasPriorizandoRecargos(totales, HE_LIMITE_ALERTA);
+      totalPagarLimitado = Math.round(Object.keys(limitado).reduce((s,k)=>s+limitado[k]*HE_FACTOR[k]*valorHora, 0));
+    }
+    return {t, totales, totalHoras, totalPagar: Math.round(totalPagar), excede, totalPagarLimitado};
   });
 }
 function renderHeDashboard(desde, hasta){
@@ -7406,15 +7426,16 @@ function renderHeDashboard(desde, hasta){
     </div>` : '<p class="empty">Sin datos en este período.</p>';
 
   document.getElementById('heLiquidacionBody').innerHTML = conHoras.length ? conHoras.map(d=>`
-    <tr>
-      <td>${esc(d.t.nombre)}</td>
+    <tr${d.excede?' style="color:var(--red);"':''}>
+      <td>${esc(d.t.nombre)}${d.excede?' ⚠':''}</td>
       <td style="text-align:center;">${d.totales.ordinaria}</td>
       <td style="text-align:center;">${d.totales.nocturna}</td>
       <td style="text-align:center;">${d.totales.dominical}</td>
       <td style="text-align:center;">${d.totales.nocturnaDominical}</td>
       <td style="text-align:center;font-weight:700;">${d.totalHoras}</td>
       <td style="text-align:right;font-weight:700;">$${d.totalPagar.toLocaleString('es-CO')}</td>
-    </tr>`).join('') : `<tr><td colspan="7" class="empty">Nadie tiene horas extras registradas en este período.</td></tr>`;
+      <td style="text-align:right;font-weight:700;">${d.excede?`$${d.totalPagarLimitado.toLocaleString('es-CO')}`:'—'}</td>
+    </tr>`).join('') : `<tr><td colspan="8" class="empty">Nadie tiene horas extras registradas en este período.</td></tr>`;
 }
 document.getElementById('btnExportarLiquidacionHE').addEventListener('click', ()=>{
   const {desde, hasta} = periodoActualHE();
