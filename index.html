@@ -1420,10 +1420,10 @@
       <h2 style="margin:0;">Detalle de liquidación por persona</h2>
       <button class="ghost" id="btnExportarLiquidacionHE">⬇ Exportar a PDF</button>
     </div>
-    <p class="hint" style="margin:0 0 14px;">Usa el salario mínimo 2026 por defecto, salvo que hayas guardado uno distinto exportando con la liquidación activada. Quien supere 50h en el período aparece en rojo, con una columna aparte mostrando cuánto sería si se limitara a 50h — priorizando las horas dominicales y/o nocturnas (las de mayor recargo) sobre las ordinarias.</p>
+    <p class="hint" id="heLiquidacionHint" style="margin:0 0 14px;"></p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Trabajador</th><th>Ordinaria</th><th>Nocturna</th><th>Dominical</th><th>Noct. dominical</th><th>Total h</th><th>Total liquidado</th><th>Liquidado hasta 50h</th></tr></thead>
+        <thead><tr><th>Trabajador</th><th>Ordinaria</th><th>Nocturna</th><th>Dominical</th><th>Noct. dominical</th><th>Total h</th><th>Total liquidado</th><th id="heColTope">Liquidado hasta 50h</th></tr></thead>
         <tbody id="heLiquidacionBody"></tbody>
         <tfoot id="heLiquidacionFooter"></tfoot>
       </table>
@@ -1562,6 +1562,11 @@
       <div class="field" style="margin-top:14px;">
         <label>Límite por período (horas)</label>
         <input type="number" id="heLimiteMensual" min="1" step="1">
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Tope legal para alertar en rojo (horas)</label>
+        <input type="number" id="heLimiteTope" min="1" step="1">
+        <p class="hint" style="margin:6px 0 0;">Según la norma colombiana (12h extra/semana), equivale a unas 50h por período de 30 días. Quien lo supere aparece en rojo en el detalle de liquidación, con el cálculo alterno limitado a este tope.</p>
       </div>
       <div class="modal-actions">
         <button class="ghost" id="btnCancelarLimitesHE">Cancelar</button>
@@ -3616,7 +3621,22 @@ async function loadAll(){
   try{
     const hl = await storageAPI.get('limitesHorasExtras');
     limitesHorasExtras = JSON.parse(hl.value);
-  }catch(e){ limitesHorasExtras = {diario: 2, mensual: 48}; }
+  }catch(e){ limitesHorasExtras = {diario: 2, mensual: 48, tope: 50}; }
+  if(!limitesHorasExtras.tope) limitesHorasExtras.tope = 50;
+  // ajuste de una sola vez: redondear a 2 decimales las horas ya guardadas
+  // de antes (algunas quedaron con decimales largos, ej. 1.0833333333333333,
+  // por diferencias de coma flotante al calcular la duración).
+  try{
+    await storageAPI.get('heRedondeoDecimales1');
+  }catch(e){
+    let huboCambios = false;
+    horasExtras.forEach(h=>{
+      const r = Math.round(Number(h.horas||0)*100)/100;
+      if(r!==h.horas){ h.horas = r; huboCambios = true; }
+    });
+    if(huboCambios) await saveHorasExtras();
+    try{ await storageAPI.set('heRedondeoDecimales1', JSON.stringify(true)); }catch(e2){}
+  }
 }
 async function saveAiresAcondicionados(){
   try{ await storageAPI.set('airesAcondicionados', JSON.stringify(airesAcondicionados)); }
@@ -7330,7 +7350,7 @@ function abrirDetalleHE(trabajadorId){
       .map(k=>`<span class="pill ${HE_TIPO_COLOR[k]}" style="margin:2px 4px 2px 0;">${HE_TIPO_LABEL[k]}: ${clasif[k]}h</span>`).join('');
     return `<tr>
       <td>${fmtDate(h.fecha)}</td>
-      <td>${h.horaInicio ? `${hora24aTexto12(h.horaInicio)} – ${hora24aTexto12(h.horaFin)}` : h.horas+'h'}</td>
+      <td>${h.horaInicio ? `${hora24aTexto12(h.horaInicio)} – ${hora24aTexto12(h.horaFin)}` : r2(h.horas)+'h'}</td>
       <td>${badges || '—'}</td>
       <td>${esc(h.motivo)||'—'}</td>
     </tr>`;
@@ -7362,7 +7382,6 @@ const HE_FACTOR = {ordinaria:1.25, nocturna:1.75, dominical:2.15, nocturnaDomini
 /* Calcula, para cada trabajador, sus horas por tipo y su liquidación (si
    tiene salario guardado) dentro del período dado. La comparten el
    dashboard y la tabla de detalle de liquidación. */
-const HE_LIMITE_ALERTA = 50;
 function limitarHorasPriorizandoRecargos(totales, limite){
   // recorta al límite manteniendo primero lo que vale más (nocturna
   // dominical > dominical > nocturna > ordinaria) — lo que se recorta
@@ -7389,10 +7408,10 @@ function calcularHEPorPersona(desde, hasta){
     const valorHora = (t.salario||SMMLV_2026)/HE_DIVISOR_MENSUAL;
     let totalPagar = 0;
     Object.keys(totales).forEach(k=>totalPagar += totales[k]*HE_FACTOR[k]*valorHora);
-    const excede = totalHoras > HE_LIMITE_ALERTA;
+    const excede = totalHoras > limitesHorasExtras.tope;
     let totalPagarLimitado = null;
     if(excede){
-      const limitado = limitarHorasPriorizandoRecargos(totales, HE_LIMITE_ALERTA);
+      const limitado = limitarHorasPriorizandoRecargos(totales, limitesHorasExtras.tope);
       totalPagarLimitado = Math.round(Object.keys(limitado).reduce((s,k)=>s+limitado[k]*HE_FACTOR[k]*valorHora, 0));
     }
     return {t, totales, totalHoras, totalPagar: Math.round(totalPagar), excede, totalPagarLimitado};
@@ -7401,32 +7420,41 @@ function calcularHEPorPersona(desde, hasta){
 function renderHeDashboard(desde, hasta){
   const datos = calcularHEPorPersona(desde, hasta);
   const conHoras = datos.filter(d=>d.totalHoras>0).sort((a,b)=>b.totalHoras-a.totalHoras);
+  const tope = limitesHorasExtras.tope;
+  document.getElementById('heLiquidacionHint').textContent = `Usa el salario mínimo 2026 por defecto, salvo que hayas guardado uno distinto exportando con la liquidación activada. Quien supere ${tope}h en el período aparece en rojo, con una columna aparte mostrando cuánto sería si se limitara a ${tope}h — priorizando las horas dominicales y/o nocturnas (las de mayor recargo) sobre las ordinarias.`;
+  document.getElementById('heColTope').textContent = `Liquidado hasta ${tope}h`;
 
   const promedio = conHoras.length ? (conHoras.reduce((s,d)=>s+d.totalHoras,0)/conHoras.length) : 0;
   document.getElementById('heDashPromedio').textContent = conHoras.length ? `Promedio: ${promedio.toFixed(2)}h por persona (entre ${conHoras.length} persona(s) con horas en el período).` : 'Nadie tiene horas extras registradas en este período.';
 
   const maxHoras = Math.max(1, ...conHoras.map(d=>d.totalHoras));
-  document.getElementById('heDashBarsHoras').innerHTML = conHoras.length ? `
-    <div class="vbar-chart" style="height:180px;">
-      ${conHoras.map(d=>`
-        <div class="vbar-col" title="${esc(d.t.nombre)}: ${d.totalHoras}h">
-          <span class="vbar-value">${d.totalHoras}h</span>
-          <div class="vbar-fill" style="height:${Math.max(3, d.totalHoras/maxHoras*140)}px;"></div>
-          <span class="vbar-label" style="writing-mode:vertical-rl;text-orientation:mixed;height:60px;">${esc(d.t.nombre)}</span>
-        </div>`).join('')}
-    </div>` : '<p class="empty">Sin datos en este período.</p>';
+  document.getElementById('heDashBarsHoras').innerHTML = conHoras.length ? conHoras.map(d=>{
+    const pct = Math.min(100, d.totalHoras/maxHoras*100);
+    const pctPromedio = Math.min(100, promedio/maxHoras*100);
+    return `
+    <div class="bar-row" style="align-items:center;" title="${esc(d.t.nombre)}: ${d.totalHoras}h">
+      <span class="name" style="width:150px;flex-shrink:0;${d.excede?'color:var(--red);font-weight:700;':''}">${esc(d.t.nombre)}${d.excede?' ⚠':''}</span>
+      <div class="bar-track" style="flex:1;position:relative;">
+        <div class="bar-fill" style="width:${pct}%;background:${d.excede?'var(--red)':'var(--navy-2)'};"></div>
+        <div style="position:absolute;left:${pctPromedio}%;top:-3px;bottom:-3px;width:2px;background:var(--gray);"></div>
+      </div>
+      <span class="count" style="width:auto;min-width:56px;font-weight:700;${d.excede?'color:var(--red);':''}">${d.totalHoras}h</span>
+    </div>`;
+  }).join('') + (conHoras.length ? `<p class="hint" style="margin:8px 0 0;">▍ línea gris = promedio (${promedio.toFixed(2)}h)</p>` : '') : '<p class="empty">Sin datos en este período.</p>';
 
-  const conValor = conHoras.filter(d=>d.totalPagar>0);
+  const conValor = [...conHoras].sort((a,b)=>b.totalPagar-a.totalPagar);
   const maxValor = Math.max(1, ...conValor.map(d=>d.totalPagar));
-  document.getElementById('heDashBarsValor').innerHTML = conValor.length ? `
-    <div class="vbar-chart" style="height:180px;">
-      ${conValor.map(d=>`
-        <div class="vbar-col" title="${esc(d.t.nombre)}: $${d.totalPagar.toLocaleString('es-CO')}">
-          <span class="vbar-value">$${(d.totalPagar/1000).toFixed(0)}k</span>
-          <div class="vbar-fill" style="height:${Math.max(3, d.totalPagar/maxValor*140)}px;background:linear-gradient(180deg,var(--orange),#B45309);"></div>
-          <span class="vbar-label" style="writing-mode:vertical-rl;text-orientation:mixed;height:60px;">${esc(d.t.nombre)}</span>
-        </div>`).join('')}
-    </div>` : '<p class="empty">Sin datos en este período.</p>';
+  document.getElementById('heDashBarsValor').innerHTML = conValor.length ? conValor.map(d=>{
+    const pct = Math.min(100, d.totalPagar/maxValor*100);
+    return `
+    <div class="bar-row" style="align-items:center;" title="${esc(d.t.nombre)}: $${d.totalPagar.toLocaleString('es-CO')}">
+      <span class="name" style="width:150px;flex-shrink:0;${d.excede?'color:var(--red);font-weight:700;':''}">${esc(d.t.nombre)}${d.excede?' ⚠':''}</span>
+      <div class="bar-track" style="flex:1;">
+        <div class="bar-fill" style="width:${pct}%;background:${d.excede?'var(--red)':'var(--orange)'};"></div>
+      </div>
+      <span class="count" style="width:auto;min-width:90px;text-align:right;font-weight:700;${d.excede?'color:var(--red);':''}">$${d.totalPagar.toLocaleString('es-CO')}</span>
+    </div>`;
+  }).join('') : '<p class="empty">Sin datos en este período.</p>';
 
   document.getElementById('heLiquidacionBody').innerHTML = conHoras.length ? conHoras.map(d=>`
     <tr${d.excede?' style="color:var(--red);"':''}>
@@ -7728,7 +7756,7 @@ function renderHorasExtra(){
     <tr>
       <td>${fmtDate(h.fecha)}</td>
       <td>${esc(h.trabajadorNombre)}</td>
-      <td>${h.horaInicio ? `${hora24aTexto12(h.horaInicio)} – ${hora24aTexto12(h.horaFin)}<br><span class="hint" style="margin:0;">${h.horas}h</span>` : h.horas+'h'}</td>
+      <td>${h.horaInicio ? `${hora24aTexto12(h.horaInicio)} – ${hora24aTexto12(h.horaFin)}<br><span class="hint" style="margin:0;">${r2(h.horas)}h</span>` : r2(h.horas)+'h'}</td>
       <td>${esc(h.motivo)||'—'}</td>
       <td><div class="row-actions">
         <button class="ghost" data-editarhe="${h.id}">Editar</button>
@@ -7996,6 +8024,7 @@ document.getElementById('btnEliminarHE').addEventListener('click', async ()=>{
 document.getElementById('btnConfigLimitesHE').addEventListener('click', ()=>{
   document.getElementById('heLimiteDiario').value = limitesHorasExtras.diario;
   document.getElementById('heLimiteMensual').value = limitesHorasExtras.mensual;
+  document.getElementById('heLimiteTope').value = limitesHorasExtras.tope;
   document.getElementById('heLimitesModalBg').classList.add('active');
 });
 document.getElementById('btnCancelarLimitesHE').addEventListener('click', ()=>{
@@ -8004,8 +8033,9 @@ document.getElementById('btnCancelarLimitesHE').addEventListener('click', ()=>{
 document.getElementById('btnGuardarLimitesHE').addEventListener('click', async ()=>{
   const diario = Number(document.getElementById('heLimiteDiario').value);
   const mensual = Number(document.getElementById('heLimiteMensual').value);
-  if(!diario || diario<=0 || !mensual || mensual<=0){ showToast('Escribe valores válidos.'); return; }
-  limitesHorasExtras = {diario, mensual};
+  const tope = Number(document.getElementById('heLimiteTope').value);
+  if(!diario || diario<=0 || !mensual || mensual<=0 || !tope || tope<=0){ showToast('Escribe valores válidos.'); return; }
+  limitesHorasExtras = {diario, mensual, tope};
   await saveLimitesHorasExtras();
   document.getElementById('heLimitesModalBg').classList.remove('active');
   renderHorasExtra();
