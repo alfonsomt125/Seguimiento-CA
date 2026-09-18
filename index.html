@@ -1406,6 +1406,30 @@
   </div>
 
   <div class="panel">
+    <h2 style="margin:0 0 4px;">📊 Dashboard de horas extras</h2>
+    <p class="hint" style="margin:0 0 14px;">Del período seleccionado arriba.</p>
+    <h3 style="font-size:14px;color:var(--navy);margin:0 0 4px;">Horas por persona</h3>
+    <p class="hint" id="heDashPromedio" style="margin:0 0 10px;"></p>
+    <div id="heDashBarsHoras"></div>
+    <h3 style="font-size:14px;color:var(--navy);margin:20px 0 10px;">Valor total liquidado por persona</h3>
+    <div id="heDashBarsValor"></div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <h2 style="margin:0;">Detalle de liquidación por persona</h2>
+      <button class="ghost" id="btnExportarLiquidacionHE">⬇ Exportar a PDF</button>
+    </div>
+    <p class="hint" style="margin:0 0 14px;">Solo aparecen quienes tienen salario mensual guardado (se guarda al exportar desde "Exportar a PDF" arriba, con la liquidación activada).</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Trabajador</th><th>Ordinaria</th><th>Nocturna</th><th>Dominical</th><th>Noct. dominical</th><th>Total h</th><th>Total liquidado</th></tr></thead>
+        <tbody id="heLiquidacionBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
       <h2 style="margin:0;">Registros de horas extras</h2>
       <button class="primary" id="btnNuevaHoraExtra">+ Agregar</button>
@@ -7332,6 +7356,78 @@ document.getElementById('btnCerrarHeDetalle').addEventListener('click', ()=>{
 const HE_DIVISOR_MENSUAL = 210;
 const HE_FACTOR = {ordinaria:1.25, nocturna:1.75, dominical:2.15, nocturnaDominical:2.65};
 
+/* Calcula, para cada trabajador, sus horas por tipo y su liquidación (si
+   tiene salario guardado) dentro del período dado. La comparten el
+   dashboard y la tabla de detalle de liquidación. */
+function calcularHEPorPersona(desde, hasta){
+  return trabajadores.map(t=>{
+    const registros = horasExtras.filter(h=>h.trabajadorId===t.id && h.fecha>=desde && h.fecha<=hasta);
+    const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
+    registros.forEach(h=>{
+      const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
+      Object.keys(totales).forEach(k=>totales[k]+=c[k]);
+    });
+    const totalHoras = Object.values(totales).reduce((a,b)=>a+b,0);
+    const valorHora = (t.salario||0)/HE_DIVISOR_MENSUAL;
+    let totalPagar = 0;
+    Object.keys(totales).forEach(k=>totalPagar += totales[k]*HE_FACTOR[k]*valorHora);
+    return {t, totales, totalHoras, totalPagar: Math.round(totalPagar)};
+  });
+}
+function renderHeDashboard(desde, hasta){
+  const datos = calcularHEPorPersona(desde, hasta);
+  const conHoras = datos.filter(d=>d.totalHoras>0).sort((a,b)=>b.totalHoras-a.totalHoras);
+
+  const promedio = conHoras.length ? (conHoras.reduce((s,d)=>s+d.totalHoras,0)/conHoras.length) : 0;
+  document.getElementById('heDashPromedio').textContent = conHoras.length ? `Promedio: ${promedio.toFixed(1)}h por persona (entre ${conHoras.length} persona(s) con horas en el período).` : 'Nadie tiene horas extras registradas en este período.';
+
+  const maxHoras = Math.max(1, ...conHoras.map(d=>d.totalHoras));
+  document.getElementById('heDashBarsHoras').innerHTML = conHoras.length ? `
+    <div class="vbar-chart" style="height:180px;">
+      ${conHoras.map(d=>`
+        <div class="vbar-col" title="${esc(d.t.nombre)}: ${d.totalHoras}h">
+          <span class="vbar-value">${d.totalHoras}h</span>
+          <div class="vbar-fill" style="height:${Math.max(3, d.totalHoras/maxHoras*140)}px;"></div>
+          <span class="vbar-label" style="writing-mode:vertical-rl;text-orientation:mixed;height:60px;">${esc(d.t.nombre)}</span>
+        </div>`).join('')}
+    </div>` : '<p class="empty">Sin datos en este período.</p>';
+
+  const conValor = conHoras.filter(d=>d.totalPagar>0);
+  const maxValor = Math.max(1, ...conValor.map(d=>d.totalPagar));
+  document.getElementById('heDashBarsValor').innerHTML = conValor.length ? `
+    <div class="vbar-chart" style="height:180px;">
+      ${conValor.map(d=>`
+        <div class="vbar-col" title="${esc(d.t.nombre)}: $${d.totalPagar.toLocaleString('es-CO')}">
+          <span class="vbar-value">$${(d.totalPagar/1000).toFixed(0)}k</span>
+          <div class="vbar-fill" style="height:${Math.max(3, d.totalPagar/maxValor*140)}px;background:linear-gradient(180deg,var(--orange),#B45309);"></div>
+          <span class="vbar-label" style="writing-mode:vertical-rl;text-orientation:mixed;height:60px;">${esc(d.t.nombre)}</span>
+        </div>`).join('')}
+    </div>` : '<p class="empty">Nadie con salario guardado tiene horas en este período — agrega el salario exportando el resumen con la liquidación activada.</p>';
+
+  const conSalario = conHoras.filter(d=>d.t.salario);
+  document.getElementById('heLiquidacionBody').innerHTML = conSalario.length ? conSalario.map(d=>`
+    <tr>
+      <td>${esc(d.t.nombre)}</td>
+      <td style="text-align:center;">${d.totales.ordinaria}</td>
+      <td style="text-align:center;">${d.totales.nocturna}</td>
+      <td style="text-align:center;">${d.totales.dominical}</td>
+      <td style="text-align:center;">${d.totales.nocturnaDominical}</td>
+      <td style="text-align:center;font-weight:700;">${d.totalHoras}</td>
+      <td style="text-align:right;font-weight:700;">$${d.totalPagar.toLocaleString('es-CO')}</td>
+    </tr>`).join('') : `<tr><td colspan="7" class="empty">Nadie con salario guardado tiene horas en este período.</td></tr>`;
+}
+document.getElementById('btnExportarLiquidacionHE').addEventListener('click', ()=>{
+  const {desde, hasta} = periodoActualHE();
+  const ids = calcularHEPorPersona(desde, hasta).filter(d=>d.totalHoras>0 && d.t.salario).map(d=>d.t.id);
+  if(!ids.length){ showToast('Nadie con salario guardado tiene horas en este período.'); return; }
+  const win = window.open('', '_blank');
+  if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
+  win.document.open();
+  win.document.write(construirResumenHEHtml(ids, desde, hasta, true));
+  win.document.close();
+  showToast('Se abrió una pestaña nueva con el reporte. Ahí eliges "Guardar como PDF".');
+});
+
 function renderHeExportListaPersonas(){
   const wrap = document.getElementById('heExportListaPersonas');
   wrap.innerHTML = trabajadores.map(t=>`
@@ -7537,6 +7633,7 @@ function renderHorasExtra(){
     document.getElementById('heHastaPeriodo').value = def.hasta;
   }
   const {desde, hasta} = periodoActualHE();
+  renderHeDashboard(desde, hasta);
   document.querySelectorAll('#heCortesRapidos [data-corte]').forEach(b=>{
     b.classList.toggle('active', b.dataset.corte===`${desde}|${hasta}`);
   });
