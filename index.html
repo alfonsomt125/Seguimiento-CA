@@ -1413,10 +1413,7 @@
   <div class="panel">
     <h2 style="margin:0 0 4px;">📊 Dashboard de horas extras</h2>
     <p class="hint" style="margin:0 0 14px;">Del período seleccionado arriba.</p>
-    <h3 style="font-size:14px;color:var(--navy);margin:0 0 4px;">Horas por persona</h3>
-    <p class="hint" id="heDashPromedio" style="margin:0 0 10px;"></p>
-    <div id="heDashBarsHoras"></div>
-    <h3 style="font-size:14px;color:var(--navy);margin:20px 0 10px;">Valor total liquidado por persona</h3>
+    <h3 style="font-size:14px;color:var(--navy);margin:0 0 10px;">Valor total liquidado por persona</h3>
     <div id="heDashBarsValor"></div>
   </div>
 
@@ -7429,25 +7426,6 @@ function renderHeDashboard(desde, hasta){
   const tope = limitesHorasExtras.tope;
   document.getElementById('heLiquidacionHint').textContent = `Usa el salario mínimo 2026 por defecto, salvo que hayas guardado uno distinto exportando con la liquidación activada. Quien supere ${tope}h en el período aparece en rojo, con una columna aparte mostrando cuánto sería si se limitara a ${tope}h — priorizando las horas dominicales y/o nocturnas (las de mayor recargo) sobre las ordinarias.`;
   document.getElementById('heColTope').textContent = `Liquidado hasta ${tope}h`;
-
-  const promedio = conHoras.length ? (conHoras.reduce((s,d)=>s+d.totalHoras,0)/conHoras.length) : 0;
-  document.getElementById('heDashPromedio').textContent = conHoras.length ? `Promedio: ${promedio.toFixed(2)}h por persona (entre ${conHoras.length} persona(s) con horas en el período).` : 'Nadie tiene horas extras registradas en este período.';
-
-  const maxHoras = Math.max(1, ...conHoras.map(d=>d.totalHoras));
-  document.getElementById('heDashBarsHoras').innerHTML = conHoras.length ? conHoras.map(d=>{
-    const pct = Math.min(100, d.totalHoras/maxHoras*100);
-    const pctPromedio = Math.min(100, promedio/maxHoras*100);
-    const color = d.excede ? 'var(--red)' : 'var(--navy-2)';
-    return `
-    <div class="he-bar-row" title="${esc(d.t.nombre)}: ${d.totalHoras}h">
-      <span class="name" style="width:150px;flex-shrink:0;font-weight:600;${d.excede?'color:var(--red);':''}">${esc(d.t.nombre)}${d.excede?' ⚠':''}</span>
-      <div class="he-bar-track">
-        <div class="he-bar-fill" style="width:${Math.max(pct,6)}%;background:${color};"></div>
-        <div style="position:absolute;left:${pctPromedio}%;top:-3px;bottom:-3px;width:2px;background:var(--gray);"></div>
-      </div>
-      <span class="count" style="width:auto;min-width:56px;text-align:right;font-weight:700;${d.excede?'color:var(--red);':''}">${d.totalHoras}h</span>
-    </div>`;
-  }).join('') + (conHoras.length ? `<p class="hint" style="margin:10px 0 0;">▍ línea gris = promedio (${promedio.toFixed(2)}h)</p>` : '') : '<p class="empty">Sin datos en este período.</p>';
 
   const conValor = [...conHoras].sort((a,b)=>b.totalPagar-a.totalPagar);
   const maxValor = Math.max(1, ...conValor.map(d=>d.totalPagar));
