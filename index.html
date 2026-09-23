@@ -1574,6 +1574,18 @@
         <label>Motivo</label>
         <input type="text" id="heMotivo" placeholder="Ej: Cierre de evento en Paraninfo">
       </div>
+      <div class="field" style="margin-top:14px;">
+        <label>Cómo se paga esta hora</label>
+        <select id="heEstadoPago">
+          <option value="normal">Normal (en la liquidación del período)</option>
+          <option value="pendiente">Pago pendiente para el próximo corte</option>
+          <option value="compensatorio">Día compensatorio (tiempo libre)</option>
+        </select>
+      </div>
+      <div class="field" style="margin-top:14px;" id="heFechaCompensatoriaWrap">
+        <label>Fecha del compensatorio</label>
+        <input type="date" id="heFechaCompensatoria">
+      </div>
       <p class="hint" id="heAvisoLimite" style="margin:12px 0 0;"></p>
       <div class="modal-actions" style="flex-wrap:wrap;gap:10px;">
         <button class="ghost" id="btnCancelarHE">Cancelar</button>
@@ -7843,7 +7855,7 @@ function renderHorasExtra(){
       <td>${fmtDate(h.fecha)}</td>
       <td>${esc(h.trabajadorNombre)}</td>
       <td>${h.horaInicio ? `${hora24aTexto12(h.horaInicio)} – ${hora24aTexto12(h.horaFin)}<br><span class="hint" style="margin:0;">${r2(h.horas)}h</span>` : r2(h.horas)+'h'}</td>
-      <td>${esc(h.motivo)||'—'}</td>
+      <td>${esc(h.motivo)||'—'}${h.estadoPago==='pendiente'?' <span class="pill pill-Pendiente">Pago pendiente</span>':''}${h.estadoPago==='compensatorio'?` <span class="pill pill-Finalizado">Compensatorio ${fmtDate(h.fechaCompensatoria)}</span>`:''}</td>
       <td><div class="row-actions">
         <button class="ghost" data-editarhe="${h.id}">Editar</button>
         <button class="ghost danger" data-eliminarhe="${h.id}">Eliminar</button>
@@ -7891,10 +7903,16 @@ function abrirHEModal(registro){
   ponerHoraEnSelects('heHoraFin', registro?.horaFin || '16:00');
   actualizarDuracionCalculadaHE();
   document.getElementById('heMotivo').value = registro ? (registro.motivo||'') : '';
+  document.getElementById('heEstadoPago').value = registro?.estadoPago || 'normal';
+  document.getElementById('heFechaCompensatoria').value = registro?.fechaCompensatoria || '';
+  document.getElementById('heFechaCompensatoriaWrap').style.display = (registro?.estadoPago==='compensatorio') ? 'block' : 'none';
   document.getElementById('btnEliminarHE').style.display = registro ? 'inline-block' : 'none';
   document.getElementById('heModalBg').classList.add('active');
   actualizarAvisoLimiteHE();
 }
+document.getElementById('heEstadoPago').addEventListener('change', (e)=>{
+  document.getElementById('heFechaCompensatoriaWrap').style.display = e.target.value==='compensatorio' ? 'block' : 'none';
+});
 document.getElementById('btnNuevaHoraExtra').addEventListener('click', ()=>{
   if(!trabajadores.length){ showToast('Primero agrega trabajadores desde Salida de Insumos.'); return; }
   abrirHEModal(null);
@@ -8037,8 +8055,11 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
   const horaFin = leerHoraFinSelects();
   const horas = horasEntre(horaInicio, horaFin);
   const motivo = document.getElementById('heMotivo').value.trim();
+  const estadoPago = document.getElementById('heEstadoPago').value;
+  const fechaCompensatoria = estadoPago==='compensatorio' ? document.getElementById('heFechaCompensatoria').value : '';
   if(!trabajadorId){ showToast('Elige un trabajador.'); return; }
   if(horas===null){ showToast('La hora de fin debe ser después de la hora de inicio.'); return; }
+  if(estadoPago==='compensatorio' && !fechaCompensatoria){ showToast('Elige la fecha del compensatorio.'); return; }
 
   const trabajador = trabajadores.find(t=>t.id===trabajadorId);
   const modoVariosDias = !heEditandoId && document.getElementById('heModoVariosDias').checked;
@@ -8064,7 +8085,7 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
       if(!await customConfirm(`${diasQueExceden.length} de los ${dias.length} día(s) superarían el límite diario y/o del período configurado. ¿Registrarlos de todas formas?`)) return;
     }
     dias.forEach(f=>{
-      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, createdAt: new Date().toISOString()});
+      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, createdAt: new Date().toISOString()});
     });
     await saveHorasExtras();
     document.getElementById('heModalBg').classList.remove('active');
@@ -8086,9 +8107,9 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
 
   if(heEditandoId){
     const idx = horasExtras.findIndex(h=>h.id===heEditandoId);
-    if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo};
+    if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria};
   }else{
-    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, createdAt: new Date().toISOString()});
+    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, createdAt: new Date().toISOString()});
   }
   await saveHorasExtras();
   document.getElementById('heModalBg').classList.remove('active');
