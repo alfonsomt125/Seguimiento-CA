@@ -1425,7 +1425,7 @@
     <p class="hint" id="heLiquidacionHint" style="margin:0 0 14px;"></p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Trabajador</th><th>Ordinaria</th><th>Nocturna</th><th>Dominical</th><th>Noct. dominical</th><th>Total h</th><th>Total liquidado</th><th id="heColTope">Liquidado hasta 50h</th></tr></thead>
+        <thead><tr><th>Trabajador</th><th>Ordinaria</th><th>Nocturna</th><th>Dominical</th><th>Noct. dominical</th><th>Total h</th><th>Total liquidado</th><th id="heColTope">Liquidado hasta 50h</th><th>Excedente</th></tr></thead>
         <tbody id="heLiquidacionBody"></tbody>
         <tfoot id="heLiquidacionFooter"></tfoot>
       </table>
@@ -1474,6 +1474,37 @@
       <div class="modal-actions">
         <button class="ghost" id="btnCerrarHeExport">Cancelar</button>
         <button class="primary" id="btnGenerarHeExport">Exportar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="heCompensarModalBg">
+    <div class="modal" style="max-width:460px;">
+      <h3>Gestionar excedente de horas</h3>
+      <p class="hint" id="heCompensarInfo" style="margin:6px 0 14px;"></p>
+      <div class="field">
+        <label>¿Cómo se resuelve el excedente?</label>
+        <select id="heCompensarTipo">
+          <option value="pago">Pago pendiente para el próximo corte</option>
+          <option value="compensatorio">Día(s) compensatorio(s) (tiempo libre)</option>
+        </select>
+      </div>
+      <div class="field" style="margin-top:12px;">
+        <label>Horas del excedente</label>
+        <input type="number" id="heCompensarHoras" step="0.5" min="0">
+      </div>
+      <div class="field" style="margin-top:12px;" id="heCompensarFechaWrap">
+        <label>Fecha del compensatorio</label>
+        <input type="date" id="heCompensarFecha">
+      </div>
+      <div class="field" style="margin-top:12px;">
+        <label>Notas (opcional)</label>
+        <input type="text" id="heCompensarNotas" placeholder="Ej: se paga en la nómina de octubre">
+      </div>
+      <div class="modal-actions">
+        <button class="ghost danger" id="btnQuitarCompensarHE" style="display:none;">Quitar registro</button>
+        <button class="ghost" id="btnCancelarCompensarHE">Cancelar</button>
+        <button class="primary" id="btnGuardarCompensarHE">Guardar</button>
       </div>
     </div>
   </div>
@@ -3295,6 +3326,7 @@ let trampas = [];
 let puntosEncuentro = [];
 let flechasEvacuacion = [];
 let horasExtras = [];
+let heCompensaciones = [];
 let limitesHorasExtras = {diario: 2, mensual: 50, tope: 50};
 let editingAireId = null;
 let aireVencidoFiltroActivo = false;
@@ -3425,7 +3457,7 @@ const CLAVES_A_MIGRAR = [
   'deletedNames','deletedInsumoNames','deletedTrabajadorNames',
   'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones',
   'extintores','trampasRatones','puntosEncuentro','flechasEvacuacion',
-  'horasExtras','limitesHorasExtras','syncVersions'
+  'horasExtras','limitesHorasExtras','heCompensaciones','syncVersions'
 ];
 
 async function migrarLocalASupabase(){
@@ -3621,6 +3653,10 @@ async function loadAll(){
     horasExtras = JSON.parse(he.value);
   }catch(e){ horasExtras = []; }
   try{
+    const hc = await storageAPI.get('heCompensaciones');
+    heCompensaciones = JSON.parse(hc.value);
+  }catch(e){ heCompensaciones = []; }
+  try{
     const hl = await storageAPI.get('limitesHorasExtras');
     limitesHorasExtras = JSON.parse(hl.value);
   }catch(e){ limitesHorasExtras = {diario: 2, mensual: 50, tope: 50}; }
@@ -3676,6 +3712,10 @@ async function saveFlechasEvacuacion(){
 async function saveHorasExtras(){
   try{ await storageAPI.set('horasExtras', JSON.stringify(horasExtras)); }
   catch(e){ showToast('No se pudo guardar (horas extras). Intenta de nuevo.'); }
+}
+async function saveHeCompensaciones(){
+  try{ await storageAPI.set('heCompensaciones', JSON.stringify(heCompensaciones)); }
+  catch(e){ showToast('No se pudo guardar (compensaciones). Intenta de nuevo.'); }
 }
 async function saveLimitesHorasExtras(){
   try{ await storageAPI.set('limitesHorasExtras', JSON.stringify(limitesHorasExtras)); }
@@ -7339,6 +7379,55 @@ function clasificarHorasExtra(fecha, horaInicio, horaFin, horasTotal){
 const HE_TIPO_LABEL = {ordinaria:'Ordinaria', nocturna:'Nocturna', dominical:'Dominical', nocturnaDominical:'Nocturna dominical'};
 const HE_TIPO_COLOR = {ordinaria:'pill-Finalizado', nocturna:'pill-En_proceso', dominical:'pill-Pendiente', nocturnaDominical:''};
 
+/* Excedente sobre el tope legal: en vez de solo mostrar cuánto sería si se
+   pagara completo, se puede dejar registrado cómo se resuelve — pago
+   pendiente para el próximo corte, o día(s) compensatorio(s). Una
+   compensación por persona y período (se reemplaza si ya había una). */
+let heCompensarContext = null;
+function abrirCompensarHE(trabajadorId, desde, hasta){
+  const t = trabajadores.find(x=>x.id===trabajadorId);
+  const datos = calcularHEPorPersona(desde, hasta).find(d=>d.t.id===trabajadorId);
+  heCompensarContext = {trabajadorId, desde, hasta};
+  document.getElementById('heCompensarInfo').textContent = `${t?.nombre||''} — excedente de ${datos?.excedenteHoras||0}h sobre el tope de ${limitesHorasExtras.tope}h en este período.`;
+  const existente = datos?.compensacion;
+  document.getElementById('heCompensarTipo').value = existente?.tipo || 'pago';
+  document.getElementById('heCompensarHoras').value = existente?.horas ?? (datos?.excedenteHoras||0);
+  document.getElementById('heCompensarFecha').value = existente?.fecha || '';
+  document.getElementById('heCompensarNotas').value = existente?.notas || '';
+  document.getElementById('heCompensarFechaWrap').style.display = document.getElementById('heCompensarTipo').value==='compensatorio' ? 'block' : 'none';
+  document.getElementById('btnQuitarCompensarHE').style.display = existente ? 'inline-block' : 'none';
+  document.getElementById('heCompensarModalBg').classList.add('active');
+}
+document.getElementById('heCompensarTipo').addEventListener('change', (e)=>{
+  document.getElementById('heCompensarFechaWrap').style.display = e.target.value==='compensatorio' ? 'block' : 'none';
+});
+document.getElementById('btnCancelarCompensarHE').addEventListener('click', ()=>{
+  document.getElementById('heCompensarModalBg').classList.remove('active');
+});
+document.getElementById('btnGuardarCompensarHE').addEventListener('click', async ()=>{
+  const tipo = document.getElementById('heCompensarTipo').value;
+  const horas = Number(document.getElementById('heCompensarHoras').value)||0;
+  const fecha = document.getElementById('heCompensarFecha').value;
+  const notas = document.getElementById('heCompensarNotas').value.trim();
+  if(tipo==='compensatorio' && !fecha){ showToast('Elige la fecha del compensatorio.'); return; }
+  const {trabajadorId, desde, hasta} = heCompensarContext;
+  const idx = heCompensaciones.findIndex(c=>c.trabajadorId===trabajadorId && c.desde===desde && c.hasta===hasta);
+  const registro = {id: idx!==-1?heCompensaciones[idx].id:uid(), trabajadorId, desde, hasta, tipo, horas, fecha: tipo==='compensatorio'?fecha:'', notas};
+  if(idx!==-1) heCompensaciones[idx] = registro; else heCompensaciones.push(registro);
+  await saveHeCompensaciones();
+  document.getElementById('heCompensarModalBg').classList.remove('active');
+  renderHorasExtra();
+  showToast('Guardado.');
+});
+document.getElementById('btnQuitarCompensarHE').addEventListener('click', async ()=>{
+  const {trabajadorId, desde, hasta} = heCompensarContext;
+  heCompensaciones = heCompensaciones.filter(c=>!(c.trabajadorId===trabajadorId && c.desde===desde && c.hasta===hasta));
+  await saveHeCompensaciones();
+  document.getElementById('heCompensarModalBg').classList.remove('active');
+  renderHorasExtra();
+  showToast('Registro quitado.');
+});
+
 function abrirDetalleHE(trabajadorId){
   const trabajador = trabajadores.find(t=>t.id===trabajadorId);
   const {desde, hasta} = periodoActualHE();
@@ -7412,12 +7501,14 @@ function calcularHEPorPersona(desde, hasta){
     let totalPagar = 0;
     Object.keys(totales).forEach(k=>totalPagar += totales[k]*HE_FACTOR[k]*valorHora);
     const excede = totalHoras > limitesHorasExtras.tope;
-    let totalPagarLimitado = null;
+    let totalPagarLimitado = null, excedenteHoras = 0;
     if(excede){
       const limitado = limitarHorasPriorizandoRecargos(totales, limitesHorasExtras.tope);
       totalPagarLimitado = Math.round(Object.keys(limitado).reduce((s,k)=>s+limitado[k]*HE_FACTOR[k]*valorHora, 0));
+      excedenteHoras = r2(totalHoras - limitesHorasExtras.tope);
     }
-    return {t, totales, totalHoras, totalPagar: Math.round(totalPagar), excede, totalPagarLimitado};
+    const compensacion = heCompensaciones.find(c=>c.trabajadorId===t.id && c.desde===desde && c.hasta===hasta) || null;
+    return {t, totales, totalHoras, totalPagar: Math.round(totalPagar), excede, totalPagarLimitado, excedenteHoras, compensacion};
   });
 }
 function renderHeDashboard(desde, hasta){
@@ -7452,7 +7543,11 @@ function renderHeDashboard(desde, hasta){
       <td style="text-align:center;font-weight:700;">${d.totalHoras}</td>
       <td style="text-align:right;font-weight:700;">$${d.totalPagar.toLocaleString('es-CO')}</td>
       <td style="text-align:right;font-weight:700;">${d.excede?`$${d.totalPagarLimitado.toLocaleString('es-CO')}`:'—'}</td>
-    </tr>`).join('') : `<tr><td colspan="8" class="empty">Nadie tiene horas extras registradas en este período.</td></tr>`;
+      <td>${d.excede?`<button class="ghost" data-gestionarexcedente="${d.t.id}" style="font-size:12px;padding:5px 9px;white-space:nowrap;color:${d.compensacion?'var(--green)':'var(--red)'};border-color:${d.compensacion?'var(--green)':'var(--red)'};">${d.compensacion?(d.compensacion.tipo==='compensatorio'?`✓ Compensatorio ${fmtDate(d.compensacion.fecha)}`:'✓ Pago pendiente'):`⚠ Gestionar ${d.excedenteHoras}h`}</button>`:'—'}</td>
+    </tr>`).join('') : `<tr><td colspan="9" class="empty">Nadie tiene horas extras registradas en este período.</td></tr>`;
+  document.getElementById('heLiquidacionBody').querySelectorAll('[data-gestionarexcedente]').forEach(btn=>{
+    btn.addEventListener('click', ()=>abrirCompensarHE(btn.dataset.gestionarexcedente, desde, hasta));
+  });
 
   if(conHoras.length){
     const sumaCol = k => r2(conHoras.reduce((s,d)=>s+d.totales[k],0));
@@ -7471,6 +7566,7 @@ function renderHeDashboard(desde, hasta){
         <td style="text-align:center;">${r2(conHoras.reduce((s,d)=>s+d.totalHoras,0))}</td>
         <td style="text-align:right;">$${sumaLiquidadoNormal.toLocaleString('es-CO')}</td>
         <td style="text-align:right;">$${sumaLiquidadoLimitado.toLocaleString('es-CO')}</td>
+        <td></td>
       </tr>`;
   }else{
     document.getElementById('heLiquidacionFooter').innerHTML = '';
@@ -11202,7 +11298,8 @@ const BOTON_CIERRE_POR_MODAL = {
   heModalBg: 'btnCancelarHE',
   heLimitesModalBg: 'btnCancelarLimitesHE',
   heDetalleModalBg: 'btnCerrarHeDetalle',
-  heExportModalBg: 'btnCerrarHeExport'
+  heExportModalBg: 'btnCerrarHeExport',
+  heCompensarModalBg: 'btnCancelarCompensarHE'
 };
 function cerrarModalPorId(modalId){
   const btnId = BOTON_CIERRE_POR_MODAL[modalId];
