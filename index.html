@@ -7461,19 +7461,22 @@ function abrirDetalleHE(trabajadorId){
   const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
   const filasTabla = registros.map(h=>{
     const clasif = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
-    Object.keys(totales).forEach(k=>totales[k]+=clasif[k]);
+    const esNormal = (h.estadoPago||'normal')==='normal';
+    if(esNormal) Object.keys(totales).forEach(k=>totales[k]+=clasif[k]);
     const badges = Object.keys(clasif).filter(k=>clasif[k]>0)
       .map(k=>`<span class="pill ${HE_TIPO_COLOR[k]}" style="margin:2px 4px 2px 0;">${HE_TIPO_LABEL[k]}: ${clasif[k]}h</span>`).join('');
-    return `<tr>
+    const badgeEstado = h.estadoPago==='pendiente' ? ' <span class="pill pill-Pendiente">Pago pendiente</span>'
+      : h.estadoPago==='compensatorio' ? ` <span class="pill pill-Finalizado">Compensatorio ${fmtDate(h.fechaCompensatoria)}</span>` : '';
+    return `<tr${esNormal?'':' style="opacity:.6;"'}>
       <td>${fmtDate(h.fecha)}</td>
       <td>${h.horaInicio ? `${hora24aTexto12(h.horaInicio)} – ${hora24aTexto12(h.horaFin)}` : r2(h.horas)+'h'}</td>
-      <td>${badges || '—'}</td>
+      <td>${badges || '—'}${badgeEstado}</td>
       <td>${esc(h.motivo)||'—'}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('heDetalleTitulo').textContent = `Detalle de horas extras — ${trabajador?.nombre||''}`;
-  document.getElementById('heDetalleSubtitulo').textContent = `Período: ${fmtDate(desde)} al ${fmtDate(hasta)}`;
+  document.getElementById('heDetalleSubtitulo').textContent = `Período: ${fmtDate(desde)} al ${fmtDate(hasta)}. Los KPIs no incluyen lo marcado como pendiente o compensatorio (ver tabla abajo).`;
   document.getElementById('heDetalleKpis').innerHTML = `
     <div class="kpi"><div class="num">${r2(totales.ordinaria)}</div><div class="lbl">Ordinarias</div></div>
     <div class="kpi"><div class="num">${r2(totales.nocturna)}</div><div class="lbl">Nocturnas</div></div>
