@@ -7355,7 +7355,7 @@ function horasDelDia(trabajadorId, fecha, excluirId){
     .reduce((s,h)=>s+Number(h.horas||0), 0));
 }
 function horasDelPeriodo(trabajadorId, desde, hasta, excluirId){
-  return r2(horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha>=desde && h.fecha<=hasta && h.id!==excluirId)
+  return r2(horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha>=desde && h.fecha<=hasta && h.id!==excluirId && (h.estadoPago||'normal')==='normal')
     .reduce((s,h)=>s+Number(h.horas||0), 0));
 }
 
@@ -7501,7 +7501,7 @@ function limitarHorasPriorizandoRecargos(totales, limite){
 }
 function calcularHEPorPersona(desde, hasta){
   return trabajadores.map(t=>{
-    const registros = horasExtras.filter(h=>h.trabajadorId===t.id && h.fecha>=desde && h.fecha<=hasta);
+    const registros = horasExtras.filter(h=>h.trabajadorId===t.id && h.fecha>=desde && h.fecha<=hasta && (h.estadoPago||'normal')==='normal');
     const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
     registros.forEach(h=>{
       const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
