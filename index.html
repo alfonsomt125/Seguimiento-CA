@@ -7444,7 +7444,12 @@ function clasificarHorasExtra(fecha, horaInicio, horaFin, horasTotal){
   for(let t=inicioMin; t<finMin; t++){
     if(t>=HE_NOCHE_INICIO_MIN || t<HE_NOCHE_FIN_MIN) minNoche++; else minDia++;
   }
-  const horasNoche = r2(minNoche/60), horasDia = r2(minDia/60);
+  let horasNoche = r2(minNoche/60), horasDia = r2(minDia/60);
+  // si el total guardado (horasTotal) ya viene con algo restado (ej. el
+  // almuerzo), se descuenta de la parte diurna — el almuerzo siempre cae
+  // en horario de día, nunca en el tramo nocturno.
+  const diferencia = r2((horasDia+horasNoche) - r2(horasTotal));
+  if(diferencia>0) horasDia = r2(Math.max(0, horasDia-diferencia));
   return esDomingo
     ? {ordinaria:0, nocturna:0, dominical:horasDia, nocturnaDominical:horasNoche}
     : {ordinaria:horasDia, nocturna:horasNoche, dominical:0, nocturnaDominical:0};
@@ -7632,14 +7637,14 @@ function renderHeDashboard(desde, hasta){
   document.getElementById('heLiquidacionBody').innerHTML = conHoras.length ? conHoras.map(d=>`
     <tr${d.excede?' style="color:var(--red);"':''}>
       <td>${esc(d.t.nombre)}${d.excede?' ⚠':''}</td>
-      <td style="text-align:center;">${d.totales.ordinaria}</td>
-      <td style="text-align:center;">${d.totales.nocturna}</td>
-      <td style="text-align:center;">${d.totales.dominical}</td>
-      <td style="text-align:center;">${d.totales.nocturnaDominical}</td>
-      <td style="text-align:center;font-weight:700;">${d.totalHoras}</td>
+      <td style="text-align:center;">${d.totales.ordinaria.toFixed(2)}</td>
+      <td style="text-align:center;">${d.totales.nocturna.toFixed(2)}</td>
+      <td style="text-align:center;">${d.totales.dominical.toFixed(2)}</td>
+      <td style="text-align:center;">${d.totales.nocturnaDominical.toFixed(2)}</td>
+      <td style="text-align:center;font-weight:700;">${d.totalHoras.toFixed(2)}</td>
       <td style="text-align:right;font-weight:700;">$${d.totalPagar.toLocaleString('es-CO')}</td>
       <td style="text-align:right;font-weight:700;">${d.excede?`$${d.totalPagarLimitado.toLocaleString('es-CO')}`:'—'}</td>
-      <td>${d.excede?`<button class="ghost" data-gestionarexcedente="${d.t.id}" style="font-size:12px;padding:5px 9px;white-space:nowrap;color:${d.compensacion?'var(--green)':'var(--red)'};border-color:${d.compensacion?'var(--green)':'var(--red)'};">${d.compensacion?(d.compensacion.tipo==='compensatorio'?`✓ Compensatorio ${fmtDate(d.compensacion.fecha)}`:'✓ Pago pendiente'):`⚠ Gestionar ${d.excedenteHoras}h`}</button>`:'—'}</td>
+      <td>${d.excede?`<button class="ghost" data-gestionarexcedente="${d.t.id}" style="font-size:12px;padding:5px 9px;white-space:nowrap;color:${d.compensacion?'var(--green)':'var(--red)'};border-color:${d.compensacion?'var(--green)':'var(--red)'};">${d.compensacion?(d.compensacion.tipo==='compensatorio'?`✓ Compensatorio ${fmtDate(d.compensacion.fecha)}`:'✓ Pago pendiente'):`⚠ Gestionar ${d.excedenteHoras.toFixed(2)}h`}</button>`:'—'}</td>
     </tr>`).join('') : `<tr><td colspan="9" class="empty">Nadie tiene horas extras registradas en este período.</td></tr>`;
   document.getElementById('heLiquidacionBody').querySelectorAll('[data-gestionarexcedente]').forEach(btn=>{
     btn.addEventListener('click', ()=>abrirCompensarHE(btn.dataset.gestionarexcedente, desde, hasta));
@@ -7655,11 +7660,11 @@ function renderHeDashboard(desde, hasta){
     document.getElementById('heLiquidacionFooter').innerHTML = `
       <tr style="font-weight:700;background:var(--paper-2,#f4f5f8);">
         <td>Total</td>
-        <td style="text-align:center;">${sumaCol('ordinaria')}</td>
-        <td style="text-align:center;">${sumaCol('nocturna')}</td>
-        <td style="text-align:center;">${sumaCol('dominical')}</td>
-        <td style="text-align:center;">${sumaCol('nocturnaDominical')}</td>
-        <td style="text-align:center;">${r2(conHoras.reduce((s,d)=>s+d.totalHoras,0))}</td>
+        <td style="text-align:center;">${sumaCol('ordinaria').toFixed(2)}</td>
+        <td style="text-align:center;">${sumaCol('nocturna').toFixed(2)}</td>
+        <td style="text-align:center;">${sumaCol('dominical').toFixed(2)}</td>
+        <td style="text-align:center;">${sumaCol('nocturnaDominical').toFixed(2)}</td>
+        <td style="text-align:center;">${r2(conHoras.reduce((s,d)=>s+d.totalHoras,0)).toFixed(2)}</td>
         <td style="text-align:right;">$${sumaLiquidadoNormal.toLocaleString('es-CO')}</td>
         <td style="text-align:right;">$${sumaLiquidadoLimitado.toLocaleString('es-CO')}</td>
         <td></td>
