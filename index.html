@@ -7693,7 +7693,7 @@ document.getElementById('btnGenerarHeExport').addEventListener('click', async ()
 function construirResumenHEHtml(idsSeleccionados, desde, hasta, conLiquidacion){
   const personas = idsSeleccionados.map(id=>{
     const t = trabajadores.find(x=>x.id===id);
-    const registros = horasExtras.filter(h=>h.trabajadorId===id && h.fecha>=desde && h.fecha<=hasta);
+    const registros = horasExtras.filter(h=>h.trabajadorId===id && h.fecha>=desde && h.fecha<=hasta && (h.estadoPago||'normal')==='normal');
     const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
     registros.forEach(h=>{
       const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
@@ -7758,7 +7758,7 @@ function construirResumenHEHtml(idsSeleccionados, desde, hasta, conLiquidacion){
   <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
   <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Resumen de horas extras por persona</div>
-  <div style="font-size:11px;color:#6B7280;margin-bottom:14px;">Período: ${fmtDate(desde)} al ${fmtDate(hasta)}. Clasificación según Ley 2466 de 2025 (nocturno desde 7:00 p.m., no incluye festivos).</div>
+  <div style="font-size:11px;color:#6B7280;margin-bottom:14px;">Período: ${fmtDate(desde)} al ${fmtDate(hasta)}. Clasificación según Ley 2466 de 2025 (nocturno desde 7:00 p.m., no incluye festivos). No incluye horas marcadas como pago pendiente o compensatorio.</div>
   <table>
     <thead><tr style="background:#BDD7EE;font-weight:700;">
       <th style="border:1px solid #000;padding:6px;">Trabajador</th>
