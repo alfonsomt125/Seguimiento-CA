@@ -2077,7 +2077,10 @@
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
         <h2 style="margin:0;">Pedido sugerido a Compras</h2>
-        <button class="ghost" id="btnImprimirPedido">⬇ Exportar a PDF</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="ghost" id="btnExportarPedidoExcel">⬇ Exportar a Excel</button>
+          <button class="ghost" id="btnImprimirPedido">⬇ Exportar a PDF</button>
+        </div>
       </div>
       <p class="hint" style="margin:0 0 14px;">Cantidad a pedir = consumo mensual del personal − stock disponible actual. Solo se listan los productos que hacen falta.</p>
       <div class="filters" style="margin-bottom:14px;align-items:flex-end;">
@@ -10216,6 +10219,24 @@ function renderPedidoSugerido(){
       <td style="color:var(--red);font-weight:700;">${p.aPedir} ${esc(p.unidad)}</td>
     </tr>`).join('') : `<tr><td colspan="4" class="empty">Nada por pedir por ahora: el stock cubre el consumo mensual de todos los productos.</td></tr>`;
 }
+document.getElementById('btnExportarPedidoExcel').addEventListener('click', ()=>{
+  const pedido = getPedidoSugerido();
+  if(!pedido.length){ showToast('No hay nada por pedir en este momento.'); return; }
+  const encabezados = ['Producto','Consumo mensual','Disponible','A pedir','Unidad'];
+  const filas = pedido.map(p=>[p.nombre, p.consumo, p.disponible, p.aPedir, p.unidad||'']);
+  const lineas = [encabezados, ...filas].map(fila=>fila.map(csvCelda).join(';'));
+  const csv = '\uFEFF' + lineas.join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Pedido_Sugerido_Compras_${todayISO()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Se descargó el Excel con ${pedido.length} producto(s). Ábrelo con doble clic.`);
+});
 
 let panelDetailInsumoId = null;
 
