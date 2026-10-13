@@ -3439,7 +3439,10 @@ const supabaseAPI = (function(){
     // local de abajo para que la app nunca quede totalmente inutilizable.
     return null;
   }
-  return window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+  return window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey, {
+    global:{ fetch:(u,o={})=>{ const c=new AbortController(); const t=setTimeout(()=>c.abort(),15000);
+      return fetch(u,{...o,signal:c.signal}).finally(()=>clearTimeout(t)); } }
+  });
 })();
 
 /* storageAPI: única puerta de entrada de datos de TODA la app.
@@ -11502,6 +11505,7 @@ document.addEventListener('keydown', (e)=>{
   if(abierto) cerrarModalPorId(abierto);
 });
 
+setTimeout(()=>{ const l=document.getElementById('loadingScreen'); if(l && l.style.display!=='none') l.textContent='No se pudo conectar con la base de datos (Supabase). Revisa tu internet o que el proyecto no esté pausado, y recarga.'; },30000);
 init().catch(err=>{
   document.getElementById('loadingScreen').textContent = 'Ocurrió un error al cargar la bitácora. Recarga la página.';
   console.error(err);
