@@ -2262,6 +2262,10 @@
         <label>Hasta</label>
         <input type="date" id="movAllHasta">
       </div>
+      <div class="field" style="flex:0 0 auto;align-self:flex-end;display:flex;gap:6px;">
+        <button class="ghost" id="btnMovExcel">⬇ Excel</button>
+        <button class="ghost" id="btnMovPdf">⬇ PDF</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
@@ -10666,7 +10670,7 @@ document.getElementById('movFiltroInsumo').addEventListener('change', renderMovi
 /* ============================================================
    INVENTARIO — MOVIMIENTOS (vista unificada, editable)
    ============================================================ */
-function renderMovimientosAllTable(){
+function movimientosFiltrados(){
   const insF = document.getElementById('movAllFiltroInsumo').value;
   const tipoF = document.getElementById('movAllFiltroTipo').value;
   const perSel = document.getElementById('movAllFiltroPersona');
@@ -10685,7 +10689,10 @@ function renderMovimientosAllTable(){
     if(hastaF && m.fecha>hastaF) return false;
     return true;
   }).sort((a,b)=> (b.fecha+b.createdAt).localeCompare(a.fecha+a.createdAt));
-
+  return rows;
+}
+function renderMovimientosAllTable(){
+  const rows = movimientosFiltrados();
   const tbody = document.getElementById('movAllBody');
   tbody.innerHTML = rows.length ? rows.map(m=>{
     const insumo = insumos.find(i=>i.id===m.insumoId);
@@ -10732,6 +10739,40 @@ function renderMovimientosAllTable(){
 }
 document.getElementById('movAllFiltroInsumo').addEventListener('change', renderMovimientosAllTable);
 document.getElementById('movAllFiltroTipo').addEventListener('change', renderMovimientosAllTable);
+function filasExportMov(){
+  return movimientosFiltrados().map(m=>{
+    const i = insumos.find(x=>x.id===m.insumoId);
+    return [fmtDate(m.fecha), i?i.nombre:'(insumo eliminado)', m.tipo==='entrada'?'Entrada':'Salida', m.cantidad, i?(i.unidad||''):'', m.entregadoA||'', m.motivo||''];
+  });
+}
+const ENC_MOV = ['Fecha','Insumo','Tipo','Cantidad','Unidad','Entregado a','Motivo'];
+document.getElementById('btnMovExcel').addEventListener('click', ()=>{
+  const filas = filasExportMov();
+  if(!filas.length){ showToast('No hay movimientos con estos filtros.'); return; }
+  const csv = '\uFEFF' + [ENC_MOV, ...filas].map(f=>f.map(csvCelda).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = `Movimientos_${todayISO()}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+});
+document.getElementById('btnMovPdf').addEventListener('click', ()=>{
+  const filas = filasExportMov();
+  if(!filas.length){ showToast('No hay movimientos con estos filtros.'); return; }
+  const per = document.getElementById('movAllFiltroPersona').value || 'Todas las personas';
+  const d = document.getElementById('movAllDesde').value, h = document.getElementById('movAllHasta').value;
+  const rango = (d||h) ? `${d?fmtDate(d):'inicio'} a ${h?fmtDate(h):'hoy'}` : 'Todas las fechas';
+  const win = window.open('', '_blank');
+  if(!win){ showToast('El navegador bloqueó la ventana. Permite ventanas emergentes.'); return; }
+  win.document.write(`<html><head><meta charset="utf-8"><title>Movimientos</title><style>
+    body{font-family:Arial,sans-serif;padding:24px;color:#011632}h2{margin:0 0 4px}p{margin:0 0 14px;color:#555;font-size:13px}
+    table{width:100%;border-collapse:collapse;font-size:12px}th{background:#011632;color:#fff;text-align:left;padding:6px}
+    td{padding:6px;border-bottom:1px solid #ddd}</style></head><body>
+    <h2>Movimientos de inventario</h2><p>${esc(per)} · ${esc(rango)} · ${filas.length} registro(s)</p>
+    <table><thead><tr>${ENC_MOV.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>
+    ${filas.map(f=>`<tr>${f.map(c=>`<td>${esc(String(c))}</td>`).join('')}</tr>`).join('')}
+    </tbody></table><script>window.onload=()=>window.print()<\/script></body></html>`);
+  win.document.close();
+});
 ['movAllFiltroPersona','movAllDesde','movAllHasta'].forEach(id=>document.getElementById(id).addEventListener('change', renderMovimientosAllTable));
 
 let resignEntregaId = null;
