@@ -10739,38 +10739,44 @@ function renderMovimientosAllTable(){
 }
 document.getElementById('movAllFiltroInsumo').addEventListener('change', renderMovimientosAllTable);
 document.getElementById('movAllFiltroTipo').addEventListener('change', renderMovimientosAllTable);
-function filasExportMov(){
-  return movimientosFiltrados().map(m=>{
+/* Exporta lo entregado (salidas) agrupado por persona, respetando los filtros de insumo, persona y fechas */
+function entregasPorPersona(){
+  const g = {};
+  movimientosFiltrados().filter(m=>m.tipo==='salida').forEach(m=>{
+    const n = (m.entregadoA||'').trim() || '(sin nombre)';
     const i = insumos.find(x=>x.id===m.insumoId);
-    return [fmtDate(m.fecha), i?i.nombre:'(insumo eliminado)', m.tipo==='entrada'?'Entrada':'Salida', m.cantidad, i?(i.unidad||''):'', m.entregadoA||'', m.motivo||''];
+    (g[n] = g[n] || []).push({fecha:m.fecha, insumo:i?i.nombre:'(insumo eliminado)', cantidad:m.cantidad, unidad:i?(i.unidad||''):'', motivo:m.motivo||''});
   });
+  Object.values(g).forEach(a=>a.sort((x,y)=>x.fecha.localeCompare(y.fecha)));
+  return Object.keys(g).sort((a,b)=>a.localeCompare(b)).map(n=>({nombre:n, items:g[n]}));
 }
-const ENC_MOV = ['Fecha','Insumo','Tipo','Cantidad','Unidad','Entregado a','Motivo'];
 document.getElementById('btnMovExcel').addEventListener('click', ()=>{
-  const filas = filasExportMov();
-  if(!filas.length){ showToast('No hay movimientos con estos filtros.'); return; }
-  const csv = '\uFEFF' + [ENC_MOV, ...filas].map(f=>f.map(csvCelda).join(';')).join('\r\n');
+  const grupos = entregasPorPersona();
+  if(!grupos.length){ showToast('No hay entregas con estos filtros.'); return; }
+  const filas = [['Persona','Fecha','Insumo','Cantidad','Unidad','Motivo']];
+  grupos.forEach(g=>g.items.forEach(it=>filas.push([g.nombre, fmtDate(it.fecha), it.insumo, it.cantidad, it.unidad, it.motivo])));
+  const csv = '\uFEFF' + filas.map(f=>f.map(csvCelda).join(';')).join('\r\n');
   const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
   const a = document.createElement('a');
-  a.href = url; a.download = `Movimientos_${todayISO()}.csv`;
+  a.href = url; a.download = `Entregas_por_persona_${todayISO()}.csv`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 });
 document.getElementById('btnMovPdf').addEventListener('click', ()=>{
-  const filas = filasExportMov();
-  if(!filas.length){ showToast('No hay movimientos con estos filtros.'); return; }
-  const per = document.getElementById('movAllFiltroPersona').value || 'Todas las personas';
+  const grupos = entregasPorPersona();
+  if(!grupos.length){ showToast('No hay entregas con estos filtros.'); return; }
   const d = document.getElementById('movAllDesde').value, h = document.getElementById('movAllHasta').value;
   const rango = (d||h) ? `${d?fmtDate(d):'inicio'} a ${h?fmtDate(h):'hoy'}` : 'Todas las fechas';
   const win = window.open('', '_blank');
   if(!win){ showToast('El navegador bloqueó la ventana. Permite ventanas emergentes.'); return; }
-  win.document.write(`<html><head><meta charset="utf-8"><title>Movimientos</title><style>
-    body{font-family:Arial,sans-serif;padding:24px;color:#011632}h2{margin:0 0 4px}p{margin:0 0 14px;color:#555;font-size:13px}
+  win.document.write(`<html><head><meta charset="utf-8"><title>Entregas por persona</title><style>
+    body{font-family:Arial,sans-serif;padding:24px;color:#011632}h2{margin:0 0 4px}h3{margin:18px 0 6px}p{margin:0 0 10px;color:#555;font-size:13px}
     table{width:100%;border-collapse:collapse;font-size:12px}th{background:#011632;color:#fff;text-align:left;padding:6px}
     td{padding:6px;border-bottom:1px solid #ddd}</style></head><body>
-    <h2>Movimientos de inventario</h2><p>${esc(per)} · ${esc(rango)} · ${filas.length} registro(s)</p>
-    <table><thead><tr>${ENC_MOV.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>
-    ${filas.map(f=>`<tr>${f.map(c=>`<td>${esc(String(c))}</td>`).join('')}</tr>`).join('')}
-    </tbody></table><script>window.onload=()=>window.print()<\/script></body></html>`);
+    <h2>Entregas por persona</h2><p>${esc(rango)}</p>
+    ${grupos.map(g=>`<h3>${esc(g.nombre)}</h3><table><thead><tr><th>Fecha</th><th>Insumo</th><th>Cantidad</th><th>Motivo</th></tr></thead><tbody>
+    ${g.items.map(it=>`<tr><td>${fmtDate(it.fecha)}</td><td>${esc(it.insumo)}</td><td>${it.cantidad} ${esc(it.unidad)}</td><td>${esc(it.motivo)}</td></tr>`).join('')}
+    </tbody></table>`).join('')}
+    <script>window.onload=()=>window.print()<\/script></body></html>`);
   win.document.close();
 });
 ['movAllFiltroPersona','movAllDesde','movAllHasta'].forEach(id=>document.getElementById(id).addEventListener('change', renderMovimientosAllTable));
