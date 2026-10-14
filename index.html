@@ -2250,6 +2250,18 @@
         <label>Tipo</label>
         <select id="movAllFiltroTipo"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select>
       </div>
+      <div class="field" style="flex:2;min-width:180px;">
+        <label>Entregado a</label>
+        <select id="movAllFiltroPersona"><option value="">Todos</option></select>
+      </div>
+      <div class="field">
+        <label>Desde</label>
+        <input type="date" id="movAllDesde">
+      </div>
+      <div class="field">
+        <label>Hasta</label>
+        <input type="date" id="movAllHasta">
+      </div>
     </div>
     <div class="table-wrap">
       <table>
@@ -10657,9 +10669,20 @@ document.getElementById('movFiltroInsumo').addEventListener('change', renderMovi
 function renderMovimientosAllTable(){
   const insF = document.getElementById('movAllFiltroInsumo').value;
   const tipoF = document.getElementById('movAllFiltroTipo').value;
+  const perSel = document.getElementById('movAllFiltroPersona');
+  const perPrev = perSel.value;
+  const personas = [...new Set(movimientos.map(m=>(m.entregadoA||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  perSel.innerHTML = '<option value="">Todos</option>' + personas.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  if(personas.includes(perPrev)) perSel.value = perPrev;
+  const perF = perSel.value;
+  const desdeF = document.getElementById('movAllDesde').value;
+  const hastaF = document.getElementById('movAllHasta').value;
   const rows = movimientos.filter(m=>{
     if(insF && m.insumoId!==insF) return false;
     if(tipoF && m.tipo!==tipoF) return false;
+    if(perF && (m.entregadoA||'').trim()!==perF) return false;
+    if(desdeF && m.fecha<desdeF) return false;
+    if(hastaF && m.fecha>hastaF) return false;
     return true;
   }).sort((a,b)=> (b.fecha+b.createdAt).localeCompare(a.fecha+a.createdAt));
 
@@ -10709,6 +10732,7 @@ function renderMovimientosAllTable(){
 }
 document.getElementById('movAllFiltroInsumo').addEventListener('change', renderMovimientosAllTable);
 document.getElementById('movAllFiltroTipo').addEventListener('change', renderMovimientosAllTable);
+['movAllFiltroPersona','movAllDesde','movAllHasta'].forEach(id=>document.getElementById(id).addEventListener('change', renderMovimientosAllTable));
 
 let resignEntregaId = null;
 
