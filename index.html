@@ -2514,6 +2514,16 @@
     </div>
   </div>
 </div>
+<!-- Modal: PIN de firma -->
+<div class="modal-bg" id="rsPinModalBg">
+  <div class="modal" style="max-width:340px;">
+    <h3>PIN de firma</h3>
+    <p class="hint" style="margin:6px 0 10px;">Ingresa el PIN para aplicar o cambiar la firma.</p>
+    <input type="password" id="rsPinInput" inputmode="numeric" autocomplete="off" maxlength="12" style="width:100%;">
+    <p id="rsPinError" style="display:none;color:var(--red);margin:8px 0 0;">PIN incorrecto.</p>
+    <div class="modal-actions"><button class="ghost" id="btnCancelarPinRS">Cancelar</button><button class="primary" id="btnOkPinRS">Aceptar</button></div>
+  </div>
+</div>
 <!-- Modal: mi firma -->
 <div class="modal-bg" id="rsFirmaModalBg">
   <div class="modal" style="max-width:440px;">
@@ -10046,21 +10056,41 @@ document.getElementById('btnGuardarRS').addEventListener('click', async ()=>{
   if(await guardarRS()){ document.getElementById('rsModalBg').classList.remove('active'); showToast('Acta guardada.'); }
 });
 document.getElementById('btnCerrarRS').addEventListener('click', ()=>document.getElementById('rsModalBg').classList.remove('active'));
+const RS_PIN_HASH = 'f8eb3465d07f5a8ca29da4da794cf8b4631fca4f87ba2c9566e7d5ddcd93328e';
+function pedirPinRS(){
+  return new Promise(resolve=>{
+    const bg = document.getElementById('rsPinModalBg'), inp = document.getElementById('rsPinInput'), err = document.getElementById('rsPinError');
+    inp.value = ''; err.style.display = 'none'; bg.classList.add('active'); inp.focus();
+    const fin = ok=>{ bg.classList.remove('active'); ok$.removeEventListener('click', aceptar); can$.removeEventListener('click', cancelar); inp.removeEventListener('keydown', tecla); resolve(ok); };
+    const ok$ = document.getElementById('btnOkPinRS'), can$ = document.getElementById('btnCancelarPinRS');
+    const aceptar = async ()=>{
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('rs-firma|' + inp.value));
+      const hex = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+      if(hex === RS_PIN_HASH) fin(true); else { err.style.display = 'block'; inp.value = ''; inp.focus(); }
+    };
+    const cancelar = ()=>fin(false);
+    const tecla = e=>{ if(e.key==='Enter') aceptar(); };
+    ok$.addEventListener('click', aceptar); can$.addEventListener('click', cancelar); inp.addEventListener('keydown', tecla);
+  });
+}
 document.getElementById('btnFirmarRS').addEventListener('click', async ()=>{
   if(!firmaRecibidos){ showToast('Primero sube tu firma con el botón "Mi firma".'); return; }
+  if(!await pedirPinRS()) return;
   if(!await guardarRS()) return;
   const a = recibidosSatisfaccion.find(x=>x.id===rsEditandoId);
   let codigo; do{ codigo = await generarCodigoRS(a); }while(recibidosSatisfaccion.some(x=>x.codigoFirma===codigo));
   a.firmado = true; a.codigoFirma = codigo; a.fechaFirma = new Date().toISOString();
   await saveRecibidos(); renderRecibidos(); abrirRS(a.id);
   showToast('Acta firmada. Código: ' + codigo);
+  pdfRS(a);
 });
 document.getElementById('btnPdfRS').addEventListener('click', async ()=>{
   if(await guardarRS()) pdfRS(recibidosSatisfaccion.find(x=>x.id===rsEditandoId));
 });
 document.getElementById('btnNuevoRS').addEventListener('click', ()=>abrirRS(null));
 document.getElementById('rsBuscar').addEventListener('input', renderRecibidos);
-document.getElementById('btnFirmaRS').addEventListener('click', ()=>{
+document.getElementById('btnFirmaRS').addEventListener('click', async ()=>{
+  if(!await pedirPinRS()) return;
   document.getElementById('rsFirmaPrev').innerHTML = firmaRecibidos ? `<img src="${firmaRecibidos}" style="max-height:90px;max-width:100%;">` : '<span class="hint">Aún no has subido tu firma.</span>';
   document.getElementById('rsFirmaModalBg').classList.add('active');
 });
@@ -10110,7 +10140,7 @@ function pdfRS(a){
       <tr class="c" style="height:22px;"><td style="${td}">${esc(a.supervisor)}</td><td style="${td}">${esc(a.documento)}</td><td style="${td}">${esc(a.cargo)}</td></tr></table>
     <p style="text-align:justify;font-size:12px;line-height:1.5;margin:18px 0;">Una vez revisado y verificado el cumplimiento del objeto del Contrato citado y los informes de avances y supervisión, las partes relacionadas a continuación realizan la entrega y el recibo a satisfacción de las actividades, con el proposito de dar por terminada la etapa de ejecución. Para contancia de lo anterior, firman esta Acta en Barranquilla, a los <u>&nbsp;${dd}&nbsp;</u> días del mes de <u>&nbsp;${mm}&nbsp;</u> de <u>&nbsp;${yy}&nbsp;</u></p>
     <table style="font-size:12px;"><tr><td style="width:50%;">Por: Colegio Americano de Barranquilla</td><td>Por: ${esc(a.empresa)}</td></tr>
-      <tr><td style="height:80px;vertical-align:bottom;">${a.firmado&&firmaRecibidos?`<img src="${firmaRecibidos}" style="max-height:70px;max-width:200px;">`:''}</td><td></td></tr>
+      <tr><td style="height:80px;vertical-align:bottom;">${a.firmado&&firmaRecibidos?`<img src="${firmaRecibidos}" style="max-height:70px;max-width:200px;mix-blend-mode:multiply;">`:''}</td><td></td></tr>
       <tr><td style="border-top:1px solid #000;padding-right:30px;"><strong>ALFONSO MONSERRAT</strong></td><td style="border-top:1px solid #000;"><strong>FIRMA REPRESENTANTE</strong></td></tr>
       <tr><td>C.C. No 1.140.863.345</td><td>CC. No ${esc(a.documento)}</td></tr>
       <tr><td>Líder de Lógística y seguridad</td><td></td></tr></table>
