@@ -559,9 +559,6 @@
       <button class="module-card" data-open="mantenimiento">
         <span>Gestión de Mantenimiento</span>
       </button>
-      <button class="module-card" data-open="espacios">
-        <span>Gestión de Espacios</span>
-      </button>
     </div>
   </div>
 </div>
@@ -643,6 +640,11 @@
         <div class="mant-icon">🕐</div>
         <span>Horas Extras del Personal</span>
         <p>Registro por trabajador, con control automático de los límites diario y mensual.</p>
+      </button>
+      <button class="mant-subcard actividades" data-mantopen="espacios">
+        <div class="mant-icon">🗓️</div>
+        <span>Gestión de Espacios</span>
+        <p>Calendario de reserva de espacios, internas y externas.</p>
       </button>
     </div>
   </div>
@@ -1791,7 +1793,7 @@
 <div id="module-espacios" style="display:none;">
 <div class="wrap">
 
-  <button class="module-back" data-back="1">← Módulos</button>
+  <button class="module-back" id="btnEspBackMant">← Gestión de Mantenimiento</button>
   <header>
     <div class="brand-left">
       <img class="escudo" src="https://www.colegioamericano.edu.co/wp-content/uploads/2025/11/Escudo-Colegio-Americano.jpg" alt="Escudo Colegio Americano de Barranquilla" onerror="this.style.display='none'">
@@ -1949,7 +1951,9 @@
           <option>TIC</option>
           <option>Dirección Administrativa</option>
           <option>Rectoría</option>
+          <option value="__nuevo__">➕ Agregar nuevo solicitante…</option>
         </select>
+        <input type="text" id="resSolicitanteNuevo" placeholder="Nombre del nuevo solicitante (se guardará en la lista)" style="display:none;margin-top:6px;">
       </div>
       <div class="field" style="grid-column:1/-1;display:none;" id="resSolicitanteExternaWrap">
         <label>Solicitante / Entidad externa *</label>
@@ -3389,6 +3393,7 @@ let entregas = [];
 let airesAcondicionados = [];
 let aireHistorial = [];
 let reservasEspacios = [];
+let solicitantesEspacios = {Interna:[], Externa:[]};
 let requisiciones = [];
 let extintores = [];
 let trampas = [];
@@ -3529,7 +3534,7 @@ const CLAVES_A_MIGRAR = [
   'deletedNames','deletedInsumoNames','deletedTrabajadorNames',
   'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones',
   'extintores','trampasRatones','puntosEncuentro','flechasEvacuacion',
-  'horasExtras','limitesHorasExtras','heCompensaciones','syncVersions'
+  'horasExtras','limitesHorasExtras','heCompensaciones','solicitantesEspacios','syncVersions'
 ];
 
 async function migrarLocalASupabase(){
@@ -3624,6 +3629,10 @@ async function loadAll(){
     const ah = await storageAPI.get('aireHistorial');
     aireHistorial = JSON.parse(ah.value);
   }catch(e){ aireHistorial = []; }
+  try{
+    const se = await storageAPI.get('solicitantesEspacios');
+    solicitantesEspacios = Object.assign({Interna:[], Externa:[]}, JSON.parse(se.value));
+  }catch(e){ solicitantesEspacios = {Interna:[], Externa:[]}; }
   try{
     const re = await storageAPI.get('reservasEspacios');
     reservasEspacios = JSON.parse(re.value);
@@ -3807,6 +3816,30 @@ async function saveFlechasEvacuacion(){
 async function saveHorasExtras(){
   try{ await storageAPI.set('horasExtras', JSON.stringify(horasExtras)); }
   catch(e){ showToast('No se pudo guardar (horas extras). Intenta de nuevo.'); }
+}
+async function saveSolicitantesEspacios(){
+  try{ await storageAPI.set('solicitantesEspacios', JSON.stringify(solicitantesEspacios)); }
+  catch(e){ showToast('No se pudo guardar el solicitante. Intenta de nuevo.'); }
+}
+function poblarSolicitantesEspacios(){
+  const sel = document.getElementById('resSolicitanteSelect');
+  const base = ['Coordinación Primaria','Coordinación Bachillerato','Capellanía','Talento Humano','TIC','Dirección Administrativa','Rectoría'];
+  const todos = [...new Set([...base, ...solicitantesEspacios.Interna])];
+  sel.innerHTML = '<option value="">Selecciona...</option>' + todos.map(n=>`<option>${esc(n)}</option>`).join('') + '<option value="__nuevo__">➕ Agregar nuevo solicitante…</option>';
+  const baseExt = ['Iglesia Novena','Iglesia El Camino','CUR'];
+  document.getElementById('solicitantesExternaList').innerHTML = [...new Set([...baseExt, ...solicitantesEspacios.Externa])].map(n=>`<option value="${esc(n)}">`).join('');
+  document.getElementById('resSolicitanteNuevo').style.display = 'none';
+  document.getElementById('resSolicitanteNuevo').value = '';
+}
+document.getElementById('resSolicitanteSelect').addEventListener('change', e=>{
+  document.getElementById('resSolicitanteNuevo').style.display = e.target.value==='__nuevo__' ? 'block' : 'none';
+});
+async function async_registrarSolicitante(tipo, nombre){
+  const base = tipo==='Externa' ? ['Iglesia Novena','Iglesia El Camino','CUR'] : ['Coordinación Primaria','Coordinación Bachillerato','Capellanía','Talento Humano','TIC','Dirección Administrativa','Rectoría'];
+  const lista = solicitantesEspacios[tipo];
+  if(base.includes(nombre) || lista.some(n=>n.toLowerCase()===nombre.toLowerCase())) return;
+  lista.push(nombre);
+  await saveSolicitantesEspacios();
 }
 async function saveHeCompensaciones(){
   try{ await storageAPI.set('heCompensaciones', JSON.stringify(heCompensaciones)); }
@@ -9322,6 +9355,7 @@ function openReservaModal(tipo, fechaPreset, reservaId){
 
   document.getElementById('resHoraInicio').value = r?.horaInicio || '';
   document.getElementById('resHoraFin').value = r?.horaFin || '';
+  poblarSolicitantesEspacios();
   document.getElementById('resSolicitanteSelect').value = r?.solicitante || '';
   document.getElementById('resSolicitanteInput').value = r?.solicitante || '';
   document.getElementById('resMotivo').value = r?.motivo || '';
@@ -9393,7 +9427,9 @@ document.getElementById('btnSaveReserva').addEventListener('click', async ()=>{
     fechaFin = document.getElementById('resFechaFin').value;
   }
   const esExterna = reservaTipoActual === 'Externa';
-  const solicitante = (esExterna ? document.getElementById('resSolicitanteInput').value : document.getElementById('resSolicitanteSelect').value).trim();
+  let solicitante = (esExterna ? document.getElementById('resSolicitanteInput').value : document.getElementById('resSolicitanteSelect').value).trim();
+  if(!esExterna && solicitante==='__nuevo__') solicitante = document.getElementById('resSolicitanteNuevo').value.trim();
+  if(solicitante) await async_registrarSolicitante(esExterna?'Externa':'Interna', solicitante);
 
   if(!espacio || !fecha || (!unDia && !fechaFin) || !solicitante){ showToast('Espacio, fecha y solicitante son obligatorios.'); return; }
   if(!unDia && fechaFin<fecha){ showToast('La fecha de fin no puede ser anterior a la de inicio.'); return; }
@@ -9633,6 +9669,7 @@ function showMantSelector(){
   document.getElementById('mantSubHorasExtra').style.display = 'none';
 }
 function openMantSub(name){
+  if(name==='espacios'){ openModule('espacios'); return; }
   document.getElementById('mantSelector').style.display = 'none';
   document.getElementById('mantSubActividades').style.display = name==='actividades' ? 'block' : 'none';
   document.getElementById('mantSubAires').style.display = name==='aires' ? 'block' : 'none';
@@ -9656,6 +9693,7 @@ document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEac
 document.querySelectorAll('[data-mantopen]').forEach(card=>{
   card.addEventListener('click', ()=> openMantSub(card.dataset.mantopen));
 });
+document.getElementById('btnEspBackMant').addEventListener('click', ()=>{ openModule('mantenimiento'); });
 document.querySelectorAll('[data-mantback]').forEach(btn=>{
   btn.addEventListener('click', showMantSelector);
 });
