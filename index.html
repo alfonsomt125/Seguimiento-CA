@@ -10404,12 +10404,19 @@ document.getElementById('btnSaveInsModal').addEventListener('click', async ()=>{
     const idx = insumos.findIndex(x=>x.id===editingInsumoId);
     insumos[idx] = {...insumos[idx], ...data};
   } else {
-    insumos.push({id: uid(), ...data});
+    const nuevo = {id: uid(), ...data};
+    insumos.push(nuevo);
+    if(nuevo.cantidad>0){
+      movimientos.push({id: uid(), insumoId: nuevo.id, tipo:'entrada', cantidad: nuevo.cantidad, fecha: data.fechaIngreso || todayISO(), motivo:'Inventario inicial al crear el insumo', createdAt: new Date().toISOString()});
+      await saveMovimientos();
+    }
   }
   await saveInsumos();
   closeInsumoModal();
   populateInvFilters();
   renderPanelCards();
+  renderMovimientosTable();
+  renderMovimientosAllTable();
   showToast('Insumo guardado.');
 });
 
