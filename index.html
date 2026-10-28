@@ -3606,6 +3606,7 @@ const SUPABASE_CONFIG = {
   anonKey: 'sb_publishable_cpq8OautpunzQp0VdMZTKw_ahhj4w6S'
 };
 const TABLA_STORAGE = 'app_storage';
+let cargaFallida = false;
 
 const supabaseAPI = (function(){
   const configurado = SUPABASE_CONFIG.url.includes('TU-PROYECTO') === false
@@ -3633,11 +3634,29 @@ const storageAPI = (function(){
   if(supabaseAPI){
     return {
       async get(key){
-        const { data, error } = await supabaseAPI.from(TABLA_STORAGE).select('value').eq('key', key).maybeSingle();
-        if(error || !data){ const err = new Error('not found'); throw err; }
-        return {key, value: data.value};
+        /* Distingue "no existe" (sin error y sin fila) de "no se pudo leer" (error de red,
+           límite, caída). Ante un error se reintenta; si sigue fallando se marca
+           cargaFallida y se bloquean los guardados, para que un fallo de lectura
+           nunca se confunda con datos vacíos y termine pisando lo guardado. */
+        if(cargaFallida) throw new Error('storage unavailable');
+        let ultimo = null;
+        for(let intento=0; intento<3; intento++){
+          let res;
+          try{ res = await supabaseAPI.from(TABLA_STORAGE).select('value').eq('key', key).maybeSingle(); }
+          catch(e){ res = {data:null, error:e}; }
+          if(!res.error){
+            if(!res.data){ throw new Error('not found'); }
+            return {key, value: res.data.value};
+          }
+          ultimo = res.error;
+          await new Promise(r=>setTimeout(r, 600*(intento+1)));
+        }
+        cargaFallida = true;
+        console.error('Lectura fallida:', key, ultimo);
+        throw new Error('storage unavailable');
       },
       async set(key, value){
+        if(cargaFallida) throw new Error('Guardado bloqueado: no se pudieron cargar todos los datos');
         const { error } = await supabaseAPI.from(TABLA_STORAGE)
           .upsert({key, value, updated_at: new Date().toISOString()}, {onConflict:'key'});
         if(error) throw error;
@@ -3696,9 +3715,10 @@ async function migrarLocalASupabase(){
   if(!supabaseAPI) return; // sin Supabase configurado, no hay a dónde migrar
 
   try{
-    const { data: yaMigrado } = await supabaseAPI.from(TABLA_STORAGE).select('key').eq('key','__migracion_completa__').maybeSingle();
+    const { data: yaMigrado, error: errMig } = await supabaseAPI.from(TABLA_STORAGE).select('key').eq('key','__migracion_completa__').maybeSingle();
+    if(errMig) return; // sin poder consultar, no se migra (evita pisar datos)
     if(yaMigrado) return; // ya se migró antes en este proyecto de Supabase
-  }catch(e){ /* si falla la consulta, seguimos e intentamos migrar igual */ }
+  }catch(e){ return; }
 
   // Fuente local: primero window.storage (Claude), si no existe, localStorage.
   const fuenteLocal = (window.storage && typeof window.storage.get === 'function')
@@ -11983,6 +12003,10 @@ async function init(){
   await migrarLocalASupabase();
 
   await loadAll();
+  if(cargaFallida){
+    document.getElementById('loadingScreen').textContent = 'No se pudieron cargar todos los datos desde Supabase. Para proteger tu información no se guardó nada. Revisa tu conexión y recarga la página.';
+    return;
+  }
   if(usedSeed){ await saveActivities(); }
 
   // Todas las "marcas de versión" de sincronización se leen y guardan juntas
