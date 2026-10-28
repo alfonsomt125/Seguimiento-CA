@@ -2508,10 +2508,18 @@
     <p class="hint" id="rsFirmaInfo" style="margin:8px 0;"></p>
     <div class="modal-actions">
       <button class="ghost" id="btnCerrarRS">Cerrar</button>
-      <button class="ghost" id="btnPdfRS">⬇ PDF</button>
+      <button class="ghost" id="btnPdfRS">👁 Previsualizar</button>
       <button class="ghost" id="btnFirmarRS">✍ Firmar</button>
       <button class="primary" id="btnGuardarRS">Guardar</button>
     </div>
+  </div>
+</div>
+<!-- Modal: previsualización del acta -->
+<div class="modal-bg" id="rsPreviewModalBg">
+  <div class="modal" style="max-width:900px;width:96vw;">
+    <h3>Previsualización del acta</h3>
+    <iframe id="rsPreviewFrame" style="width:100%;height:68vh;border:1px solid var(--line);background:#fff;margin-top:8px;"></iframe>
+    <div class="modal-actions"><button class="ghost" id="btnCerrarPreviewRS">Cerrar</button><button class="primary" id="btnImprimirPreviewRS">⬇ Exportar a PDF</button></div>
   </div>
 </div>
 <!-- Modal: PIN de firma -->
@@ -9978,7 +9986,7 @@ function renderRecibidos(){
     <td><strong>${esc(a.numero)}</strong></td><td>${esc(a.tipo)}</td><td>${esc(a.nombre)}</td><td>${esc(a.empresa)||'—'}</td>
     <td>${a.fechaActa?fmtDate(a.fechaActa):'—'}</td>
     <td>${a.firmado?`✅ <small>${esc(a.codigoFirma)}</small>`:'<span style="color:var(--orange);">Sin firmar</span>'}</td>
-    <td style="white-space:nowrap;"><button class="ghost" data-rsedit="${a.id}">Abrir</button> <button class="ghost" data-rspdf="${a.id}">PDF</button> <button class="ghost danger" data-rsdel="${a.id}">Eliminar</button></td></tr>`).join('')
+    <td style="white-space:nowrap;"><button class="ghost" data-rsedit="${a.id}">Abrir</button> <button class="ghost" data-rspdf="${a.id}">👁 PDF</button> <button class="ghost danger" data-rsdel="${a.id}">Eliminar</button></td></tr>`).join('')
     : '<tr><td colspan="7" class="empty">Aún no hay actas registradas.</td></tr>';
   const tb = document.getElementById('rsBody');
   tb.querySelectorAll('[data-rsedit]').forEach(b=>b.addEventListener('click', ()=>abrirRS(b.dataset.rsedit)));
@@ -10117,18 +10125,15 @@ document.getElementById('rsFirmaFile').addEventListener('change', e=>{
   };
   img.src = url;
 });
-function pdfRS(a){
-  if(!a) return;
+function construirActaHTML(a){
   const [ya, ma, da] = (a.fechaActa||'').split('-');
   const dd = da ? parseInt(da) : '__', mm = ma ? MESES_RS[parseInt(ma)-1] : '__', yy = ya || '__';
   const pl = rsPlazo(a.fechaInicio, a.fechaFin);
   const f = k => { const p=(a[k]||'').split('-'); return {d:p[2]||'', m:p[1]||'', y:p[0]||''}; };
   const i = f('fechaInicio'), t = f('fechaFin');
-  const win = window.open('', '_blank');
-  if(!win){ showToast('El navegador bloqueó la ventana. Permite ventanas emergentes.'); return; }
   const td = 'border:1px solid #000;padding:4px;';
   const hd = td + 'font-weight:700;text-align:center;font-size:10px;background:#eee;';
-  win.document.write(`<html><head><meta charset="utf-8"><title>Acta ${esc(a.numero)}</title><style>
+  return (`<html><head><meta charset="utf-8"><title>Acta ${esc(a.numero)}</title><style>
     @page{size:letter;margin:14mm}body{font-family:Calibri,Arial,sans-serif;font-size:11px;color:#000;margin:0}
     table{width:100%;border-collapse:collapse;table-layout:fixed}img{width:auto}.c{text-align:center}</style></head><body>
     <table><tr><td rowspan="3" style="${td}width:22%;text-align:center;"><img src="${RS_LOGO}" style="height:52px"></td>
@@ -10154,9 +10159,19 @@ function pdfRS(a){
       <tr><td>C.C. No 1.140.863.345</td><td></td><td>CC. No ${esc(a.documento)}</td></tr>
       <tr><td>Líder de Lógística y seguridad</td><td></td><td></td></tr></table>
     ${a.firmado?`<p style="font-size:9px;color:#444;margin-top:14px;">Firma electrónica · Código de verificación: <strong>${esc(a.codigoFirma)}</strong> · ${new Date(a.fechaFirma).toLocaleString('es-CO')}</p>`:''}
-    <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
-  win.document.close();
+    </body></html>`);
 }
+/* Previsualización dentro de la misma página (sin abrir otra pestaña): el botón
+   "Atrás" del navegador sigue funcionando y se imprime desde el propio marco. */
+function pdfRS(a){
+  if(!a) return;
+  document.getElementById('rsPreviewFrame').srcdoc = construirActaHTML(a);
+  document.getElementById('rsPreviewModalBg').classList.add('active');
+}
+document.getElementById('btnCerrarPreviewRS').addEventListener('click', ()=>document.getElementById('rsPreviewModalBg').classList.remove('active'));
+document.getElementById('btnImprimirPreviewRS').addEventListener('click', ()=>{
+  const f = document.getElementById('rsPreviewFrame').contentWindow; f.focus(); f.print();
+});
 
 function openMantSub(name){
   if(name==='espacios'){ openModule('espacios'); return; }
