@@ -3960,6 +3960,30 @@ async function loadAll(){
     if(huboCambios) await saveHorasExtras();
     try{ await storageAPI.set('heAlmuerzoRetro1', JSON.stringify(true)); }catch(e2){}
   }
+
+  // Insumos creados a mano antes de que existiera el registro automático: les
+  // genera la entrada de "inventario inicial" que les faltaba, por la cantidad
+  // que no está explicada por sus movimientos (stock actual - entradas + salidas).
+  try{
+    await storageAPI.get('insumosEntradaInicial1');
+  }catch(e){
+    if(e && e.message==='not found'){
+      const seedNames = new Set(SEED_INSUMOS.map(x=>normName(x.nombre)));
+      let nuevas = 0;
+      insumos.forEach(i=>{
+        if(seedNames.has(normName(i.nombre))) return;
+        const movs = movimientos.filter(m=>m.insumoId===i.id);
+        const neto = movs.reduce((n,m)=>n + (m.tipo==='entrada' ? Number(m.cantidad||0) : -Number(m.cantidad||0)), 0);
+        const inicial = Math.round((Number(i.cantidad||0) - neto)*100)/100;
+        if(inicial>0){
+          movimientos.push({id: uid(), insumoId: i.id, tipo:'entrada', cantidad: inicial, fecha: i.fechaIngreso || todayISO(), motivo:'Inventario inicial al crear el insumo', createdAt: new Date().toISOString()});
+          nuevas++;
+        }
+      });
+      if(nuevas){ await saveMovimientos(); }
+      try{ await storageAPI.set('insumosEntradaInicial1', JSON.stringify(nuevas)); }catch(e2){}
+    }
+  }
 }
 async function saveAiresAcondicionados(){
   try{ await storageAPI.set('airesAcondicionados', JSON.stringify(airesAcondicionados)); }
