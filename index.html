@@ -10136,7 +10136,7 @@ function pdfRS(a){
       <tr><td style="${td}text-align:center;">PROCEDIMIENTO DE EJECUCIÓN  CONTRATOS</td><td style="${td}font-size:10px;">VERSIÓN: 1</td></tr>
       <tr><td style="${td}text-align:center;">ACTA DE ENTREGA Y RECIBO A SATISFACCIÓN</td><td style="${td}font-size:10px;">FECHA: Mayo de 2024</td></tr></table>
     <table style="margin-top:6px;"><tr><td style="${td}">CONVENIO &nbsp;<span style="border:1px solid #000;padding:0 6px;">${a.tipo==='Convenio'?'X':'&nbsp;'}</span> &nbsp;&nbsp; CONTRATO &nbsp;<span style="border:1px solid #000;padding:0 6px;">${a.tipo==='Contrato'?'X':'&nbsp;'}</span></td>
-      <td style="${td}width:50%;">NÚMERO: <strong>${esc(a.numero)}</strong></td></tr></table>
+      <td style="${td}width:50%;">NÚMERO: ${esc(a.numero)}</td></tr></table>
     <table><tr><td style="${hd}">NOMBRE DEL CONVENIO / CONTRATO</td></tr><tr><td style="${td}height:36px;text-align:center;vertical-align:middle;font-size:14px;">${esc(a.nombre)}</td></tr>
       <tr><td style="${hd}">OBJETO DEL CONVENIO / CONTRATO</td></tr><tr><td style="${td}height:56px;text-align:center;vertical-align:middle;font-size:14px;">${esc(a.objeto)}</td></tr></table>
     <table style="margin-top:10px;"><tr><td colspan="8" style="${hd}">TÉRMINO PARA LA EJECUCIÓN</td></tr>
