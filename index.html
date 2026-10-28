@@ -641,6 +641,11 @@
         <span>Horas Extras del Personal</span>
         <p>Registro por trabajador, con control automático de los límites diario y mensual.</p>
       </button>
+      <button class="mant-subcard aires" data-mantopen="activos">
+        <div class="mant-icon">🪑</div>
+        <span>Inventario de Activos Fijos</span>
+        <p>Mobiliario y equipos por aula, espacio o laboratorio, incluyendo los aires acondicionados.</p>
+      </button>
       <button class="mant-subcard actividades" data-mantopen="espacios">
         <div class="mant-icon">🗓️</div>
         <span>Gestión de Espacios</span>
@@ -1380,6 +1385,29 @@
   </div>
   </div>
   <!-- ===================== /SUB-MÓDULO MAPAS DE PLANTA FÍSICA ===================== -->
+
+  <!-- ===================== SUB-MÓDULO: INVENTARIO DE ACTIVOS FIJOS ===================== -->
+  <div id="mantSubActivos" style="display:none;">
+  <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+      <h2 style="margin:0;">Inventario de activos fijos por espacio</h2>
+      <button class="ghost" id="btnNuevoEspacioAF">+ Nuevo espacio</button>
+    </div>
+    <div class="filters" style="margin-bottom:14px;">
+      <div class="field" style="flex:2;min-width:200px;"><label>Buscar espacio o activo</label><input type="text" id="afBuscar" placeholder="Ej: 2A, laboratorio, escritorio..."></div>
+      <div class="field"><label>Bloque</label><select id="afBloqueFiltro"><option value="">Todos</option></select></div>
+    </div>
+    <div class="kpis" id="afKpis"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Espacio</th><th>Bloque</th><th>Aires</th><th>Otros activos</th><th></th></tr></thead>
+        <tbody id="afEspaciosBody"></tbody>
+      </table>
+    </div>
+  </div>
+  </div>
+  <!-- ===================== /SUB-MÓDULO ACTIVOS FIJOS ===================== -->
 
   <!-- ===================== SUB-MÓDULO: HORAS EXTRAS DEL PERSONAL ===================== -->
   <div id="mantSubHorasExtra" style="display:none;">
@@ -2426,6 +2454,40 @@
   </div>
 </div>
 
+<!-- Modal: activos fijos de un espacio -->
+<div class="modal-bg" id="afEspacioModalBg">
+  <div class="modal" style="max-width:760px;">
+    <h3 id="afEspacioTitulo">Espacio</h3>
+    <p class="hint" id="afEspacioSub" style="margin:4px 0 12px;"></p>
+    <h4 style="margin:10px 0 6px;">❄️ Aires acondicionados (de su hoja de vida)</h4>
+    <div id="afAiresLista" class="hint"></div>
+    <h4 style="margin:16px 0 6px;">Mobiliario y equipos</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Activo</th><th>Categoría</th><th>Cant.</th><th>Estado</th><th>Observaciones</th><th></th></tr></thead>
+        <tbody id="afActivosBody"></tbody>
+      </table>
+    </div>
+    <div class="filters" style="margin-top:12px;align-items:flex-end;">
+      <div class="field" style="flex:2;min-width:150px;"><label>Activo</label><input type="text" id="afNombre" list="afNombresList" placeholder="Ej: Pupitre, Tablero, Computador"><datalist id="afNombresList"></datalist></div>
+      <div class="field"><label>Categoría</label><input type="text" id="afCategoria" list="afCategoriasList" placeholder="Mobiliario"><datalist id="afCategoriasList"><option value="Mobiliario"><option value="Equipo tecnológico"><option value="Equipo de laboratorio"><option value="Electrodoméstico"><option value="Material didáctico"></datalist></div>
+      <div class="field" style="max-width:90px;"><label>Cantidad</label><input type="number" id="afCantidad" min="1" value="1"></div>
+      <div class="field"><label>Estado</label><select id="afEstado"><option>Bueno</option><option>Regular</option><option>Malo</option><option>Dado de baja</option></select></div>
+      <div class="field" style="flex:2;min-width:150px;"><label>Observaciones</label><input type="text" id="afObs"></div>
+      <button class="primary" id="btnGuardarActivoAF">+ Agregar</button>
+    </div>
+    <div class="modal-actions"><button class="ghost" id="btnCerrarEspacioAF">Cerrar</button></div>
+  </div>
+</div>
+<div class="modal-bg" id="afNuevoEspacioModalBg">
+  <div class="modal" style="max-width:420px;">
+    <h3>Nuevo espacio</h3>
+    <div class="field"><label>Nombre del espacio *</label><input type="text" id="afNuevoNombre" placeholder="Ej: Laboratorio de Química"></div>
+    <div class="field"><label>Bloque</label><input type="text" id="afNuevoBloque" list="afBloquesList" placeholder="Ej: Bloque B"><datalist id="afBloquesList"></datalist></div>
+    <div class="modal-actions"><button class="ghost" id="btnCancelarNuevoEspacioAF">Cancelar</button><button class="primary" id="btnGuardarNuevoEspacioAF">Guardar</button></div>
+  </div>
+</div>
+
 <!-- Modal: gestionar las categorías (módulos) de insumos -->
 <div class="modal-bg" id="categoriasModalBg">
   <div class="modal" style="max-width:440px;">
@@ -3393,6 +3455,8 @@ let entregas = [];
 let airesAcondicionados = [];
 let aireHistorial = [];
 let reservasEspacios = [];
+let activosFijos = [];
+let espaciosActivosExtra = [];
 let solicitantesEspacios = {Interna:[], Externa:[]};
 let requisiciones = [];
 let extintores = [];
@@ -3534,7 +3598,7 @@ const CLAVES_A_MIGRAR = [
   'deletedNames','deletedInsumoNames','deletedTrabajadorNames',
   'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones',
   'extintores','trampasRatones','puntosEncuentro','flechasEvacuacion',
-  'horasExtras','limitesHorasExtras','heCompensaciones','solicitantesEspacios','syncVersions'
+  'horasExtras','limitesHorasExtras','heCompensaciones','solicitantesEspacios','activosFijos','espaciosActivosExtra','syncVersions'
 ];
 
 async function migrarLocalASupabase(){
@@ -3633,6 +3697,8 @@ async function loadAll(){
     const se = await storageAPI.get('solicitantesEspacios');
     solicitantesEspacios = Object.assign({Interna:[], Externa:[]}, JSON.parse(se.value));
   }catch(e){ solicitantesEspacios = {Interna:[], Externa:[]}; }
+  try{ activosFijos = JSON.parse((await storageAPI.get('activosFijos')).value); }catch(e){ activosFijos = []; }
+  try{ espaciosActivosExtra = JSON.parse((await storageAPI.get('espaciosActivosExtra')).value); }catch(e){ espaciosActivosExtra = []; }
   try{
     const re = await storageAPI.get('reservasEspacios');
     reservasEspacios = JSON.parse(re.value);
@@ -9667,7 +9733,124 @@ function showMantSelector(){
   document.getElementById('mantSubReportes').style.display = 'none';
   document.getElementById('mantSubMapas').style.display = 'none';
   document.getElementById('mantSubHorasExtra').style.display = 'none';
+  document.getElementById('mantSubActivos').style.display = 'none';
 }
+/* ===== INVENTARIO DE ACTIVOS FIJOS =====
+   Los espacios salen de la ubicación de cada aire (solo lectura, la hoja de vida
+   de aires no se modifica) más los espacios que se agreguen aquí. */
+const AF_SEP = '||';
+const afKey = (bloque, nombre) => (bloque||'') + AF_SEP + (nombre||'');
+let afEspacioActual = null;
+async function saveActivosFijos(){
+  try{ await storageAPI.set('activosFijos', JSON.stringify(activosFijos)); }
+  catch(e){ showToast('No se pudo guardar (activos fijos). Intenta de nuevo.'); }
+}
+async function saveEspaciosActivosExtra(){
+  try{ await storageAPI.set('espaciosActivosExtra', JSON.stringify(espaciosActivosExtra)); }
+  catch(e){ showToast('No se pudo guardar el espacio. Intenta de nuevo.'); }
+}
+function afEspacios(){
+  const mapa = {};
+  airesAcondicionados.forEach(a=>{
+    const nombre = (a.ubicacion||'').trim(); if(!nombre) return;
+    const k = afKey(a.bloque, nombre);
+    mapa[k] = mapa[k] || {key:k, nombre, bloque:a.bloque||''};
+  });
+  espaciosActivosExtra.forEach(e=>{ const k = afKey(e.bloque, e.nombre); mapa[k] = mapa[k] || {key:k, nombre:e.nombre, bloque:e.bloque||''}; });
+  activosFijos.forEach(x=>{ if(!mapa[x.espacio]){ const [b,n] = x.espacio.split(AF_SEP); mapa[x.espacio] = {key:x.espacio, nombre:n, bloque:b}; } });
+  return Object.values(mapa).sort((a,b)=> (a.bloque||'~').localeCompare(b.bloque||'~') || a.nombre.localeCompare(b.nombre, 'es', {numeric:true}));
+}
+const afAires = key => airesAcondicionados.filter(a=>afKey(a.bloque,(a.ubicacion||'').trim())===key);
+function renderActivosFijos(){
+  const espacios = afEspacios();
+  const selB = document.getElementById('afBloqueFiltro');
+  const prev = selB.value;
+  const bloques = [...new Set(espacios.map(e=>e.bloque).filter(Boolean))].sort();
+  selB.innerHTML = '<option value="">Todos</option>' + bloques.map(b=>`<option>${esc(b)}</option>`).join('');
+  if(bloques.includes(prev)) selB.value = prev;
+  document.getElementById('afBloquesList').innerHTML = bloques.map(b=>`<option value="${esc(b)}">`).join('');
+  const q = normName(document.getElementById('afBuscar').value);
+  const bf = selB.value;
+  const filas = espacios.filter(e=>{
+    if(bf && e.bloque!==bf) return false;
+    if(!q) return true;
+    return normName(e.nombre+' '+e.bloque).includes(q) || activosFijos.some(x=>x.espacio===e.key && normName(x.nombre+' '+(x.categoria||'')).includes(q));
+  });
+  const totalAct = activosFijos.reduce((n,x)=>n+Number(x.cantidad||0),0);
+  document.getElementById('afKpis').innerHTML = `
+    <div class="kpi"><div class="num">${espacios.length}</div><div class="lbl">Espacios</div></div>
+    <div class="kpi"><div class="num">${airesAcondicionados.length}</div><div class="lbl">Aires</div></div>
+    <div class="kpi"><div class="num">${totalAct}</div><div class="lbl">Otros activos</div></div>`;
+  document.getElementById('afEspaciosBody').innerHTML = filas.length ? filas.map(e=>{
+    const nAct = activosFijos.filter(x=>x.espacio===e.key).reduce((n,x)=>n+Number(x.cantidad||0),0);
+    return `<tr><td><strong>${esc(e.nombre)}</strong></td><td>${esc(e.bloque)||'—'}</td><td>${afAires(e.key).length}</td><td>${nAct}</td>
+      <td><button class="ghost" data-afabrir="${esc(e.key)}">Ver / editar</button></td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty">No hay espacios con estos filtros.</td></tr>';
+  document.querySelectorAll('[data-afabrir]').forEach(b=>b.addEventListener('click', ()=>abrirEspacioAF(b.dataset.afabrir)));
+}
+function abrirEspacioAF(key){
+  afEspacioActual = key;
+  const [bloque, nombre] = key.split(AF_SEP);
+  document.getElementById('afEspacioTitulo').textContent = nombre;
+  document.getElementById('afEspacioSub').textContent = bloque || 'Sin bloque';
+  const aires = afAires(key);
+  document.getElementById('afAiresLista').innerHTML = aires.length
+    ? aires.map(a=>`• ${esc(a.codigo)} — ${esc(a.marca||'')} ${esc(a.modelo||'')} ${a.capacidad?esc(a.capacidad)+' BTU':''} · ${esc(a.tipo||'')} · <strong>${esc(a.estado||'')}</strong>`).join('<br>')
+    : 'Este espacio no tiene aires registrados.';
+  const nombres = [...new Set(activosFijos.map(x=>x.nombre))].sort();
+  document.getElementById('afNombresList').innerHTML = nombres.map(n=>`<option value="${esc(n)}">`).join('');
+  renderActivosEspacioAF();
+  document.getElementById('afEspacioModalBg').classList.add('active');
+}
+function renderActivosEspacioAF(){
+  const lista = activosFijos.filter(x=>x.espacio===afEspacioActual);
+  const tb = document.getElementById('afActivosBody');
+  tb.innerHTML = lista.length ? lista.map(x=>`<tr><td>${esc(x.nombre)}</td><td>${esc(x.categoria)||'—'}</td><td>${x.cantidad}</td><td>${esc(x.estado)}</td><td>${esc(x.obs)||'—'}</td>
+    <td style="white-space:nowrap;"><button class="ghost" data-afedit="${x.id}">Editar</button> <button class="ghost danger" data-afdel="${x.id}">Eliminar</button></td></tr>`).join('')
+    : '<tr><td colspan="6" class="empty">Aún no hay activos registrados en este espacio.</td></tr>';
+  tb.querySelectorAll('[data-afedit]').forEach(b=>b.addEventListener('click', ()=>{
+    const x = activosFijos.find(a=>a.id===b.dataset.afedit); if(!x) return;
+    document.getElementById('afNombre').value = x.nombre; document.getElementById('afCategoria').value = x.categoria||'';
+    document.getElementById('afCantidad').value = x.cantidad; document.getElementById('afEstado').value = x.estado; document.getElementById('afObs').value = x.obs||'';
+    document.getElementById('btnGuardarActivoAF').dataset.edit = x.id; document.getElementById('btnGuardarActivoAF').textContent = 'Guardar cambios';
+  }));
+  tb.querySelectorAll('[data-afdel]').forEach(b=>b.addEventListener('click', async ()=>{
+    if(!await customConfirm('¿Eliminar este activo del espacio?')) return;
+    activosFijos = activosFijos.filter(a=>a.id!==b.dataset.afdel);
+    await saveActivosFijos(); renderActivosEspacioAF(); renderActivosFijos();
+  }));
+}
+function limpiarFormActivoAF(){
+  ['afNombre','afCategoria','afObs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('afCantidad').value = 1; document.getElementById('afEstado').value = 'Bueno';
+  const b = document.getElementById('btnGuardarActivoAF'); delete b.dataset.edit; b.textContent = '+ Agregar';
+}
+document.getElementById('btnGuardarActivoAF').addEventListener('click', async ()=>{
+  const nombre = document.getElementById('afNombre').value.trim();
+  const cantidad = Math.max(1, parseInt(document.getElementById('afCantidad').value)||1);
+  if(!nombre){ showToast('Escribe el nombre del activo.'); return; }
+  const datos = {nombre, categoria:document.getElementById('afCategoria').value.trim(), cantidad, estado:document.getElementById('afEstado').value, obs:document.getElementById('afObs').value.trim()};
+  const editId = document.getElementById('btnGuardarActivoAF').dataset.edit;
+  if(editId){ const x = activosFijos.find(a=>a.id===editId); if(x) Object.assign(x, datos); }
+  else activosFijos.push({id:uid(), espacio:afEspacioActual, ...datos});
+  await saveActivosFijos(); limpiarFormActivoAF(); renderActivosEspacioAF(); renderActivosFijos();
+});
+document.getElementById('btnCerrarEspacioAF').addEventListener('click', ()=>{ limpiarFormActivoAF(); document.getElementById('afEspacioModalBg').classList.remove('active'); });
+document.getElementById('btnNuevoEspacioAF').addEventListener('click', ()=>{
+  document.getElementById('afNuevoNombre').value=''; document.getElementById('afNuevoBloque').value='';
+  document.getElementById('afNuevoEspacioModalBg').classList.add('active');
+});
+document.getElementById('btnCancelarNuevoEspacioAF').addEventListener('click', ()=>document.getElementById('afNuevoEspacioModalBg').classList.remove('active'));
+document.getElementById('btnGuardarNuevoEspacioAF').addEventListener('click', async ()=>{
+  const nombre = document.getElementById('afNuevoNombre').value.trim(), bloque = document.getElementById('afNuevoBloque').value.trim();
+  if(!nombre){ showToast('El nombre del espacio es obligatorio.'); return; }
+  if(afEspacios().some(e=>e.key===afKey(bloque,nombre))){ showToast('Ese espacio ya existe.'); return; }
+  espaciosActivosExtra.push({nombre, bloque}); await saveEspaciosActivosExtra();
+  document.getElementById('afNuevoEspacioModalBg').classList.remove('active');
+  renderActivosFijos(); abrirEspacioAF(afKey(bloque,nombre));
+});
+['afBuscar','afBloqueFiltro'].forEach(id=>document.getElementById(id).addEventListener('input', renderActivosFijos));
+
 function openMantSub(name){
   if(name==='espacios'){ openModule('espacios'); return; }
   document.getElementById('mantSelector').style.display = 'none';
@@ -9677,10 +9860,12 @@ function openMantSub(name){
   document.getElementById('mantSubReportes').style.display = name==='reportes' ? 'block' : 'none';
   document.getElementById('mantSubMapas').style.display = name==='mapas' ? 'block' : 'none';
   document.getElementById('mantSubHorasExtra').style.display = name==='horasextra' ? 'block' : 'none';
+  document.getElementById('mantSubActivos').style.display = name==='activos' ? 'block' : 'none';
   if(name==='requisiciones'){ showReqLista(); }
   if(name==='reportes'){ cargarReportesRecibidos(); }
   if(name==='mapas'){ renderMarcadoresExtintores(); renderMarcadoresTrampas(); renderMarcadoresEncuentro(); renderFlechasEvacuacion(); }
   if(name==='horasextra'){ renderHorasExtra(); }
+  if(name==='activos'){ renderActivosFijos(); }
 }
 document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
