@@ -10137,21 +10137,22 @@ function pdfRS(a){
       <tr><td style="${td}text-align:center;">ACTA DE ENTREGA Y RECIBO A SATISFACCIÓN</td><td style="${td}font-size:10px;">FECHA: Mayo de 2024</td></tr></table>
     <table style="margin-top:6px;"><tr><td style="${td}">CONVENIO &nbsp;<span style="border:1px solid #000;padding:0 6px;">${a.tipo==='Convenio'?'X':'&nbsp;'}</span> &nbsp;&nbsp; CONTRATO &nbsp;<span style="border:1px solid #000;padding:0 6px;">${a.tipo==='Contrato'?'X':'&nbsp;'}</span></td>
       <td style="${td}width:50%;">NÚMERO: <strong>${esc(a.numero)}</strong></td></tr></table>
-    <table><tr><td style="${hd}">NOMBRE DEL CONVENIO / CONTRATO</td></tr><tr><td style="${td}height:32px;">${esc(a.nombre)}</td></tr>
-      <tr><td style="${hd}">OBJETO DEL CONVENIO / CONTRATO</td></tr><tr><td style="${td}height:48px;vertical-align:top;">${esc(a.objeto)}</td></tr></table>
+    <table><tr><td style="${hd}">NOMBRE DEL CONVENIO / CONTRATO</td></tr><tr><td style="${td}height:36px;text-align:center;vertical-align:middle;font-size:14px;">${esc(a.nombre)}</td></tr>
+      <tr><td style="${hd}">OBJETO DEL CONVENIO / CONTRATO</td></tr><tr><td style="${td}height:56px;text-align:center;vertical-align:middle;font-size:14px;">${esc(a.objeto)}</td></tr></table>
     <table style="margin-top:10px;"><tr><td colspan="8" style="${hd}">TÉRMINO PARA LA EJECUCIÓN</td></tr>
       <tr><td colspan="3" style="${hd}">FECHA DE INICIO</td><td colspan="3" style="${hd}">FECHA DE TERMINACIÓN</td><td colspan="2" style="${hd}">PLAZO DE EJECUCIÓN</td></tr>
       <tr><td style="${hd}">DD</td><td style="${hd}">MM</td><td style="${hd}">AAAA</td><td style="${hd}">DD</td><td style="${hd}">MM</td><td style="${hd}">AAAA</td><td style="${hd}">MESES</td><td style="${hd}">DÍAS</td></tr>
-      <tr class="c" style="height:22px;"><td style="${td}">${i.d}</td><td style="${td}">${i.m}</td><td style="${td}">${i.y}</td><td style="${td}">${t.d}</td><td style="${td}">${t.m}</td><td style="${td}">${t.y}</td><td style="${td}">${pl?pl.meses:''}</td><td style="${td}">${pl?pl.dias:''}</td></tr></table>
+      <tr class="c" style="height:26px;font-size:14px;"><td style="${td}">${i.d}</td><td style="${td}">${i.m}</td><td style="${td}">${i.y}</td><td style="${td}">${t.d}</td><td style="${td}">${t.m}</td><td style="${td}">${t.y}</td><td style="${td}">${pl?pl.meses:''}</td><td style="${td}">${pl?pl.dias:''}</td></tr></table>
     <table style="margin-top:10px;"><tr><td colspan="3" style="${hd}">SUPERVISIÓN DEL CONTRATO</td></tr>
       <tr><td style="${hd}">NOMBRE DEL SUPERVISOR</td><td style="${hd}">DOCUMENTO IDENTIFICACIÓN</td><td style="${hd}">CARGO</td></tr>
-      <tr class="c" style="height:22px;"><td style="${td}">${esc(a.supervisor)}</td><td style="${td}">${esc(a.documento)}</td><td style="${td}">${esc(a.cargo)}</td></tr></table>
+      <tr class="c" style="height:26px;font-size:14px;"><td style="${td}">${esc(a.supervisor)}</td><td style="${td}">${esc(a.documento)}</td><td style="${td}">${esc(a.cargo)}</td></tr></table>
     <p style="text-align:justify;font-size:12px;line-height:1.5;margin:18px 0;">Una vez revisado y verificado el cumplimiento del objeto del Contrato citado y los informes de avances y supervisión, las partes relacionadas a continuación realizan la entrega y el recibo a satisfacción de las actividades, con el proposito de dar por terminada la etapa de ejecución. Para contancia de lo anterior, firman esta Acta en Barranquilla, a los <u>&nbsp;${dd}&nbsp;</u> días del mes de <u>&nbsp;${mm}&nbsp;</u> de <u>&nbsp;${yy}&nbsp;</u></p>
-    <table style="font-size:12px;"><tr><td style="width:50%;">Por: Colegio Americano de Barranquilla</td><td>Por: ${esc(a.empresa)}</td></tr>
-      <tr><td style="height:80px;vertical-align:bottom;">${a.firmado&&firmaRecibidos?`<img src="${firmaRecibidos}" style="max-height:70px;max-width:200px;mix-blend-mode:multiply;">`:''}</td><td></td></tr>
-      <tr><td style="border-top:1px solid #000;padding-right:30px;"><strong>ALFONSO MONSERRAT</strong></td><td style="border-top:1px solid #000;"><strong>FIRMA REPRESENTANTE</strong></td></tr>
-      <tr><td>C.C. No 1.140.863.345</td><td>CC. No ${esc(a.documento)}</td></tr>
-      <tr><td>Líder de Lógística y seguridad</td><td></td></tr></table>
+    <table style="font-size:13px;"><colgroup><col style="width:44%"><col style="width:12%"><col style="width:44%"></colgroup>
+      <tr><td>Por: Colegio Americano de Barranquilla</td><td></td><td>Por: ${esc(a.empresa)}</td></tr>
+      <tr><td style="height:130px;vertical-align:bottom;text-align:center;">${a.firmado&&firmaRecibidos?`<img src="${firmaRecibidos}" style="max-height:120px;max-width:300px;mix-blend-mode:multiply;">`:''}</td><td></td><td></td></tr>
+      <tr><td style="border-top:1px solid #000;padding-top:3px;"><strong>ALFONSO MONSERRAT</strong></td><td></td><td style="border-top:1px solid #000;padding-top:3px;"><strong>FIRMA REPRESENTANTE</strong></td></tr>
+      <tr><td>C.C. No 1.140.863.345</td><td></td><td>CC. No ${esc(a.documento)}</td></tr>
+      <tr><td>Líder de Lógística y seguridad</td><td></td><td></td></tr></table>
     ${a.firmado?`<p style="font-size:9px;color:#444;margin-top:14px;">Firma electrónica · Código de verificación: <strong>${esc(a.codigoFirma)}</strong> · ${new Date(a.fechaFirma).toLocaleString('es-CO')}</p>`:''}
     <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
   win.document.close();
