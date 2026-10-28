@@ -9956,7 +9956,9 @@ function rsSiguienteNumero(){
 }
 function rsPlazo(ini, fin){
   if(!ini || !fin || fin<ini) return null;
-  const [y1,m1,d1] = ini.split('-').map(Number), [y2,m2,d2] = fin.split('-').map(Number);
+  const [y1,m1,d1] = ini.split('-').map(Number), [y2o,m2o,d2o] = fin.split('-').map(Number);
+  // el día de inicio cuenta: se usa el día siguiente a la terminación como límite exclusivo
+  const lim = new Date(Date.UTC(y2o, m2o-1, d2o+1)), y2 = lim.getUTCFullYear(), m2 = lim.getUTCMonth()+1, d2 = lim.getUTCDate();
   let meses = (y2-y1)*12 + (m2-m1); if(d2<d1) meses--;
   const base = new Date(Date.UTC(y1, m1-1+meses, d1));
   const dias = Math.round((Date.UTC(y2,m2-1,d2) - base.getTime())/86400000);
