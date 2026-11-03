@@ -7121,6 +7121,7 @@ function abrirMarcadorExistente(tipoMarcador, obj){
   document.getElementById('marcadorModalBg').classList.add('active');
 }
 function cerrarMarcadorModal(){
+  if(typeof resetFormRevision==='function') resetFormRevision();
   document.getElementById('marcadorModalBg').classList.remove('active');
   marcadorEnEdicion = null;
 }
@@ -7412,7 +7413,31 @@ function renderListaRevisionesExtintor(extintorId){
       <span class="pill ${r.anilloSeguridad==='Sí' ? 'pill-Finalizado' : 'pill-Dañado'}" style="flex-shrink:0;">Anillo: ${esc(r.anilloSeguridad)}</span>
       <span class="pill ${PILL_ESTADO[r.estado]||''}" style="flex-shrink:0;">${esc(r.estado)}</span>
       <span class="name" style="width:auto;flex:1;font-size:12px;color:var(--gray);">${esc(r.notas)||''}</span>
+      <button class="ghost" data-editrev="${r.id}" style="padding:4px 8px;font-size:12px;">Editar</button>
+      <button class="ghost danger" data-delrev="${r.id}" style="padding:4px 8px;font-size:12px;">✕</button>
     </div>`).join('');
+  wrap.querySelectorAll('[data-editrev]').forEach(b=>b.addEventListener('click', ()=>{
+    const r = revisiones.find(x=>x.id===b.dataset.editrev); if(!r) return;
+    revisionEnEdicionId = r.id;
+    document.getElementById('revMes').value = (r.fecha||'').slice(0,7);
+    document.getElementById('revAnilloSeguridad').value = r.anilloSeguridad;
+    document.getElementById('revEstado').value = r.estado;
+    document.getElementById('revNotas').value = r.notas || '';
+    document.getElementById('btnRegistrarRevision').textContent = 'Guardar cambios de la revisión';
+  }));
+  wrap.querySelectorAll('[data-delrev]').forEach(b=>b.addEventListener('click', async ()=>{
+    if(!await customConfirm('¿Eliminar esta revisión?')) return;
+    e.revisiones = e.revisiones.filter(x=>x.id!==b.dataset.delrev);
+    await saveExtintores();
+    resetFormRevision();
+    renderListaRevisionesExtintor(extintorId);
+    renderMarcadoresExtintores();
+  }));
+}
+let revisionEnEdicionId = null;
+function resetFormRevision(){
+  revisionEnEdicionId = null;
+  document.getElementById('btnRegistrarRevision').textContent = '+ Registrar revisión';
 }
 document.getElementById('btnExportarListaExtintores').addEventListener('click', ()=>{
   if(!extintores.length){ showToast('Aún no hay extintores para exportar.'); return; }
@@ -7438,18 +7463,20 @@ document.getElementById('btnRegistrarRevision').addEventListener('click', async 
   const e = extintores.find(x=>x.id===marcadorEnEdicion.id);
   if(!e) return;
   if(!Array.isArray(e.revisiones)) e.revisiones = [];
-  e.revisiones.push({
-    id: uid(),
+  const datosRev = {
     fecha: mes,
     anilloSeguridad: document.getElementById('revAnilloSeguridad').value,
     estado: document.getElementById('revEstado').value,
     notas: document.getElementById('revNotas').value.trim()
-  });
+  };
+  const editada = revisionEnEdicionId ? e.revisiones.find(x=>x.id===revisionEnEdicionId) : null;
+  if(editada) Object.assign(editada, datosRev); else e.revisiones.push({id: uid(), ...datosRev});
   await saveExtintores();
+  resetFormRevision();
   renderListaRevisionesExtintor(e.id);
   renderMarcadoresExtintores();
   document.getElementById('revNotas').value = '';
-  showToast('Revisión registrada.');
+  showToast(editada ? 'Revisión actualizada.' : 'Revisión registrada.');
 });
 
 document.getElementById('btnGuardarMarcador').addEventListener('click', async ()=>{
