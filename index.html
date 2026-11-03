@@ -1270,7 +1270,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Plano</th><th>Ubicación</th><th>Tipo</th><th>Fecha</th><th>Última revisión</th><th>Notas</th><th></th></tr></thead>
+            <thead><tr><th>Plano</th><th>Ubicación</th><th>Tipo</th><th>Capacidad</th><th>Fecha</th><th>Última revisión</th><th>Notas</th><th></th></tr></thead>
             <tbody id="listaExtintoresBody"></tbody>
           </table>
         </div>
@@ -1731,6 +1731,11 @@
           <option value="Multipropósito">Multipropósito</option>
           <option value="Dióxido de Carbono">Dióxido de Carbono</option>
         </select>
+      </div>
+      <div class="field" id="marcadorCapacidadWrap" style="margin-top:14px;">
+        <label>Capacidad</label>
+        <input type="text" id="marcadorCapacidad" list="capacidadesExtintorList" placeholder="Ej: 10 lb">
+        <datalist id="capacidadesExtintorList"><option value="5 lb"><option value="10 lb"><option value="20 lb"><option value="30 lb"><option value="50 lb"><option value="100 lb"></datalist>
       </div>
       <div class="field" id="marcadorUbicacionWrap" style="margin-top:14px;">
         <label>Ubicación</label>
@@ -6908,12 +6913,13 @@ function renderMarcadoresExtintores(){
       <td style="font-size:12px;color:var(--gray);">${e.plano==='segundo-piso' ? '2do piso' : 'Planta principal'}</td>
       <td>${esc(e.ubicacion)||'—'}</td>
       <td><span class="pill" style="background:${COLOR_FONDO_PILL_EXTINTOR[e.tipo]};color:${COLOR_TEXTO_TIPO_EXTINTOR[e.tipo]};">${esc(e.tipo)}</span></td>
+      <td>${esc(e.capacidad)||'—'}</td>
       <td>${fmtFechaExtintor(e.fecha)}</td>
       <td>${celdaRevision}</td>
       <td>${esc(e.notas)||'—'}</td>
       <td><button class="ghost" data-editarextintor="${e.id}">Editar</button></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="7" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
+  }).join('') : `<tr><td colspan="8" class="empty">Aún no has marcado ningún extintor.</td></tr>`;
   tbody.querySelectorAll('[data-editarextintor]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const e = extintores.find(x=>x.id===btn.dataset.editarextintor);
@@ -7088,6 +7094,8 @@ function abrirMarcadorNuevo(tipoMarcador, x, y){
   document.getElementById('marcadorTipo').value = filtroTipoExtintorActual || 'Solkaflam';
   document.getElementById('marcadorUbicacionWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
   document.getElementById('marcadorUbicacion').value = '';
+  document.getElementById('marcadorCapacidadWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
+  document.getElementById('marcadorCapacidad').value = '';
   document.getElementById('marcadorFecha').value = '';
   document.getElementById('marcadorNotas').value = '';
   document.getElementById('btnEliminarMarcador').style.display = 'none';
@@ -7104,6 +7112,8 @@ function abrirMarcadorExistente(tipoMarcador, obj){
   if(tipoMarcador==='extintor') document.getElementById('marcadorTipo').value = obj.tipo;
   document.getElementById('marcadorUbicacionWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
   document.getElementById('marcadorUbicacion').value = obj.ubicacion || '';
+  document.getElementById('marcadorCapacidadWrap').style.display = tipoMarcador==='extintor' ? 'block' : 'none';
+  document.getElementById('marcadorCapacidad').value = obj.capacidad || '';
   document.getElementById('marcadorFecha').value = tipoMarcador==='extintor' ? (obj.fecha||'').slice(0,7) : (obj.fecha||'');
   document.getElementById('marcadorNotas').value = obj.notas || '';
   document.getElementById('btnEliminarMarcador').style.display = 'inline-block';
@@ -7445,13 +7455,13 @@ document.getElementById('btnExportarListaExtintores').addEventListener('click', 
   const td = 'border:1px solid #999;padding:6px;font-size:12px;';
   const filas = ordenados.map((e,i)=>{
     const rev = [...(e.revisiones||[])].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))[0];
-    return `<tr><td style="${td}text-align:center;">${i+1}</td><td style="${td}">${e.plano==='segundo-piso'?'2do piso':'Planta principal'}</td><td style="${td}">${esc(e.ubicacion)||'—'}</td><td style="${td}">${esc(e.tipo)}</td><td style="${td}">${fmtFechaExtintor(e.fecha)}</td><td style="${td}">${rev?fmtFechaExtintor(rev.fecha)+' · Anillo: '+esc(rev.anilloSeguridad)+' · '+esc(rev.estado):'Sin revisar'}</td><td style="${td}">${esc(e.notas)||''}</td></tr>`;
+    return `<tr><td style="${td}text-align:center;">${i+1}</td><td style="${td}">${e.plano==='segundo-piso'?'2do piso':'Planta principal'}</td><td style="${td}">${esc(e.ubicacion)||'—'}</td><td style="${td}">${esc(e.tipo)}</td><td style="${td}">${esc(e.capacidad)||'—'}</td><td style="${td}">${fmtFechaExtintor(e.fecha)}</td><td style="${td}">${rev?fmtFechaExtintor(rev.fecha)+' · Anillo: '+esc(rev.anilloSeguridad)+' · '+esc(rev.estado):'Sin revisar'}</td><td style="${td}">${esc(e.notas)||''}</td></tr>`;
   }).join('');
   const th = 'border:1px solid #999;padding:6px;font-size:12px;background:#011632;color:#fff;text-align:left;';
   const html = `<html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm}body{font-family:Arial,sans-serif;color:#011632;margin:0}table{width:100%;border-collapse:collapse}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body>
     <h2 style="margin:0 0 2px;">Listado de extintores</h2>
     <p style="margin:0 0 10px;font-size:12px;color:#555;">Colegio Americano de Barranquilla · Servicios Generales · ${extintores.length} extintor(es) · ${fmtDate(todayISO())}</p>
-    <table><thead><tr><th style="${th}width:30px;">#</th><th style="${th}">Plano</th><th style="${th}">Ubicación</th><th style="${th}">Tipo</th><th style="${th}">Recarga / vencimiento</th><th style="${th}">Última revisión</th><th style="${th}">Notas</th></tr></thead><tbody>${filas}</tbody></table></body></html>`;
+    <table><thead><tr><th style="${th}width:30px;">#</th><th style="${th}">Plano</th><th style="${th}">Ubicación</th><th style="${th}">Tipo</th><th style="${th}">Capacidad</th><th style="${th}">Recarga / vencimiento</th><th style="${th}">Última revisión</th><th style="${th}">Notas</th></tr></thead><tbody>${filas}</tbody></table></body></html>`;
   document.getElementById('rsPreviewTitulo').textContent = 'Previsualización del listado de extintores';
   document.getElementById('rsPreviewFrame').srcdoc = html;
   document.getElementById('rsPreviewModalBg').classList.add('active');
@@ -7486,11 +7496,12 @@ document.getElementById('btnGuardarMarcador').addEventListener('click', async ()
   if(marcadorEnEdicion.tipoMarcador==='extintor'){
     const tipo = document.getElementById('marcadorTipo').value;
     const ubicacion = document.getElementById('marcadorUbicacion').value.trim();
+    const capacidad = document.getElementById('marcadorCapacidad').value.trim();
     if(marcadorEnEdicion.id){
       const e = extintores.find(x=>x.id===marcadorEnEdicion.id);
-      if(e){ e.tipo = tipo; e.fecha = fecha; e.notas = notas; e.ubicacion = ubicacion; }
+      if(e){ e.tipo = tipo; e.fecha = fecha; e.notas = notas; e.ubicacion = ubicacion; e.capacidad = capacidad; }
     }else{
-      extintores.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, tipo, fecha, notas, ubicacion, plano: marcadorEnEdicion.plano||'principal', createdAt: new Date().toISOString()});
+      extintores.push({id: uid(), x: marcadorEnEdicion.x, y: marcadorEnEdicion.y, tipo, fecha, notas, ubicacion, capacidad, plano: marcadorEnEdicion.plano||'principal', createdAt: new Date().toISOString()});
     }
     await saveExtintores();
     renderMarcadoresExtintores();
