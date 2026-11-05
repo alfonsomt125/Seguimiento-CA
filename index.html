@@ -2156,6 +2156,8 @@
         </div>
       </div>
       <p class="hint" style="margin:0 0 14px;">Cantidad a pedir = consumo mensual del personal − stock disponible actual. Solo se listan los productos que hacen falta.</p>
+      <p class="hint" style="margin:0 0 8px;">Elige la categoría que vas a pedir — la tabla, el PDF, el Excel y el envío usan solo esa categoría:</p>
+      <div class="year-pills" id="pedidoCategoriaTabs" style="margin-bottom:14px;"></div>
       <div class="filters" style="margin-bottom:14px;align-items:flex-end;">
         <div class="field" style="flex:2;min-width:220px;">
           <label>Correo destinatario</label>
@@ -10912,8 +10914,11 @@ document.getElementById('btnCloseMesDetalle').addEventListener('click', ()=>docu
    ahora mismo. Solo se listan los que realmente hacen falta (a pedir > 0),
    ordenados de mayor a menor urgencia. Se recalcula solo a partir de datos
    reales (consumoMensual y cantidad), así que siempre está al día. */
+let pedidoCategoriaActual = '';
+const etiquetaPedidoCategoria = () => pedidoCategoriaActual==='__sin__' ? 'Sin categoría' : pedidoCategoriaActual;
 function getPedidoSugerido(){
   return insumos
+    .filter(i=>!pedidoCategoriaActual || (pedidoCategoriaActual==='__sin__' ? !i.categoria : i.categoria===pedidoCategoriaActual))
     .map(i=>{
       const consumo = Number(i.consumoMensual||0);
       const disponible = Number(i.cantidad||0);
@@ -10924,7 +10929,17 @@ function getPedidoSugerido(){
     .sort((a,b)=>b.aPedir-a.aPedir);
 }
 
+function renderPedidoCategorias(){
+  const wrap = document.getElementById('pedidoCategoriaTabs');
+  const hayLibres = insumos.some(i=>!i.categoria);
+  const cats = [...categoriasInsumos, ...(hayLibres ? ['__sin__'] : [])];
+  if(pedidoCategoriaActual && !cats.includes(pedidoCategoriaActual)) pedidoCategoriaActual = '';
+  wrap.innerHTML = `<button class="year-pill${pedidoCategoriaActual===''?' active':''}" data-pedcat="">Todas</button>` +
+    cats.map(c=>`<button class="year-pill${pedidoCategoriaActual===c?' active':''}" data-pedcat="${esc(c)}">${c==='__sin__'?'📦 Sin categoría':iconoCategoria(c)+' '+esc(c)}</button>`).join('');
+  wrap.querySelectorAll('[data-pedcat]').forEach(b=>b.addEventListener('click', ()=>{ pedidoCategoriaActual = b.dataset.pedcat; renderPedidoSugerido(); }));
+}
 function renderPedidoSugerido(){
+  renderPedidoCategorias();
   const pedido = getPedidoSugerido();
   const tbody = document.getElementById('pedidoSugeridoBody');
   tbody.innerHTML = pedido.length ? pedido.map(p=>`
@@ -10946,7 +10961,7 @@ document.getElementById('btnExportarPedidoExcel').addEventListener('click', ()=>
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Pedido_Sugerido_Compras_${todayISO()}.csv`;
+  a.download = `Pedido_Sugerido_Compras${pedidoCategoriaActual?'_'+etiquetaPedidoCategoria().replace(/\s+/g,'_'):''}_${todayISO()}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -11048,7 +11063,7 @@ function construirPedidoHTML(pedido){
 </style></head><body>
   <button class="btn-volver-noprint" onclick="if(window.opener){window.close();}else{history.back();}">← Volver</button>
   <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#03459B;text-transform:uppercase;">Colegio Americano de Barranquilla · Servicios Generales</div>
-  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Pedido Sugerido a Compras — Insumos</div>
+  <div style="font-size:21px;font-weight:700;color:#011632;margin:5px 0 3px;">Pedido Sugerido a Compras — Insumos${pedidoCategoriaActual?' · '+esc(etiquetaPedidoCategoria()):''}</div>
   <div style="font-size:11px;color:#64748B;margin-bottom:12px;">Generado el ${fechaStr}. Cantidad a pedir = consumo mensual del personal − stock disponible actual.</div>
   <div style="display:flex;height:3px;margin-bottom:16px;">
     <div style="flex:1;background:#011632;"></div><div style="flex:1;background:#5D88D6;"></div><div style="flex:1;background:#F29622;"></div>
@@ -11191,7 +11206,7 @@ function enviarPedidoCompras(){
 
   const win = abrirPedidoParaImprimir(pedido);
 
-  const asunto = `Pedido de insumos — Servicios Generales (${todayISO()})`;
+  const asunto = `Pedido de insumos${pedidoCategoriaActual?' ('+etiquetaPedidoCategoria()+')':''} — Servicios Generales (${todayISO()})`;
   const cuerpo = `Buen día,\n\nAdjunto el listado de insumos sugerido para reposición, calculado según el consumo mensual del personal y el inventario actual.\n\nTotal de productos a pedir: ${pedido.length}.\n\n(Guarda como PDF desde la pestaña que se acaba de abrir y adjúntalo aquí antes de enviar.)\n\nQuedo atento(a).\n\nServicios Generales\nColegio Americano de Barranquilla`;
   // se abre en el mismo instante del clic (sin setTimeout): si se retrasa,
   // el navegador la trata como ventana emergente no solicitada y la bloquea
