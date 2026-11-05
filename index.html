@@ -2167,7 +2167,7 @@
       </div>
       <div class="table-wrap">
         <table id="tablaPedidoSugerido">
-          <thead><tr><th>Producto</th><th>Consumo mensual</th><th>Disponible</th><th>A pedir</th></tr></thead>
+          <thead><tr><th class="sortable" data-pedsort="nombre">Producto</th><th class="sortable" data-pedsort="consumo">Consumo mensual</th><th class="sortable" data-pedsort="disponible">Disponible</th><th class="sortable" data-pedsort="aPedir">A pedir</th></tr></thead>
           <tbody id="pedidoSugeridoBody"></tbody>
         </table>
       </div>
@@ -2201,7 +2201,7 @@
       <p class="hint" style="margin:0 0 14px;">Haz clic en una fila para ver el detalle completo del producto.</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Producto</th><th>Stock</th><th>Consumo mensual</th></tr></thead>
+          <thead><tr><th class="sortable" data-pansort="nombre">Producto</th><th class="sortable" data-pansort="cantidad">Stock</th><th class="sortable" data-pansort="consumoMensual">Consumo mensual</th></tr></thead>
           <tbody id="panelBody"></tbody>
         </table>
       </div>
@@ -10634,7 +10634,9 @@ function renderPanelCards(){
     if(stockF==='bajo' && !(Number(i.cantidad) <= Number(i.stockMin))) return false;
     if(stockF==='faltante' && !(Number(i.cantidad||0)<=0)) return false;
     return true;
-  }).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  });
+  ordenarLista(rows, panelSort);
+  marcarEncabezadosOrden('data-pansort', panelSort);
 
   const tbody = document.getElementById('panelBody');
   tbody.innerHTML = rows.length ? rows.map(i=>{
@@ -10914,10 +10916,41 @@ document.getElementById('btnCloseMesDetalle').addEventListener('click', ()=>docu
    ahora mismo. Solo se listan los que realmente hacen falta (a pedir > 0),
    ordenados de mayor a menor urgencia. Se recalcula solo a partir de datos
    reales (consumoMensual y cantidad), así que siempre está al día. */
+/* Orden por columna (clic en el encabezado; otro clic invierte): sirve para la tabla,
+   el PDF y el Excel, que siempre salen en el orden que estés viendo. */
+let pedidoSort = {key:'aPedir', dir:-1};
+let panelSort = {key:'nombre', dir:1};
+function ordenarLista(arr, st){
+  return arr.sort((a,b)=>{
+    const x = a[st.key], y = b[st.key];
+    const c = (typeof x==='string' || typeof y==='string') ? String(x||'').localeCompare(String(y||''), 'es', {sensitivity:'base'}) : (Number(x||0) - Number(y||0));
+    return c*st.dir || String(a.nombre).localeCompare(String(b.nombre), 'es', {sensitivity:'base'});
+  });
+}
+function marcarEncabezadosOrden(attr, st){
+  document.querySelectorAll(`th[${attr}]`).forEach(th=>{
+    th.classList.remove('sort-active');
+    const old = th.querySelector('.sort-arrow'); if(old) old.remove();
+    if(th.getAttribute(attr)===st.key){
+      th.classList.add('sort-active');
+      const ar = document.createElement('span'); ar.className = 'sort-arrow'; ar.textContent = st.dir===1 ? '▲' : '▼'; th.appendChild(ar);
+    }
+  });
+}
+document.querySelectorAll('th[data-pedsort]').forEach(th=>th.addEventListener('click', ()=>{
+  const k = th.dataset.pedsort;
+  pedidoSort = pedidoSort.key===k ? {key:k, dir:-pedidoSort.dir} : {key:k, dir: k==='nombre' ? 1 : -1};
+  renderPedidoSugerido();
+}));
+document.querySelectorAll('th[data-pansort]').forEach(th=>th.addEventListener('click', ()=>{
+  const k = th.dataset.pansort;
+  panelSort = panelSort.key===k ? {key:k, dir:-panelSort.dir} : {key:k, dir: k==='nombre' ? 1 : -1};
+  renderPanelCards();
+}));
 let pedidoCategoriaActual = '';
 const etiquetaPedidoCategoria = () => pedidoCategoriaActual==='__sin__' ? 'Sin categoría' : pedidoCategoriaActual;
 function getPedidoSugerido(){
-  return insumos
+  const lista = insumos
     .filter(i=>!pedidoCategoriaActual || (pedidoCategoriaActual==='__sin__' ? !i.categoria : i.categoria===pedidoCategoriaActual))
     .map(i=>{
       const consumo = Number(i.consumoMensual||0);
@@ -10925,8 +10958,8 @@ function getPedidoSugerido(){
       const aPedir = Math.max(0, Math.round((consumo-disponible)*10)/10);
       return {nombre:i.nombre, unidad:i.unidad||'', consumo, disponible, aPedir};
     })
-    .filter(p=>p.aPedir>0)
-    .sort((a,b)=>b.aPedir-a.aPedir);
+    .filter(p=>p.aPedir>0);
+  return ordenarLista(lista, pedidoSort);
 }
 
 function renderPedidoCategorias(){
@@ -10940,6 +10973,7 @@ function renderPedidoCategorias(){
 }
 function renderPedidoSugerido(){
   renderPedidoCategorias();
+  marcarEncabezadosOrden('data-pedsort', pedidoSort);
   const pedido = getPedidoSugerido();
   const tbody = document.getElementById('pedidoSugeridoBody');
   tbody.innerHTML = pedido.length ? pedido.map(p=>`
@@ -11134,7 +11168,8 @@ function construirInventarioDisponibleHTML(){
     if(stockF==='bajo' && !(Number(i.cantidad) <= Number(i.stockMin))) return false;
     if(stockF==='faltante' && !(Number(i.cantidad||0)<=0)) return false;
     return true;
-  }).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  });
+  ordenarLista(rows, panelSort);
 
   const fechaStr = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
   const filtroLabel = stockF==='bajo' ? ' — Solo bajo mínimo' : stockF==='faltante' ? ' — Solo faltantes' : '';
