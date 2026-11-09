@@ -2301,13 +2301,15 @@
           <input type="text" id="entregaProdSearch" placeholder="Nombre del insumo...">
         </div>
       </div>
+      <div id="entregaCatPills" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
       <div class="tile-grid" id="entregaProductCards"></div>
 
       <div class="panel" style="margin-top:20px;">
-        <h2>Productos a entregar</h2>
+        <h2 id="entregaCarritoTitulo">Productos a entregar</h2>
         <div id="carritoBody"><p class="empty">Aún no has agregado productos. Toca uno arriba para empezar.</p></div>
         <div class="modal-actions" style="justify-content:flex-start;margin-top:12px;">
           <button class="primary" id="btnCerrarEntrega">Cerrar entrega y firmar</button>
+          <button class="primary" id="btnGuardarEdicionEntrega" style="display:none;">Guardar cambios</button>
         </div>
       </div>
     </div>
@@ -11729,8 +11731,36 @@ document.getElementById('btnConfirmDelTrab').addEventListener('click', async ()=
 });
 
 /* --- Paso 2: carrito de productos --- */
+let editingEntregaId = null;
+let entregaCatActual = '';
+function stockBase(i){
+  let base = Number(i.cantidad)||0;
+  if(editingEntregaId){
+    base += movimientos.filter(m=>m.entregaId===editingEntregaId && m.insumoId===i.id && m.tipo==='salida').reduce((s,m)=>s+m.cantidad,0);
+  }
+  return base;
+}
+function setEntregaModo(edit){
+  document.getElementById('btnCerrarEntrega').style.display = edit ? 'none' : '';
+  document.getElementById('btnGuardarEdicionEntrega').style.display = edit ? '' : 'none';
+  document.getElementById('entregaCarritoTitulo').textContent = edit ? 'Editando entrega' : 'Productos a entregar';
+}
+function editarEntrega(id){
+  const e = entregas.find(x=>x.id===id);
+  if(!e) return;
+  const t = trabajadores.find(x=>x.id===e.trabajadorId) || {id:e.trabajadorId, nombre:e.trabajadorNombre, cargo:'', area:''};
+  openEntregaCart(t);
+  editingEntregaId = id;
+  carrito = e.items.map(it=>({insumoId:it.insumoId, nombre:it.nombre, unidad:it.unidad||'', cantidad:it.cantidad}));
+  setEntregaModo(true);
+  renderEntregaProductTiles();
+  renderCarrito();
+}
 function openEntregaCart(t){
   entregaTrabajadorActual = t;
+  editingEntregaId = null;
+  entregaCatActual = '';
+  setEntregaModo(false);
   carrito = [];
   document.getElementById('entregaTrabajadorNombre').textContent = t.nombre;
   document.getElementById('entregaTrabajadorCargo').textContent = [t.cargo, t.area].filter(Boolean).join(' · ');
@@ -11752,6 +11782,8 @@ async function backToTrabajadores(){
   }
   carrito = [];
   entregaTrabajadorActual = null;
+  editingEntregaId = null;
+  setEntregaModo(false);
   document.getElementById('entregaStepCart').style.display = 'none';
   document.getElementById('entregaStepWorker').style.display = 'block';
   renderTrabajadorTiles();
@@ -11765,12 +11797,18 @@ function cantidadEnCarrito(insumoId){
 
 function renderEntregaProductTiles(){
   const search = document.getElementById('entregaProdSearch').value.toLowerCase().trim();
-  const rows = insumos.filter(i=>!search || i.nombre.toLowerCase().includes(search))
+  const pills = document.getElementById('entregaCatPills');
+  pills.innerHTML = [['','Todas']].concat(categoriasInsumos.map(c=>[c,iconoCategoria(c)+' '+c])).map(([c,l])=>
+    `<button class="year-pill${entregaCatActual===c?' active':''}" data-entregacat="${esc(c)}">${esc(l)}</button>`).join('');
+  pills.querySelectorAll('[data-entregacat]').forEach(b=>b.addEventListener('click', ()=>{
+    entregaCatActual = b.dataset.entregacat; renderEntregaProductTiles();
+  }));
+  const rows = insumos.filter(i=>(!search || i.nombre.toLowerCase().includes(search)) && (!entregaCatActual || i.categoria===entregaCatActual))
     .sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
   const grid = document.getElementById('entregaProductCards');
   grid.innerHTML = rows.length ? rows.map(i=>{
-    const disponibleReal = Number(i.cantidad) - cantidadEnCarrito(i.id);
+    const disponibleReal = stockBase(i) - cantidadEnCarrito(i.id);
     const bajo = disponibleReal <= 0;
     return `
     <div class="tile-card${bajo?' low':''}" data-prodtile="${i.id}">
@@ -11794,7 +11832,7 @@ function updateCantDisplay(){
 function openCantModal(insumoId){
   const i = insumos.find(x=>x.id===insumoId);
   if(!i) return;
-  const disponibleReal = Number(i.cantidad) - cantidadEnCarrito(insumoId);
+  const disponibleReal = stockBase(i) - cantidadEnCarrito(insumoId);
   if(disponibleReal<=0){ showToast(`No queda disponible de "${i.nombre}" (ya está todo en el carrito o sin stock).`); return; }
   cantModalInsumoId = insumoId;
   cantKeypadValue = '1';
@@ -11824,7 +11862,7 @@ document.getElementById('btnAddCarrito').addEventListener('click', ()=>{
   const i = insumos.find(x=>x.id===cantModalInsumoId);
   if(!i) return;
   const cant = Number(cantKeypadValue)||0;
-  const disponibleReal = Number(i.cantidad) - cantidadEnCarrito(i.id);
+  const disponibleReal = stockBase(i) - cantidadEnCarrito(i.id);
   if(cant<=0){ showToast('La cantidad debe ser mayor a 0.'); return; }
   if(cant>disponibleReal){ showToast(`Solo quedan ${disponibleReal} ${i.unidad||''} disponibles.`); return; }
   const existing = carrito.find(c=>c.insumoId===i.id);
@@ -12060,6 +12098,40 @@ document.getElementById('btnConfirmarEntrega').addEventListener('click', async (
   }
 });
 
+document.getElementById('btnGuardarEdicionEntrega').addEventListener('click', async ()=>{
+  const e = entregas.find(x=>x.id===editingEntregaId);
+  if(!e) return;
+  if(!carrito.length){ showToast('La entrega debe tener al menos un producto. Para quitarla usa Eliminar.'); return; }
+  for(const c of carrito){
+    const i = insumos.find(x=>x.id===c.insumoId);
+    if(!i || stockBase(i) < c.cantidad){ showToast(`Stock insuficiente de "${c.nombre}".`); return; }
+  }
+  const cambio = JSON.stringify(e.items.map(x=>[x.insumoId,x.cantidad]).sort()) !== JSON.stringify(carrito.map(x=>[x.insumoId,x.cantidad]).sort());
+  if(!cambio){ showToast('No hay cambios.'); return; }
+  if(e.firma && !await customConfirm('Al modificar la entrega la firma actual se invalida y habrá que firmarla de nuevo. ¿Continuar?')) return;
+  // revertir movimientos anteriores y aplicar los nuevos
+  movimientos.filter(m=>m.entregaId===e.id).forEach(m=>{
+    const ins = insumos.find(i=>i.id===m.insumoId);
+    if(ins) ins.cantidad = Number(ins.cantidad||0) + (m.tipo==='entrada' ? -m.cantidad : m.cantidad);
+  });
+  movimientos = movimientos.filter(m=>m.entregaId!==e.id);
+  carrito.forEach(c=>{
+    const ins = insumos.find(i=>i.id===c.insumoId);
+    ins.cantidad = Number(ins.cantidad) - c.cantidad;
+    movimientos.push({id:uid(), insumoId:c.insumoId, tipo:'salida', cantidad:c.cantidad, fecha:e.fecha,
+      entregadoA:e.trabajadorNombre, motivo:'Entrega digital', entregaId:e.id, createdAt:new Date().toISOString()});
+  });
+  e.items = carrito.map(c=>({insumoId:c.insumoId, nombre:c.nombre, cantidad:c.cantidad, unidad:c.unidad}));
+  e.firma = null;
+  await saveInsumos(); await saveMovimientos(); await saveEntregas();
+  carrito = []; entregaTrabajadorActual = null; editingEntregaId = null; setEntregaModo(false);
+  document.getElementById('entregaStepCart').style.display = 'none';
+  document.getElementById('entregaStepWorker').style.display = 'block';
+  populateInvFilters(); populateMovSelects(); renderPanelCards();
+  renderMovimientosTable(); renderMovimientosAllTable(); renderTrabajadorTiles(); renderEntregasHistory();
+  showToast('Entrega actualizada. Pendiente de firma.');
+});
+
 /* --- Historial de entregas digitales --- */
 function renderEntregasHistory(){
   const rows = [...entregas].sort((a,b)=>(b.fecha+b.createdAt).localeCompare(a.fecha+a.createdAt)).slice(0,25);
@@ -12072,7 +12144,7 @@ function renderEntregasHistory(){
       <td>${esc(e.trabajadorNombre)}</td>
       <td>${esc(productos)}</td>
       <td>${e.firma?`<img class="firma-thumb" src="${e.firma}" data-lb="1">`:`<button class="ghost" data-resign="${e.id}" style="color:var(--orange);border-color:var(--orange);">⚠ Firmar</button>`}</td>
-      <td><button class="ghost danger" data-delentrega="${e.id}">Eliminar</button></td>
+      <td><button class="ghost" data-editentrega="${e.id}">Editar</button> <button class="ghost danger" data-delentrega="${e.id}">Eliminar</button></td>
     </tr>`;
   }).join('') : `<tr><td colspan="5" class="empty">Aún no hay entregas digitales registradas.</td></tr>`;
 
@@ -12081,6 +12153,9 @@ function renderEntregasHistory(){
   });
   tbody.querySelectorAll('[data-resign]').forEach(b=>{
     b.addEventListener('click', ()=>openResignModal(b.dataset.resign));
+  });
+  tbody.querySelectorAll('[data-editentrega]').forEach(b=>{
+    b.addEventListener('click', ()=>editarEntrega(b.dataset.editentrega));
   });
   tbody.querySelectorAll('[data-delentrega]').forEach(b=>{
     b.addEventListener('click', ()=>deleteEntregaCompleta(b.dataset.delentrega));
