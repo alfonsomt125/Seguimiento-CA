@@ -1499,7 +1499,7 @@
     <p class="hint" style="margin:0 0 14px;">Registros marcados como "Pago pendiente para el próximo corte" en cualquier período — no cuenta las compensatorias, esas se resuelven con tiempo libre, no con dinero.</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Trabajador</th><th>Fecha</th><th>Horas</th><th>Motivo</th><th>Período en que se cruzó</th><th></th></tr></thead>
+        <thead><tr><th>Trabajador</th><th>Fecha</th><th>Horas</th><th>Motivo</th><th>Cruce</th><th></th></tr></thead>
         <tbody id="hePendientesBody"></tbody>
         <tfoot id="hePendientesFooter"></tfoot>
       </table>
@@ -1683,8 +1683,14 @@
         </select>
       </div>
       <div class="field" style="margin-top:14px;display:none;" id="heCruzaEnWrap">
-        <label>Período en que se cruzó / se pagará</label>
-        <input type="text" id="heCruzaEn" placeholder="Ej: Corte 16 nov – 15 dic 2026">
+        <label>Cómo se cruza esta hora pendiente</label>
+        <select id="heCruzaTipo">
+          <option value="">Sin cruzar</option>
+          <option value="periodo">Se paga/cruza en un período</option>
+          <option value="tiempo">Se cruza con tiempo libre</option>
+        </select>
+        <select id="heCruzaEn" style="margin-top:8px;display:none;"></select>
+        <input type="date" id="heCruzaFecha" style="margin-top:8px;display:none;">
       </div>
       <div class="field" style="margin-top:14px;" id="heFechaCompensatoriaWrap">
         <label>Fecha del compensatorio</label>
@@ -7940,7 +7946,7 @@ function renderHePendientes(){
       <td>${fmtDate(h.fecha)}</td>
       <td>${r2(h.horas)}h</td>
       <td>${esc(h.motivo)||'—'}</td>
-      <td>${h.cruzaEn?esc(h.cruzaEn):'<span style="color:var(--gray);">Sin cruzar</span>'}</td>
+      <td>${h.cruzaTipo==='tiempo'?'⏱ Tiempo libre '+fmtDate(h.cruzaFecha):h.cruzaEn?esc(h.cruzaEn):'<span style="color:var(--gray);">Sin cruzar</span>'}</td>
       <td><button class="ghost" data-hepend="${h.id}">Editar</button></td>
     </tr>`).join('') : `<tr><td colspan="6" class="empty">No hay horas pendientes de pago.</td></tr>`;
   tbody.querySelectorAll('[data-hepend]').forEach(b=>b.addEventListener('click', ()=>abrirHEModal(horasExtras.find(x=>x.id===b.dataset.hepend))));
@@ -8342,12 +8348,25 @@ function abrirHEModal(registro){
   document.getElementById('heEstadoPago').value = registro?.estadoPago || 'normal';
   document.getElementById('heFechaCompensatoria').value = registro?.fechaCompensatoria || '';
   document.getElementById('heFechaCompensatoriaWrap').style.display = (registro?.estadoPago==='compensatorio') ? 'block' : 'none';
-  document.getElementById('heCruzaEn').value = registro?.cruzaEn || '';
+  const selP = document.getElementById('heCruzaEn');
+  const lista = [...document.querySelectorAll('#heCortesRapidos [data-corte]')].map(b=>b.textContent.trim());
+  if(registro?.cruzaEn && !lista.includes(registro.cruzaEn)) lista.push(registro.cruzaEn);
+  selP.innerHTML = lista.map(l=>`<option>${esc(l)}</option>`).join('');
+  document.getElementById('heCruzaTipo').value = registro?.cruzaTipo || (registro?.cruzaEn?'periodo':'');
+  if(registro?.cruzaEn) selP.value = registro.cruzaEn;
+  document.getElementById('heCruzaFecha').value = registro?.cruzaFecha || '';
+  actualizarCruzaHE();
   document.getElementById('heCruzaEnWrap').style.display = (registro?.estadoPago==='pendiente') ? 'block' : 'none';
   document.getElementById('btnEliminarHE').style.display = registro ? 'inline-block' : 'none';
   document.getElementById('heModalBg').classList.add('active');
   actualizarAvisoLimiteHE();
 }
+function actualizarCruzaHE(){
+  const t = document.getElementById('heCruzaTipo').value;
+  document.getElementById('heCruzaEn').style.display = t==='periodo' ? 'block' : 'none';
+  document.getElementById('heCruzaFecha').style.display = t==='tiempo' ? 'block' : 'none';
+}
+document.getElementById('heCruzaTipo').addEventListener('change', actualizarCruzaHE);
 document.getElementById('heEstadoPago').addEventListener('change', (e)=>{
   document.getElementById('heFechaCompensatoriaWrap').style.display = e.target.value==='compensatorio' ? 'block' : 'none';
   document.getElementById('heCruzaEnWrap').style.display = e.target.value==='pendiente' ? 'block' : 'none';
@@ -8525,7 +8544,10 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
   const estadoPago = document.getElementById('heEstadoPago').value;
   const restaAlmuerzo = document.getElementById('heRestarAlmuerzo').checked;
   const fechaCompensatoria = estadoPago==='compensatorio' ? document.getElementById('heFechaCompensatoria').value : '';
-  const cruzaEn = estadoPago==='pendiente' ? document.getElementById('heCruzaEn').value.trim() : '';
+  const cruzaTipo = estadoPago==='pendiente' ? document.getElementById('heCruzaTipo').value : '';
+  const cruzaEn = cruzaTipo==='periodo' ? document.getElementById('heCruzaEn').value : '';
+  const cruzaFecha = cruzaTipo==='tiempo' ? document.getElementById('heCruzaFecha').value : '';
+  if(cruzaTipo==='tiempo' && !cruzaFecha){ showToast('Elige la fecha del tiempo libre.'); return; }
   if(!trabajadorId){ showToast('Elige un trabajador.'); return; }
   if(horas===null){ showToast('La hora de fin debe ser después de la hora de inicio.'); return; }
   if(estadoPago==='compensatorio' && !fechaCompensatoria){ showToast('Elige la fecha del compensatorio.'); return; }
@@ -8554,7 +8576,7 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
       if(!await customConfirm(`${diasQueExceden.length} de los ${dias.length} día(s) superarían el límite diario y/o del período configurado. ¿Registrarlos de todas formas?`)) return;
     }
     dias.forEach(f=>{
-      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaEn, restaAlmuerzo, createdAt: new Date().toISOString()});
+      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo, createdAt: new Date().toISOString()});
     });
     await saveHorasExtras();
     document.getElementById('heModalBg').classList.remove('active');
@@ -8576,9 +8598,9 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
 
   if(heEditandoId){
     const idx = horasExtras.findIndex(h=>h.id===heEditandoId);
-    if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaEn, restaAlmuerzo};
+    if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo};
   }else{
-    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaEn, restaAlmuerzo, createdAt: new Date().toISOString()});
+    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo, createdAt: new Date().toISOString()});
   }
   await saveHorasExtras();
   document.getElementById('heModalBg').classList.remove('active');
