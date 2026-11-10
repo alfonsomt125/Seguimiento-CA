@@ -12000,6 +12000,28 @@ function clearFirmaCanvas(){
 }
 document.getElementById('btnLimpiarFirma').addEventListener('click', clearFirmaCanvas);
 
+/* Las firmas se guardan reducidas (600 px): el lienzo es de 1600x900 y cada firma
+   pesaba decenas de KB; como 'entregas' se sube y baja completo, eso volvía lento todo el inventario. */
+function comprimirFirma(src){
+  return new Promise(res=>{
+    const im = new Image();
+    im.onload = ()=>{
+      const w = 600, h = Math.round(im.height*w/im.width);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0,0,w,h); x.drawImage(im,0,0,w,h);
+      res(c.toDataURL('image/jpeg',0.8));
+    };
+    im.onerror = ()=>res(src);
+    im.src = src;
+  });
+}
+async function comprimirFirmasExistentes(){
+  const grandes = entregas.filter(e=>e.firma && e.firma.length>25000 && e.firma.startsWith('data:image/png'));
+  if(!grandes.length) return;
+  for(const e of grandes){ e.firma = await comprimirFirma(e.firma); }
+  await saveEntregas();
+}
+
 /* Crea la entrega y sus movimientos (descuenta stock), con la firma que se
    le pase — o sin firma (null) si se eligió "Firmar después". En ese caso
    la entrega queda visible en el historial con el aviso "⚠ Firmar", listo
@@ -12073,7 +12095,7 @@ document.getElementById('btnConfirmarEntrega').addEventListener('click', async (
   if(resignEntregaId){
     const entrega = entregas.find(e=>e.id===resignEntregaId);
     if(entrega){
-      entrega.firma = document.getElementById('firmaCanvas').toDataURL('image/png');
+      entrega.firma = await comprimirFirma(document.getElementById('firmaCanvas').toDataURL('image/png'));
       await saveEntregas();
       showToast(`Firma de ${entrega.trabajadorNombre} registrada correctamente.`);
     }
@@ -12083,7 +12105,7 @@ document.getElementById('btnConfirmarEntrega').addEventListener('click', async (
     return;
   }
 
-  const firmaDataUrl = document.getElementById('firmaCanvas').toDataURL('image/png');
+  const firmaDataUrl = await comprimirFirma(document.getElementById('firmaCanvas').toDataURL('image/png'));
   const trabajadorNombre = entregaTrabajadorActual.nombre;
   const ok = await crearEntregaConFirma(firmaDataUrl);
   if(ok){
@@ -12233,6 +12255,7 @@ async function init(){
     return;
   }
   if(usedSeed){ await saveActivities(); }
+  comprimirFirmasExistentes().catch(e=>console.warn('compresión de firmas',e));
 
   // Todas las "marcas de versión" de sincronización se leen y guardan juntas
   // (una sola llamada de cada lado) para no saturar el límite de solicitudes
