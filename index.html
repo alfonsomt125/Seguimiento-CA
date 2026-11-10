@@ -1499,7 +1499,7 @@
     <p class="hint" style="margin:0 0 14px;">Registros marcados como "Pago pendiente para el próximo corte" en cualquier período — no cuenta las compensatorias, esas se resuelven con tiempo libre, no con dinero.</p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Trabajador</th><th>Fecha</th><th>Horas</th><th>Motivo</th></tr></thead>
+        <thead><tr><th>Trabajador</th><th>Fecha</th><th>Horas</th><th>Motivo</th><th>Período en que se cruzó</th></tr></thead>
         <tbody id="hePendientesBody"></tbody>
         <tfoot id="hePendientesFooter"></tfoot>
       </table>
@@ -1681,6 +1681,10 @@
           <option value="pendiente">Pago pendiente para el próximo corte</option>
           <option value="compensatorio">Día compensatorio (tiempo libre)</option>
         </select>
+      </div>
+      <div class="field" style="margin-top:14px;display:none;" id="heCruzaEnWrap">
+        <label>Período en que se cruzó / se pagará</label>
+        <input type="text" id="heCruzaEn" placeholder="Ej: Corte 16 nov – 15 dic 2026">
       </div>
       <div class="field" style="margin-top:14px;" id="heFechaCompensatoriaWrap">
         <label>Fecha del compensatorio</label>
@@ -7936,11 +7940,12 @@ function renderHePendientes(){
       <td>${fmtDate(h.fecha)}</td>
       <td>${r2(h.horas)}h</td>
       <td>${esc(h.motivo)||'—'}</td>
-    </tr>`).join('') : `<tr><td colspan="4" class="empty">No hay horas pendientes de pago.</td></tr>`;
+      <td>${h.cruzaEn?esc(h.cruzaEn):'<span style="color:var(--gray);">Sin cruzar</span>'}</td>
+    </tr>`).join('') : `<tr><td colspan="5" class="empty">No hay horas pendientes de pago.</td></tr>`;
   document.getElementById('hePendientesFooter').innerHTML = pendientes.length ? `
     <tr style="font-weight:700;background:var(--paper-2,#f4f5f8);">
       <td colspan="2">Total</td>
-      <td colspan="2">${r2(pendientes.reduce((s,h)=>s+Number(h.horas||0),0))}h</td>
+      <td colspan="3">${r2(pendientes.reduce((s,h)=>s+Number(h.horas||0),0))}h</td>
     </tr>` : '';
 }
 function renderHeDashboard(desde, hasta){
@@ -8335,12 +8340,15 @@ function abrirHEModal(registro){
   document.getElementById('heEstadoPago').value = registro?.estadoPago || 'normal';
   document.getElementById('heFechaCompensatoria').value = registro?.fechaCompensatoria || '';
   document.getElementById('heFechaCompensatoriaWrap').style.display = (registro?.estadoPago==='compensatorio') ? 'block' : 'none';
+  document.getElementById('heCruzaEn').value = registro?.cruzaEn || '';
+  document.getElementById('heCruzaEnWrap').style.display = (registro?.estadoPago==='pendiente') ? 'block' : 'none';
   document.getElementById('btnEliminarHE').style.display = registro ? 'inline-block' : 'none';
   document.getElementById('heModalBg').classList.add('active');
   actualizarAvisoLimiteHE();
 }
 document.getElementById('heEstadoPago').addEventListener('change', (e)=>{
   document.getElementById('heFechaCompensatoriaWrap').style.display = e.target.value==='compensatorio' ? 'block' : 'none';
+  document.getElementById('heCruzaEnWrap').style.display = e.target.value==='pendiente' ? 'block' : 'none';
 });
 document.getElementById('btnNuevaHoraExtra').addEventListener('click', ()=>{
   if(!trabajadores.length){ showToast('Primero agrega trabajadores desde Salida de Insumos.'); return; }
@@ -8515,6 +8523,7 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
   const estadoPago = document.getElementById('heEstadoPago').value;
   const restaAlmuerzo = document.getElementById('heRestarAlmuerzo').checked;
   const fechaCompensatoria = estadoPago==='compensatorio' ? document.getElementById('heFechaCompensatoria').value : '';
+  const cruzaEn = estadoPago==='pendiente' ? document.getElementById('heCruzaEn').value.trim() : '';
   if(!trabajadorId){ showToast('Elige un trabajador.'); return; }
   if(horas===null){ showToast('La hora de fin debe ser después de la hora de inicio.'); return; }
   if(estadoPago==='compensatorio' && !fechaCompensatoria){ showToast('Elige la fecha del compensatorio.'); return; }
@@ -8543,7 +8552,7 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
       if(!await customConfirm(`${diasQueExceden.length} de los ${dias.length} día(s) superarían el límite diario y/o del período configurado. ¿Registrarlos de todas formas?`)) return;
     }
     dias.forEach(f=>{
-      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, restaAlmuerzo, createdAt: new Date().toISOString()});
+      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaEn, restaAlmuerzo, createdAt: new Date().toISOString()});
     });
     await saveHorasExtras();
     document.getElementById('heModalBg').classList.remove('active');
@@ -8565,9 +8574,9 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
 
   if(heEditandoId){
     const idx = horasExtras.findIndex(h=>h.id===heEditandoId);
-    if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, restaAlmuerzo};
+    if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaEn, restaAlmuerzo};
   }else{
-    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, restaAlmuerzo, createdAt: new Date().toISOString()});
+    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaEn, restaAlmuerzo, createdAt: new Date().toISOString()});
   }
   await saveHorasExtras();
   document.getElementById('heModalBg').classList.remove('active');
