@@ -1496,7 +1496,7 @@
 
   <div class="panel">
     <h2 style="margin:0 0 4px;">🕓 Horas pendientes de pago</h2>
-    <p class="hint" style="margin:0 0 14px;">Registros marcados como "Pago pendiente para el próximo corte" en cualquier período — no cuenta las compensatorias, esas se resuelven con tiempo libre, no con dinero.</p>
+    <p class="hint" style="margin:0 0 14px;">Registros marcados como "Pago pendiente para el próximo corte" en cualquier período, que aún no se han cruzado (al cruzarlos con un período o con tiempo libre salen de esta lista) — no cuenta las compensatorias, esas se resuelven con tiempo libre, no con dinero.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Trabajador</th><th>Fecha</th><th>Horas</th><th>Motivo</th><th>Cruce</th><th></th></tr></thead>
@@ -1504,6 +1504,7 @@
         <tfoot id="hePendientesFooter"></tfoot>
       </table>
     </div>
+    <div class="hint" id="hePendCruzadasInfo" style="margin-top:12px;"></div>
   </div>
 
   <div class="panel">
@@ -7938,7 +7939,8 @@ function calcularHEPorPersona(desde, hasta){
    la cola completa de lo que falta por pagar, sin importar de qué corte
    vino originalmente. */
 function renderHePendientes(){
-  const pendientes = horasExtras.filter(h=>h.estadoPago==='pendiente').sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  const cruzadas = horasExtras.filter(h=>h.estadoPago==='pendiente' && h.cruzaTipo);
+  const pendientes = horasExtras.filter(h=>h.estadoPago==='pendiente' && !h.cruzaTipo).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
   const tbody = document.getElementById('hePendientesBody');
   tbody.innerHTML = pendientes.length ? pendientes.map(h=>`
     <tr>
@@ -7949,6 +7951,8 @@ function renderHePendientes(){
       <td>${h.cruzaTipo==='tiempo'?'⏱ Tiempo libre '+fmtDate(h.cruzaFecha):h.cruzaEn?esc(h.cruzaEn):'<span style="color:var(--gray);">Sin cruzar</span>'}</td>
       <td><button class="ghost" data-hepend="${h.id}">Editar</button></td>
     </tr>`).join('') : `<tr><td colspan="6" class="empty">No hay horas pendientes de pago.</td></tr>`;
+  document.getElementById('hePendCruzadasInfo').innerHTML = cruzadas.length ? `<details><summary>${cruzadas.length} registro(s) ya cruzado(s) — ${r2(cruzadas.reduce((s,h)=>s+Number(h.horas||0),0))}h (salen de la lista de pendientes)</summary>`+cruzadas.map(h=>`<div style="margin:6px 0;">${esc(h.trabajadorNombre)} · ${fmtDate(h.fecha)} · ${r2(h.horas)}h → ${h.cruzaTipo==='tiempo'?'tiempo libre '+fmtDate(h.cruzaFecha):esc(h.cruzaEn)} <button class="ghost" data-hepend="${h.id}">Editar</button></div>`).join('')+`</details>` : '';
+  document.getElementById('hePendCruzadasInfo').querySelectorAll('[data-hepend]').forEach(b=>b.addEventListener('click', ()=>abrirHEModal(horasExtras.find(x=>x.id===b.dataset.hepend))));
   tbody.querySelectorAll('[data-hepend]').forEach(b=>b.addEventListener('click', ()=>abrirHEModal(horasExtras.find(x=>x.id===b.dataset.hepend))));
   document.getElementById('hePendientesFooter').innerHTML = pendientes.length ? `
     <tr style="font-weight:700;background:var(--paper-2,#f4f5f8);">
