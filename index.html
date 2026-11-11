@@ -9025,6 +9025,37 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
   document.getElementById('rsPreviewFrame').srcdoc = html;
   document.getElementById('rsPreviewModalBg').classList.add('active');
 });
+/* ===== Aviso de nueva versión =====
+   APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
+   volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
+const APP_VERSION = '2026-11-11-1602';
+(function(){
+  const tag = document.createElement('div');
+  tag.textContent = 'v ' + APP_VERSION;
+  tag.style.cssText = 'position:fixed;left:8px;bottom:4px;font-size:10px;color:#9aa3b2;z-index:5;pointer-events:none;';
+  document.body.appendChild(tag);
+  let avisado = false;
+  async function buscarActualizacion(){
+    if(avisado || location.protocol==='file:') return;
+    try{
+      const r = await fetch(location.pathname + '?chk=' + Date.now(), {cache:'no-store'});
+      if(!r.ok) return;
+      const m = (await r.text()).match(/const APP_VERSION = '([^']+)'/);
+      if(m && m[1] !== APP_VERSION){
+        avisado = true;
+        const b = document.createElement('div');
+        b.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#011632;color:#fff;padding:12px 18px;border-radius:12px;box-shadow:0 6px 24px #0005;z-index:99999;display:flex;gap:14px;align-items:center;font-size:14px;';
+        b.innerHTML = '<span>🔄 Hay una nueva versión disponible.</span><button style="background:#fff;color:#011632;border:none;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer;">Actualizar</button><button style="background:none;color:#fff;border:none;cursor:pointer;font-size:16px;" title="Más tarde">✕</button>';
+        b.querySelectorAll('button')[0].addEventListener('click', ()=>{ location.href = location.pathname + '?v=' + Date.now(); });
+        b.querySelectorAll('button')[1].addEventListener('click', ()=>b.remove());
+        document.body.appendChild(b);
+      }
+    }catch(e){}
+  }
+  setInterval(buscarActualizacion, 5*60*1000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) buscarActualizacion(); });
+  setTimeout(buscarActualizacion, 15000);
+})();
 let heEditandoId = null;
 function poblarSelectTrabajadoresHE(){
   document.getElementById('heTrabajador').innerHTML = trabajadores.map(t=>`<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
