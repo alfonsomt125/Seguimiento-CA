@@ -1455,6 +1455,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
         <h2 style="margin:0;">Logística — turnos, horas extras y recargos</h2>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="ghost" id="btnLogIrLiq">💰 Liquidación</button>
           <button class="ghost" id="btnLogPersona">+ Persona</button>
           <button class="primary" id="btnLogTurnos">+ Registrar turnos</button>
         </div>
@@ -1476,7 +1477,7 @@
         <tbody id="heLogResumenBody"></tbody>
       </table></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="heLogLiqPanel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
         <h2 style="margin:0;">Liquidación por empleado — salario mínimo 2026</h2>
         <div style="display:flex;gap:8px;align-items:center;"><select id="heLogLiqPersona"></select><button class="ghost" id="btnLogLiqPdf">⬇ Exportar a PDF</button></div>
@@ -8548,6 +8549,38 @@ function logTablaLiq(personaId, estilos){
     + bloque('B','Del 15 de julio de 2026 en adelante','2026-08-01',42,210)
     + `<p style="margin:14px 0 0;font-size:15px;font-weight:700;">Total a reconocer: ${logMoneda(L.totA+L.totB)}</p>`;
 }
+const LOG_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function logPorMes(personaId){
+  const m = {};
+  logCalcularSemanas(personaId, null).flatMap(w=>w.detalle).forEach(d=>{
+    const k = d.fecha.slice(0,7);
+    const r = m[k] = m[k] || {tot:0, c:{}, v:0};
+    r.tot += d.neto; r.v += d.valor;
+    LOG_CONCEPTOS.forEach(c=>{ const key = c[0]+c[1]; r.c[key] = (r.c[key]||0) + (c[0]==='o'?d.ord:d.ext)[c[1]]; });
+  });
+  return m;
+}
+function logTablaMeses(personaId, estilos){
+  const m = logPorMes(personaId), th = estilos.th, td = estilos.td;
+  const meses = Object.keys(m).sort();
+  if(!meses.length) return '';
+  const cab = ['Recargo noct.','Recargo dom.','Recargo noct. dom.','Extra diurna','Extra noct.','Extra dom.','Extra noct. dom.'];
+  const filas = meses.map(k=>{
+    const r = m[k];
+    return `<tr><td style="${td}">${LOG_MESES[+k.slice(5)-1]}</td><td style="${td}text-align:right;">${r2(r.tot)}</td>${LOG_CONCEPTOS.map(c=>`<td style="${td}text-align:right;">${r2(r.c[c[0]+c[1]]||0)||'—'}</td>`).join('')}<td style="${td}text-align:right;font-weight:700;">${logMoneda(r.v)}</td></tr>`;
+  }).join('');
+  const tot = meses.reduce((a,k)=>a+m[k].v,0);
+  return `<h4 style="margin:16px 0 4px;">Mes por mes (horas por concepto)</h4>
+  <table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}text-align:left;">Mes</th><th style="${th}">Horas laboradas</th>${cab.map(c=>`<th style="${th}">${c}</th>`).join('')}<th style="${th}">Valor del mes</th></tr></thead><tbody>${filas}<tr style="font-weight:700;"><td style="${td}" colspan="9">Total</td><td style="${td}text-align:right;">${logMoneda(tot)}</td></tr></tbody></table>`;
+}
+function logMatrizMeses(estilos){
+  const por = logData.personal.map(p=>logPorMes(p.id));
+  const meses = [...new Set(por.flatMap(o=>Object.keys(o)))].sort();
+  const th = estilos.th, td = estilos.td;
+  return `<h4 style="margin:16px 0 4px;">Valor por mes y por empleado</h4><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}text-align:left;">Mes</th>${logData.personal.map(p=>`<th style="${th}">${esc(p.nombre)}</th>`).join('')}<th style="${th}">Total</th></tr></thead><tbody>`
+    + meses.map(k=>`<tr><td style="${td}">${LOG_MESES[+k.slice(5)-1]}</td>${por.map(o=>`<td style="${td}text-align:right;">${o[k]?logMoneda(o[k].v):'—'}</td>`).join('')}<td style="${td}text-align:right;font-weight:700;">${logMoneda(por.reduce((s,o)=>s+(o[k]?o[k].v:0),0))}</td></tr>`).join('')
+    + `<tr style="font-weight:700;"><td style="${td}">Total</td>${por.map(o=>`<td style="${td}text-align:right;">${logMoneda(Object.values(o).reduce((s,r)=>s+r.v,0))}</td>`).join('')}<td style="${td}text-align:right;">${logMoneda(por.reduce((s,o)=>s+Object.values(o).reduce((a,r)=>a+r.v,0),0))}</td></tr></tbody></table>`;
+}
 function renderLogLiquidacion(){
   const sel = document.getElementById('heLogLiqPersona');
   const prev = sel.value;
@@ -8556,8 +8589,10 @@ function renderLogLiquidacion(){
   const resumen = logData.personal.map(p=>{ const L = logLiquidar(p.id); return {p, a:L.totA, b:L.totB}; });
   document.getElementById('heLogLiqResumen').innerHTML = resumen.map(r=>`<tr><td>${esc(r.p.nombre)}</td><td>${logMoneda(r.a)}</td><td>${logMoneda(r.b)}</td><td><b>${logMoneda(r.a+r.b)}</b></td></tr>`).join('')
     + `<tr style="font-weight:700;background:var(--paper-2,#f4f5f8);"><td>Total</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.a,0))}</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.b,0))}</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.a+r.b,0))}</td></tr>`;
-  document.getElementById('heLogLiqDetalle').innerHTML = sel.value ? logTablaLiq(sel.value, {th:'padding:6px 8px;border-bottom:2px solid var(--line);font-size:12px;text-align:right;', td:'padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;'}) : '';
+  const est = {th:'padding:6px 8px;border-bottom:2px solid var(--line);font-size:12px;text-align:right;', td:'padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;'};
+  document.getElementById('heLogLiqDetalle').innerHTML = sel.value ? '<div class="table-wrap" style="padding:0 4px;">'+logMatrizMeses(est)+'</div><hr style="margin:18px 0;border:none;border-top:1px solid var(--line);">'+logTablaLiq(sel.value, est)+'<div class="table-wrap" style="padding:0 4px;">'+logTablaMeses(sel.value, est)+'</div>' : '';
 }
+document.getElementById('btnLogIrLiq').addEventListener('click', ()=>document.getElementById('heLogLiqPanel').scrollIntoView({behavior:'smooth'}));
 document.getElementById('heLogLiqPersona').addEventListener('change', renderLogLiquidacion);
 document.getElementById('btnLogLiqPdf').addEventListener('click', ()=>{
   const id = document.getElementById('heLogLiqPersona').value;
@@ -8567,6 +8602,7 @@ document.getElementById('btnLogLiqPdf').addEventListener('click', ()=>{
     <h2 style="margin:0 0 2px;">Liquidación de recargos y horas extras 2026 — Logística</h2>
     <p style="margin:0 0 10px;font-size:12px;color:#555;">Colegio Americano de Barranquilla · Servicios Generales · ${fmtDate(todayISO())}</p>
     ${logTablaLiq(id, e)}
+    ${logTablaMeses(id, e)}
     <p style="margin-top:16px;font-size:11px;color:#555;">Base: turnos del cronograma de Logística 2026. Horas extras por semana (lunes a domingo) sobre la jornada máxima vigente; noche desde las 7:00 p.m. (Ley 2466 de 2025); dominical 80% hasta el 30-jun-2026 y 90% desde el 1-jul-2026; divisor mensual 220 h antes del 15-jul-2026 y 210 h desde esa fecha (Ley 2101). No incluye festivos. Los valores son estimados y deben validarse con Talento Humano / asesoría laboral.</p></body></html>`;
   document.getElementById('rsPreviewTitulo').textContent = 'Previsualización de la liquidación';
   document.getElementById('rsPreviewFrame').srcdoc = html;
