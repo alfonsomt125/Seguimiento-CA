@@ -1765,6 +1765,7 @@
       <div class="field" style="margin-top:14px;" id="heFechaWrap">
         <label id="heFechaLabel">Fecha</label>
         <input type="date" id="heFecha">
+        <p class="hint" id="heHorarioInfo" style="margin:6px 0 0;"></p>
       </div>
       <div class="field" style="margin-top:14px;" id="heModoVariosDiasWrap">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
@@ -8966,7 +8967,8 @@ document.getElementById('btnHorPGuardar').addEventListener('click', async ()=>{
   const nombre = document.getElementById('horPNombre').value.trim(), st = horStore();
   if(!nombre){ showToast('Escribe el nombre.'); return; }
   if(st.personal.some(p=>p.nombre.toLowerCase()===nombre.toLowerCase())){ showToast('Esa persona ya está en el horario.'); return; }
-  st.personal.push(horArea==='logistica' ? {id:uid(), nombre, salario:0} : {id:uid(), nombre});
+  const tr = horArea==='logistica' ? null : trabajadores.find(t=>t.nombre.trim().toLowerCase()===nombre.toLowerCase());
+  st.personal.push(horArea==='logistica' ? {id:uid(), nombre, salario:0} : {id:uid(), nombre, trabajadorId: tr ? tr.id : ''});
   await horGuardar();
   document.getElementById('horPersonaModalBg').classList.remove('active');
   renderHorarios();
@@ -9055,6 +9057,7 @@ function abrirHEModal(registro){
   if(registro?.cruzaEn) selP.value = registro.cruzaEn;
   document.getElementById('heCruzaFecha').value = registro?.cruzaFecha || '';
   actualizarCruzaHE();
+  actualizarHorarioInfoHE(false);
   document.getElementById('heCruzaEnWrap').style.display = (registro?.estadoPago==='pendiente') ? 'block' : 'none';
   document.getElementById('btnEliminarHE').style.display = registro ? 'inline-block' : 'none';
   document.getElementById('heModalBg').classList.add('active');
@@ -9234,10 +9237,52 @@ function actualizarAvisoLimiteHE(){
   document.getElementById(id).addEventListener('change', actualizarAvisoLimiteHE);
 });
 
+/* Vínculo con "Horarios del Personal": el horario ordinario de Mantenimiento define desde qué hora
+   empiezan a contar las horas extras de cada trabajador. */
+function horTurnoDe(trabajadorId, fecha){
+  const t = trabajadores.find(x=>x.id===trabajadorId);
+  const nombre = t ? t.nombre.trim().toLowerCase() : '';
+  const p = horMant.personal.find(x=>x.trabajadorId===trabajadorId || (nombre && x.nombre.trim().toLowerCase()===nombre));
+  if(!p) return null;
+  const turno = horMant.turnos.find(x=>x.personaId===p.id && x.fecha===fecha) || null;
+  return {persona:p, turno: (turno && !turno.marca && turno.ini) ? turno : null, marca: turno && turno.marca ? turno.marca : ''};
+}
+function actualizarHorarioInfoHE(autoAjustar){
+  const el = document.getElementById('heHorarioInfo');
+  el.textContent = '';
+  if(heAreaActual!=='mantenimiento' || document.getElementById('heModoVariosDias').checked) return;
+  const trabajadorId = document.getElementById('heTrabajador').value, fecha = document.getElementById('heFecha').value;
+  if(!trabajadorId || !fecha) return;
+  const h = horTurnoDe(trabajadorId, fecha);
+  if(!h){ el.textContent = 'Esta persona aún no está en Horarios del Personal (Mantenimiento).'; el.style.color = 'var(--gray)'; return; }
+  el.style.color = 'var(--navy)';
+  if(h.turno){
+    el.textContent = `📅 Horario ordinario ese día: ${h.turno.codigo} ${h.turno.ini}–${h.turno.fin}. Las horas extra empiezan a las ${h.turno.fin}.`;
+    if(autoAjustar && !heEditandoId){ ponerHoraEnSelects('heHoraInicio', h.turno.fin); actualizarDuracionCalculadaHE(); }
+  } else if(h.marca){
+    el.textContent = `📅 Ese día figura como ${h.marca.toLowerCase()} en su horario: todo lo trabajado cuenta como extra.`;
+  } else {
+    el.textContent = '📅 Sin turno asignado ese día (descanso): todo lo trabajado cuenta como extra.';
+  }
+}
+document.getElementById('heTrabajador').addEventListener('change', ()=>actualizarHorarioInfoHE(true));
+document.getElementById('heFecha').addEventListener('change', ()=>actualizarHorarioInfoHE(true));
+document.getElementById('heModoVariosDias').addEventListener('change', ()=>actualizarHorarioInfoHE(false));
 document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
   const trabajadorId = document.getElementById('heTrabajador').value;
-  const horaInicio = leerHoraInicioSelects();
+  let horaInicio = leerHoraInicioSelects();
   const horaFin = leerHoraFinSelects();
+  // si el rango cae dentro del horario ordinario, las extra empiezan al terminar el turno
+  if(heAreaActual==='mantenimiento' && !document.getElementById('heModoVariosDias').checked && trabajadorId){
+    const h = horTurnoDe(trabajadorId, document.getElementById('heFecha').value);
+    const min = x=>{ const [a,b] = x.split(':').map(Number); return a*60+b; };
+    if(h && h.turno && min(h.turno.fin) > min(h.turno.ini) && min(horaInicio) < min(h.turno.fin) && min(horaFin) > min(h.turno.ini)){
+      if(min(horaFin) <= min(h.turno.fin)){ showToast(`Ese rango queda dentro de su horario ordinario (${h.turno.ini}–${h.turno.fin}); no son horas extra.`); return; }
+      if(await customConfirm(`Parte de ese rango se cruza con su horario ordinario (${h.turno.ini}–${h.turno.fin}). Las horas extra empiezan a las ${h.turno.fin}. ¿Ajustar el inicio a esa hora?`)){
+        horaInicio = h.turno.fin; ponerHoraEnSelects('heHoraInicio', horaInicio);
+      }
+    }
+  }
   const horas = horasNetasHE(horaInicio, horaFin);
   const motivo = document.getElementById('heMotivo').value.trim();
   const estadoPago = document.getElementById('heEstadoPago').value;
