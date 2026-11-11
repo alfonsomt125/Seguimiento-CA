@@ -641,6 +641,11 @@
         <span>Horas Extras del Personal</span>
         <p>Registro por trabajador, con control automático de los límites diario y mensual.</p>
       </button>
+      <button class="mant-subcard actividades" data-mantopen="horarios">
+        <div class="mant-icon">📅</div>
+        <span>Horarios del Personal</span>
+        <p>Elabora el horario mensual de Mantenimiento y Logística con turnos de colores.</p>
+      </button>
       <button class="mant-subcard reportes" data-mantopen="recibidos">
         <div class="mant-icon">✅</div>
         <span>Recibidos a Satisfacción</span>
@@ -1419,6 +1424,55 @@
   <!-- ===================== /SUB-MÓDULO RECIBIDOS ===================== -->
 
   <!-- ===================== SUB-MÓDULO: INVENTARIO DE ACTIVOS FIJOS ===================== -->
+  <div id="mantSubHorarios" style="display:none;">
+    <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+    <div class="year-pills" id="horAreaTabs" style="margin:10px 0 14px;">
+      <button class="year-pill active" data-horarea="mantenimiento">🔧 Mantenimiento</button>
+      <button class="year-pill" data-horarea="logistica">🚚 Logística</button>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+        <h2 style="margin:0;" id="horTitulo">Horario del personal</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="ghost" id="btnHorPersona">+ Persona</button>
+          <button class="ghost" id="btnHorTurnos">⚙ Turnos del mes</button>
+          <button class="ghost" id="btnHorPdf">⬇ Exportar a PDF</button>
+        </div>
+      </div>
+      <p class="hint" style="margin:0 0 12px;">Toca una celda para asignar un turno (o un rango de días). Las horas netas de cada turno se suman por persona. En Logística, lo que armes aquí alimenta directamente las horas extras y recargos.</p>
+      <div class="field" style="max-width:220px;margin-bottom:12px;"><label>Mes</label><input type="month" id="horMes"></div>
+      <div id="horPersonal" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
+      <div class="table-wrap"><table id="horGrid" style="font-size:12px;text-align:center;"></table></div>
+      <div id="horLeyenda" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:12px;"></div>
+    </div>
+  </div>
+  <div class="modal-bg" id="horModalBg"><div class="modal" style="max-width:460px;">
+    <h2>Asignar turno</h2>
+    <div class="field"><label>Persona</label><select id="horPersona"></select></div>
+    <div class="grid-2" style="margin-top:12px;">
+      <div class="field"><label>Desde</label><input type="date" id="horDesde"></div>
+      <div class="field"><label>Hasta</label><input type="date" id="horHasta"></div>
+    </div>
+    <div class="field" style="margin-top:12px;"><label>Días de la semana</label>
+      <div id="horDias" style="display:flex;gap:10px;flex-wrap:wrap;font-size:13px;">
+        <label><input type="checkbox" value="1" checked> L</label><label><input type="checkbox" value="2" checked> M</label><label><input type="checkbox" value="3" checked> X</label><label><input type="checkbox" value="4" checked> J</label><label><input type="checkbox" value="5" checked> V</label><label><input type="checkbox" value="6" checked> S</label><label><input type="checkbox" value="0" checked> D</label>
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px;"><label>Turno</label><select id="horTurno"></select></div>
+    <div class="modal-actions"><button class="ghost" id="btnHorCancelar">Cancelar</button><button class="primary" id="btnHorGuardar">Guardar</button></div>
+  </div></div>
+  <div class="modal-bg" id="horPersonaModalBg"><div class="modal" style="max-width:380px;">
+    <h2>Agregar persona</h2>
+    <div class="field"><label>Nombre</label><input type="text" id="horPNombre" list="horPLista"><datalist id="horPLista"></datalist></div>
+    <div class="modal-actions"><button class="ghost" id="btnHorPCancelar">Cancelar</button><button class="primary" id="btnHorPGuardar">Agregar</button></div>
+  </div></div>
+  <div class="modal-bg" id="horCatModalBg"><div class="modal" style="max-width:720px;">
+    <h2>Turnos del mes</h2>
+    <p class="hint" style="margin:0 0 10px;">Define los turnos disponibles este mes. Horas netas = horas pagadas sin el almuerzo. Los turnos ya asignados no cambian si editas el catálogo.</p>
+    <div id="horCatFilas" style="display:grid;gap:8px;"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;"><button class="ghost" id="btnHorCatAgregar">+ Turno</button><button class="ghost" id="btnHorCatCopiar">Copiar del mes anterior</button></div>
+    <div class="modal-actions"><button class="ghost" id="btnHorCatCancelar">Cancelar</button><button class="primary" id="btnHorCatGuardar">Guardar</button></div>
+  </div></div>
   <div id="mantSubActivos" style="display:none;">
   <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
   <div class="panel">
@@ -4031,6 +4085,7 @@ async function loadAll(){
     if(e.message==='not found') logData = {personal: LOG_PERSONAL_SEED.map(n=>({id:uid(), nombre:n, salario:0})), turnos:[]};
   }
   if(!cargaFallida && !logData.importado){ logImportarCronograma(); await saveLogisticaHE(); }
+  try{ horMant = JSON.parse((await storageAPI.get('horarioMantenimiento')).value); }catch(e){}
   try{
     const hc = await storageAPI.get('heCompensaciones');
     heCompensaciones = JSON.parse(hc.value);
@@ -8431,11 +8486,12 @@ document.getElementById('heHastaPeriodo').addEventListener('change', renderHoras
 
 const LOG_CATALOGO = {"2026-01":[["H1","06:10","14:18",7.63,"TURNO DIA L-V GARITA",1,"#00B050"],["H2","06:00","14:00",7.5,"TURNO DIA S-D-F GARITA",1,"#FFFF00"],["H3","14:00","21:00",7.0,"TURNO TARDE GARITA",1,"#FFC000"],["H4","21:00","07:00",10.0,"TURNO NOCHE D-J GARITA",1,"#0070C0"],["H5","21:00","06:00",9.0,"TURNO NOCHE S-D-F GARITA",1,"#00B0F0"],["H6","06:10","14:20",7.67,"TURNO DIA PATIO",1,"#7030A0"],["H7","21:00","06:00",9.0,"TURNO NOCHE PATIO",1,"#AEABAB"],["H8","21:00","07:00",10.0,"TURNO NOCHE PATIO-CL76",1,"#E7E6E6"],["H9","07:00","16:18",8.3,"TURNO ENT. PRINCIPAL L-V",1,"#A9D18E"],["H10","07:00","12:40",5.67,"TURNO ENT. PRINCIPAL SAB",1,"#FF9999"]],"2026-02":[["H1","06:10","14:20",7.67,"DIURNO GARITA-PATIO L-V",0,"#00B050"],["H2","06:10","15:58",8.75,"DIURNO PATIO L-V",0,"#FFFF00"],["H3","07:00","13:30",6.5,"DIURNO PATIO D-F",0,"#FFC000"],["H4","13:50","21:00",7.17,"TARDE PATIO L-D",0,"#0070C0"],["H5","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H6","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H7","06:10","15:28",8.8,"DIURNO RECEPCION L-V",0,"#AEABAB"],["H8","07:00","12:30",5.5,"DIURNO RECEPCION D",0,"#E7E6E6"]],"2026-03":[["H1","06:10","14:30",7.83,"DIURNO GARITA-PATIO L-V",0,"#00B050"],["H2","06:10","15:58",8.8,"DIURNO PATIO L-V",0,"#FFFF00"],["H3","07:00","13:30",6.5,"DIURNO PATIO S-D-F",0,"#FFC000"],["H4","13:50","21:00",7.17,"TARDE PATIO L-D",0,"#0070C0"],["H5","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H6","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H7","06:10","15:28",8.8,"DIURNO RECEPCION L-V",0,"#AEABAB"],["H8","07:00","13:30",6.5,"DIURNO RECEPCION D",0,"#E7E6E6"]],"2026-04":[["H1","06:10","14:30",7.83,"DIURNO GARITA-PATIO L-V",0,"#00B050"],["H2","06:10","15:58",8.8,"DIURNO PATIO L-V",0,"#FFFF00"],["H3","07:00","13:30",6.5,"DIURNO PATIO S-D-F",0,"#FFC000"],["H4","13:50","21:00",7.17,"TARDE PATIO L-D",0,"#0070C0"],["H5","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H6","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H7","06:10","15:28",8.8,"DIURNO RECEPCION L-V",0,"#AEABAB"],["H8","07:00","13:30",6.5,"DIURNO RECEPCION D",0,"#E7E6E6"]],"2026-05":[["H1","06:10","14:30",7.83,"DIURNO GARITA-PATIO L-V",0,"#00B050"],["H2","06:10","15:58",8.8,"DIURNO PATIO L-V",0,"#FFFF00"],["H3","07:00","13:30",6.5,"DIURNO PATIO S-D-F",0,"#FFC000"],["H4","13:50","21:00",7.17,"TARDE PATIO L-D",0,"#0070C0"],["H5","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H6","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H7","06:10","15:28",8.8,"DIURNO RECEPCION L-V",0,"#AEABAB"],["H8","07:00","13:30",6.5,"DIURNO RECEPCION D",0,"#E7E6E6"]],"2026-06":[["H1","06:10","14:30",7.83,"DIURNO GARITA-PATIO L-V",0,"#00B050"],["H2","06:10","15:58",8.8,"DIURNO PATIO L-V",0,"#FFFF00"],["H3","11:00","21:00",10,"TARDE PATIO L-D",0,"#0070C0"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H6","06:10","15:28",8.8,"DIURNO RECEPCION L-V",0,"#AEABAB"],["H7","06:00","14:00",8,"DIURNO RECEPCION D",0,"#E7E6E6"]],"2026-07":[["H1","06:10","15:58",8.8,"DIURNO PATIO L-V",0,"#FFFF00"],["H2","06:10","15:34",8.4,"DIURNO PATIO S-D-F",0,"#FFC000"],["H3","11:00","21:00",10,"TARDE PATIO L-D",0,"#0070C0"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H6","06:10","15:28",8.4,"DIURNO RECEPCION L-V",0,"#AEABAB"],["H7","06:00","14:00",8,"DIURNO RECEPCION S",0,"#E7E6E6"]],"2026-08":[["H1","06:10","15:34",8.4,"DIURNO PATIO S-D-F",0,"#FFC000"],["H2","11:00","21:00",9.5,"TARDE PATIO L-D",0,"#0070C0"],["H3","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H4","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H5","06:30","15:00",8.4,"DIURNO RECEPCION L-V",0,"#AEABAB"]],"2026-09":[["H1","06:10","15:34",8.4,"DIURNO PATIO S-D-F",0,"#FFC000"],["H2","11:00","21:00",9.5,"TARDE PATIO L-V",0,"#0070C0"],["H3","06:00","14:00",7.5,"TARDE PATIO S-D Y FESTIVOS",0,"#A9D18E"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H6","06:30","15:00",8.4,"DIURNO RECEPCION L-V",0,"#AEAAAA"]],"2026-10":[["H1","06:10","15:34",8.4,"DIURNO PATIO S-D-F",0,"#FFC000"],["H2","11:00","21:00",9.5,"TARDE PATIO L-D",0,"#0070C0"],["H3","06:00","14:00",7.5,"TARDE PATIO S-D Y FESTIVOS",0,"#A9D18E"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H6","06:30","15:00",8.4,"DIURNO RECEPCION L-V",0,"#AEABAB"]],"2026-11":[["H1","06:10","15:34",8.4,"DIURNO PATIO S-D-F",0,"#FFC000"],["H2","11:00","21:00",9.5,"TARDE PATIO L-D",0,"#0070C0"],["H3","06:00","14:00",7.5,"TARDE PATIO S-D Y FESTIVOS",0,"#A9D18E"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S",0,"#00B0F0"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J",0,"#7030A0"],["H6","06:30","15:00",8.4,"DIURNO RECEPCION L-V",0,"#AEABAB"]]};
 const LOG_CRONOGRAMA = {"2026-02":[[0,3,"H1"],[0,4,"H1"],[0,5,"H4"],[0,6,"H4"],[0,7,"H6"],[0,8,"H5"],[0,11,"H1"],[0,12,"H1"],[0,13,"H4"],[0,14,"H4"],[0,15,"H6"],[0,16,"H6"],[0,19,"H1"],[0,20,"H1"],[0,21,"H4"],[0,22,"H4"],[0,23,"H5"],[0,24,"H5"],[0,27,"H1"],[0,28,"H8"],[1,1,"H3"],[1,2,"H1"],[1,3,"H4"],[1,4,"H4"],[1,5,"H5"],[1,6,"H6"],[1,9,"H1"],[1,10,"H1"],[1,11,"H4"],[1,12,"H4"],[1,13,"H6"],[1,14,"H6"],[1,17,"H3"],[1,18,"H1"],[1,19,"H4"],[1,20,"H4"],[1,21,"H6"],[1,22,"H5"],[1,25,"H1"],[1,26,"H1"],[1,27,"H4"],[1,28,"H4"],[2,1,"H4"],[2,2,"H4"],[2,3,"H5"],[2,4,"H5"],[2,7,"H8"],[2,8,"H3"],[2,9,"H4"],[2,10,"H4"],[2,11,"H5"],[2,12,"H5"],[2,15,"H3"],[2,16,"H3"],[2,17,"H4"],[2,18,"H4"],[2,19,"H5"],[2,20,"H6"],[2,23,"H1"],[2,24,"H1"],[2,25,"H4"],[2,26,"H4"],[2,27,"H6"],[2,28,"H6"],[3,1,"H5"],[3,2,"H5"],[3,5,"H1"],[3,6,"H1"],[3,7,"H4"],[3,8,"H4"],[3,9,"H5"],[3,10,"H5"],[3,13,"H1"],[3,14,"H8"],[3,15,"H4"],[3,16,"H4"],[3,17,"H6"],[3,18,"H5"],[3,21,"H8"],[3,22,"H3"],[3,23,"H4"],[3,24,"H4"],[3,25,"H5"],[3,26,"H5"],[4,2,"H2",8.8],[4,3,"H2",8.8],[4,4,"H2",8.8],[4,5,"H2",8.8],[4,6,"H2",8.8],[4,9,"H2",8.8],[4,10,"H2",8.8],[4,11,"H2",8.8],[4,12,"H2",8.8],[4,13,"H2",8.8],[4,16,"H2",8.8],[4,17,"H2",8.8],[4,18,"H2",8.8],[4,19,"H2",8.8],[4,20,"H2",8.8],[4,23,"H2",8.8],[4,24,"H2",8.8],[4,25,"H2",8.8],[4,26,"H2",8.8],[4,27,"H2",8.8],[5,2,"H7"],[5,3,"H7"],[5,4,"H7"],[5,5,"H7"],[5,6,"H7"],[5,9,"H7"],[5,10,"H7"],[5,11,"H7"],[5,12,"H7"],[5,13,"H7"],[5,16,"H7"],[5,17,"H7"],[5,18,"H7"],[5,19,"H7"],[5,20,"H7"],[5,23,"H7"],[5,24,"H7"],[5,25,"H7"],[5,26,"H7"],[5,27,"H7"]],"2026-03":[[0,1,"H4"],[0,2,"H4"],[0,3,"H5"],[0,4,"H5"],[0,7,"H8"],[0,8,"H3"],[0,9,"H4"],[0,10,"H4"],[0,11,"H5"],[0,12,"H5"],[0,15,"H3"],[0,16,"H1"],[0,17,"H4"],[0,18,"H4"],[0,19,"H5"],[0,20,"H6"],[0,23,"H3"],[0,24,"H1"],[0,25,"H4"],[0,26,"H4"],[0,27,"H6"],[0,28,"H6"],[0,31,"H8"],[1,1,"H5"],[1,2,"H5"],[1,5,"H1"],[1,6,"H1"],[1,7,"H4"],[1,8,"H4"],[1,9,"H5"],[1,10,"H5"],[1,13,"H1"],[1,14,"H8"],[1,15,"H4"],[1,16,"H4"],[1,17,"H5"],[1,18,"H5"],[1,21,"H8"],[1,22,"H3"],[1,23,"H4"],[1,24,"H4"],[1,25,"H5"],[1,26,"H5"],[1,29,"H3"],[1,30,"H8"],[1,31,"H4"],[2,3,"H1"],[2,4,"H1"],[2,5,"H4"],[2,6,"H4"],[2,7,"H6"],[2,8,"H5"],[2,11,"H1"],[2,12,"H1"],[2,13,"H4"],[2,14,"H4"],[2,15,"H5"],[2,16,"H5"],[2,19,"H1"],[2,20,"H1"],[2,21,"H4"],[2,22,"H4"],[2,23,"H5"],[2,24,"H5"],[2,27,"H1"],[2,28,"H1"],[2,29,"H4"],[2,30,"H4"],[2,31,"H6"],[3,1,"H3"],[3,2,"H1"],[3,3,"H4"],[3,4,"H4"],[3,5,"H5"],[3,6,"H6"],[3,9,"H1"],[3,10,"H1"],[3,11,"H4"],[3,12,"H4"],[3,13,"H6"],[3,14,"H6"],[3,17,"H1"],[3,18,"H1"],[3,19,"H4"],[3,20,"H4"],[3,21,"H6"],[3,22,"H6"],[3,25,"H1"],[3,26,"H1"],[3,27,"H4"],[3,28,"H4"],[3,29,"H6"],[3,30,"H6"],[4,2,"H2"],[4,3,"H2"],[4,4,"H2"],[4,5,"H2"],[4,6,"H2"],[4,9,"H2"],[4,10,"H2"],[4,11,"H2"],[4,12,"H2"],[4,13,"H2"],[4,16,"H2"],[4,17,"H2"],[4,18,"H2"],[4,19,"H2"],[4,20,"H2"],[4,24,"H2"],[4,25,"H2"],[4,26,"H2"],[4,27,"H2"],[4,30,"H2"],[4,31,"H2"],[5,2,"H7"],[5,3,"H7"],[5,4,"H7"],[5,5,"H7"],[5,6,"H7"],[5,9,"H7"],[5,10,"H7"],[5,11,"H7"],[5,12,"H7"],[5,13,"H7"],[5,16,"H7"],[5,17,"H7"],[5,18,"H7"],[5,19,"H7"],[5,20,"H7"],[5,24,"H7"],[5,25,"H7"],[5,26,"H7"],[5,27,"H7"],[5,28,"*INCAPACITADO"]],"2026-04":[[0,1,"H8"],[0,2,"H4"],[0,3,"H4"],[0,4,"H6"],[0,5,"H5"],[0,8,"H1"],[0,9,"H1"],[0,10,"H4"],[0,11,"H4"],[0,12,"H5"],[0,13,"H5"],[0,16,"H1"],[0,17,"H1"],[0,18,"H4"],[0,19,"H4"],[0,20,"H5"],[0,21,"H5"],[0,24,"H1"],[0,25,"H8"],[0,26,"H4"],[0,27,"H4"],[0,28,"H5"],[0,29,"H5"],[1,1,"H4"],[1,2,"H6"],[1,3,"H6"],[1,6,"H1"],[1,7,"H1"],[1,8,"H4"],[1,9,"H4"],[1,10,"H6"],[1,11,"H6"],[1,14,"H1"],[1,15,"H1"],[1,16,"H4"],[1,17,"H4"],[1,18,"H6"],[1,19,"H5"],[1,22,"H1"],[1,23,"H1"],[1,24,"H4"],[1,25,"H4"],[1,26,"H5"],[1,27,"H5"],[1,30,"H1"],[2,1,"H6"],[2,4,"H8"],[2,5,"H3"],[2,6,"H4"],[2,7,"H4"],[2,8,"H5"],[2,9,"H5"],[2,12,"H3"],[2,13,"H1"],[2,14,"H4"],[2,15,"H4"],[2,16,"H5"],[2,17,"H6"],[2,20,"H1"],[2,21,"H1"],[2,22,"H4"],[2,23,"H4"],[2,24,"H6"],[2,25,"H6"],[2,28,"H1"],[2,29,"H1"],[2,30,"H4"],[3,2,"H3"],[3,3,"H3"],[3,4,"H4"],[3,5,"H4"],[3,6,"H5"],[3,7,"H5"],[3,10,"H1"],[3,11,"H8"],[3,12,"H4"],[3,13,"H4"],[3,14,"H5"],[3,15,"H5"],[3,18,"H8"],[3,19,"H3"],[3,20,"H4"],[3,21,"H4"],[3,22,"H5"],[3,23,"H5"],[3,26,"H3"],[3,27,"H1"],[3,28,"H4"],[3,29,"H4"],[3,30,"H6"],[4,1,"H2"],[4,6,"H2"],[4,7,"H2"],[4,8,"H2"],[4,9,"H2"],[4,10,"H2"],[4,13,"H2"],[4,14,"H2"],[4,15,"H2"],[4,16,"H2"],[4,17,"H2"],[4,20,"H2"],[4,21,"H2"],[4,22,"H2"],[4,23,"H2"],[4,24,"H2"],[4,27,"H2"],[4,28,"H2"],[4,29,"H2"],[4,30,"H2"],[5,1,"H7"],[5,6,"H7"],[5,7,"H7"],[5,8,"H7"],[5,9,"H7"],[5,10,"H7"],[5,13,"H7"],[5,14,"H7"],[5,15,"H7"],[5,16,"H7"],[5,17,"H7"],[5,20,"H7"],[5,21,"H7"],[5,22,"H7"],[5,23,"H7"],[5,24,"H7"],[5,27,"H7"],[5,28,"H7"],[5,29,"H7"],[5,30,"H7"]],"2026-05":[[0,2,"H8"],[0,3,"H3"],[0,4,"H4"],[0,5,"H4"],[0,6,"H5"],[0,7,"H5"],[0,10,"H3"],[0,11,"H1"],[0,12,"H4"],[0,13,"H4"],[0,14,"H5"],[0,15,"H6"],[0,18,"H3"],[0,19,"H1"],[0,20,"H4"],[0,21,"H4"],[0,22,"H6"],[0,23,"H6"],[0,26,"H1"],[0,27,"H1"],[0,28,"H4"],[0,29,"H4"],[0,30,"H6"],[0,31,"H5"],[1,1,"H3"],[1,2,"H4"],[1,3,"H4"],[1,4,"H5"],[1,5,"H5"],[1,8,"H1"],[1,9,"H8"],[1,10,"H4"],[1,11,"H4"],[1,12,"H5"],[1,13,"H5"],[1,16,"H8"],[1,17,"H3"],[1,18,"H4"],[1,19,"H4"],[1,20,"H5"],[1,21,"H5"],[1,24,"H3"],[1,25,"H1"],[1,26,"H4"],[1,27,"H4"],[1,28,"H5"],[1,29,"H6"],[2,1,"H4"],[2,2,"H6"],[2,3,"H5"],[2,6,"H1"],[2,7,"H1"],[2,8,"H4"],[2,9,"H4"],[2,10,"H5"],[2,11,"H5"],[2,14,"H1"],[2,15,"H1"],[2,16,"H4"],[2,17,"H4"],[2,18,"H5"],[2,19,"H5"],[2,22,"H1"],[2,23,"H8"],[2,24,"H4"],[2,25,"H4"],[2,26,"H5"],[2,27,"H5"],[2,30,"H8"],[2,31,"H3"],[3,1,"H6"],[3,4,"H1"],[3,5,"H1"],[3,6,"H4"],[3,7,"H4"],[3,8,"H6"],[3,9,"H6"],[3,12,"H1"],[3,13,"H1"],[3,14,"H4"],[3,15,"H4"],[3,16,"H6"],[3,17,"H6"],[3,20,"H1"],[3,21,"H1"],[3,22,"H4"],[3,23,"H4"],[3,24,"H5"],[3,25,"H5"],[3,28,"H1"],[3,29,"H1"],[3,30,"H4"],[3,31,"H4"],[4,4,"H2"],[4,5,"H2"],[4,6,"H2"],[4,7,"H2"],[4,8,"H2"],[4,11,"H2"],[4,12,"H2"],[4,13,"H2"],[4,14,"H2"],[4,15,"H2"],[4,19,"H2"],[4,20,"H2"],[4,21,"H2"],[4,22,"H2"],[4,25,"H2"],[4,26,"H2"],[4,27,"H2"],[4,28,"H2"],[4,29,"H2"],[5,4,"H7"],[5,5,"H7"],[5,6,"H7"],[5,7,"H7"],[5,8,"H7"],[5,11,"H7"],[5,12,"H7"],[5,13,"H7"],[5,14,"H7"],[5,15,"H7"],[5,19,"H7"],[5,20,"H7"],[5,21,"H7"],[5,22,"H7"],[5,25,"H7"],[5,26,"H7"],[5,27,"H7"],[5,28,"H7"],[5,29,"H7"]],"2026-06":[[0,3,"H1"],[0,4,"H1"],[0,5,"H3",7.17],[0,6,"H3",7.17],[0,7,"H5"],[0,8,"H4"],[0,11,"H1"],[0,12,"H1"],[0,13,"H7",6.5],[0,14,"H3"],[0,15,"H4"],[0,16,"H4"],[0,19,"H3"],[0,20,"H7",6.5],[0,21,"H4"],[0,22,"H4"],[0,25,"H3"],[0,26,"H3"],[0,27,"H5"],[0,28,"H5"],[1,1,"H1"],[1,2,"H1"],[1,3,"H3",7.17],[1,4,"H3",7.17],[1,5,"H5"],[1,6,"H5"],[1,9,"H1"],[1,10,"H1"],[1,11,"H3",7.17],[1,12,"H3",7.17],[1,13,"H5"],[1,14,"H5"],[1,17,"H3"],[1,18,"H3"],[1,19,"H5"],[1,20,"H5"],[1,23,"H3"],[1,24,"H3"],[1,25,"H4"],[1,26,"H5"],[1,29,"H3"],[1,30,"H3"],[2,1,"H3",7.17],[2,2,"H3",7.17],[2,3,"H4"],[2,4,"H4"],[2,7,"H1"],[2,8,"H1"],[2,9,"H3",7.17],[2,10,"H3",7.17],[2,11,"H4"],[2,12,"H5"],[2,15,"H3"],[2,16,"H3"],[2,17,"H4"],[2,18,"H4"],[2,21,"H3"],[2,22,"H3"],[2,23,"H4"],[2,24,"H4"],[2,27,"H7",6.5],[2,28,"H3"],[2,29,"H4"],[2,30,"H4"],[3,1,"H4"],[3,2,"H4"],[3,5,"H1"],[3,6,"H7",6.5],[3,7,"H3",7.17],[3,8,"H3",7.17],[3,9,"H4"],[3,10,"H4"],[4,1,"H2"],[4,2,"H2"],[4,3,"H2"],[4,4,"H2"],[4,5,"H2"],[4,9,"H2"],[4,10,"H2"],[4,11,"H2"],[4,12,"H2"],[4,16,"H2"],[4,17,"H2"],[4,18,"H2"],[4,19,"H2"],[4,22,"H2"],[4,23,"H2"],[4,24,"H2"],[4,25,"H2"],[4,26,"H2"],[4,30,"H2"],[5,1,"H6"],[5,2,"H6"],[5,3,"H6"],[5,4,"H6"],[5,5,"H6"],[5,9,"H6"],[5,10,"H6"],[5,11,"H6"],[5,12,"H6"],[5,16,"H6"],[5,17,"H6"],[5,18,"H6"],[5,19,"H6"],[5,22,"H6"],[5,23,"H6"],[5,24,"H6"],[5,25,"H6"],[5,26,"H6"],[5,30,"H6"]],"2026-07":[[0,1,"H3"],[0,2,"H3"],[0,3,"H5"],[0,4,"H5"],[0,7,"H3"],[0,8,"H3"],[0,9,"H5"],[0,10,"H5"],[0,13,"H3"],[0,14,"H3"],[0,15,"H4"],[0,16,"H4"],[0,19,"H3"],[0,20,"H3"],[0,21,"H4"],[0,22,"H4"],[0,25,"H7"],[0,26,"H3"],[0,27,"H4"],[0,28,"H4"],[0,31,"H3"],[1,1,"H5"],[1,2,"H5"],[1,5,"H3"],[1,6,"H3"],[1,7,"H5"],[1,8,"H5"],[1,11,"H3"],[1,12,"H3"],[1,13,"H4"],[1,14,"H4"],[1,17,"H3"],[1,18,"H7"],[1,19,"H5"],[1,20,"H4"],[1,23,"H3"],[1,24,"H3"],[1,25,"H5"],[1,26,"H4"],[1,29,"H3"],[1,30,"H3"],[1,31,"H5"],[2,3,"H3"],[2,4,"H3"],[2,5,"H5"],[2,6,"H5"],[2,9,"H3"],[2,10,"H3"],[2,11,"H5"],[2,12,"H5"],[2,15,"H3"],[2,16,"H3"],[2,17,"H5"],[2,18,"H5"],[2,21,"H3"],[2,22,"H3"],[2,23,"H4"],[2,24,"H5"],[2,27,"H3"],[2,28,"H3"],[2,29,"H4"],[2,30,"H4"],[4,1,"*VACACIONES"],[4,14,"H1"],[4,15,"H2"],[4,16,"H2"],[4,17,"H2"],[4,21,"H2"],[4,22,"H2"],[4,23,"H2"],[4,24,"H2"],[4,27,"H2"],[4,28,"H2"],[4,29,"H2"],[4,30,"H2"],[4,31,"H2"],[5,1,"H6"],[5,2,"H6"],[5,3,"H6"],[5,6,"H6"],[5,7,"H6"],[5,8,"H6"],[5,9,"H6"],[5,10,"H6"],[5,14,"H6"],[5,15,"H6"],[5,16,"H6"],[5,17,"H6"],[5,21,"H6"],[5,22,"H6"],[5,23,"H6"],[5,24,"H6"],[5,27,"H6"],[5,28,"H6"],[5,29,"H6"],[5,30,"H6"],[5,31,"H6"]],"2026-08":[[0,1,"H2"],[0,2,"H3"],[0,3,"H3"],[0,6,"H2"],[0,7,"H2"],[0,8,"H4"],[0,9,"H3"],[0,12,"H2"],[0,13,"H2"],[0,14,"H4"],[0,15,"H4"],[0,18,"H2"],[0,19,"H2"],[0,20,"H3"],[0,21,"H4"],[0,24,"H2"],[0,25,"H2"],[0,26,"H3"],[0,27,"H3"],[0,30,"H2"],[0,31,"H2"],[1,1,"H4"],[1,4,"H2"],[1,5,"H2"],[1,6,"H4"],[1,7,"H4"],[1,10,"H2"],[1,11,"H2"],[1,12,"H3"],[1,13,"H3"],[1,16,"H2"],[1,17,"H2"],[1,18,"H3"],[1,19,"H3"],[1,22,"H2"],[1,23,"H2"],[1,24,"H3"],[1,25,"H3"],[1,28,"H2"],[1,29,"H2"],[1,30,"H3"],[1,31,"H3"],[2,2,"H2"],[2,3,"H2"],[2,4,"H3"],[2,5,"H3"],[2,8,"H2"],[2,9,"H2"],[2,10,"H3"],[2,11,"H3"],[2,14,"H2"],[2,15,"H2"],[2,16,"H4"],[2,17,"H3"],[2,20,"H2"],[2,21,"H2"],[2,22,"H4"],[2,23,"H3"],[2,26,"H2"],[2,27,"H2"],[2,28,"H4"],[2,29,"H4"],[4,3,"H1"],[4,4,"H1"],[4,5,"H1"],[4,6,"H1"],[4,10,"H1"],[4,11,"H1"],[4,12,"H1"],[4,13,"H1"],[4,14,"H1"],[4,18,"H1"],[4,19,"H1"],[4,20,"H1"],[4,21,"H1"],[4,24,"H1"],[4,25,"H1"],[4,26,"H1"],[4,27,"H1"],[4,28,"H1"],[4,31,"H1"],[5,3,"H5"],[5,4,"H5"],[5,5,"H5"],[5,6,"H5"],[5,10,"H5"],[5,11,"H5"],[5,12,"H5"],[5,13,"H5"],[5,14,"H5"],[5,18,"H5"],[5,19,"H5"],[5,20,"H5"],[5,21,"H5"],[5,24,"H5"],[5,25,"H5"],[5,26,"H5"],[5,27,"H5"],[5,28,"H5"],[5,31,"H5"]],"2026-09":[[0,1,"H4"],[0,2,"H4"],[0,5,"H3"],[0,6,"H3"],[0,7,"H4"],[0,8,"H4"],[0,11,"H2"],[0,12,"H3"],[0,13,"H4"],[0,14,"H4"],[0,17,"H2"],[0,18,"H2"],[0,19,"H5"],[0,20,"H4"],[0,23,"H2"],[0,24,"H2"],[0,25,"H5"],[0,26,"H5"],[0,29,"H2"],[0,30,"H2"],[1,3,"H2"],[1,4,"H2"],[1,5,"H5"],[1,6,"H4"],[1,9,"H2"],[1,10,"H2"],[1,11,"H5"],[1,12,"H5"],[1,15,"H2"],[1,16,"H2"],[1,17,"H4"],[1,18,"H5"],[1,21,"H2"],[1,22,"H2"],[1,23,"H4"],[1,24,"H4"],[1,27,"H3"],[1,28,"H2"],[1,29,"H4"],[1,30,"H4"],[2,1,"H2"],[2,2,"H2"],[2,3,"H4"],[2,4,"H5"],[2,7,"H2"],[2,8,"H2"],[2,9,"H4"],[2,10,"H4"],[2,13,"H3"],[2,14,"H2"],[2,15,"H4"],[2,16,"H4"],[2,19,"H3"],[2,20,"H3"],[2,21,"H4"],[2,22,"H4"],[2,25,"H2"],[2,26,"H3"],[2,27,"H4"],[2,28,"H4"],[4,1,"H1"],[4,2,"H1"],[4,3,"H1"],[4,4,"H1"],[4,7,"H1"],[4,8,"H1"],[4,9,"H1"],[4,10,"H1"],[4,11,"H1"],[4,14,"H1"],[4,15,"H1"],[4,16,"H1"],[4,17,"H1"],[4,18,"H1"],[4,21,"H1"],[4,22,"H1"],[4,23,"H1"],[4,24,"H1"],[4,25,"H1"],[4,28,"H1"],[4,29,"H1"],[4,30,"H1"],[5,1,"H6"],[5,2,"H6"],[5,3,"H6"],[5,4,"H6"],[5,7,"H6"],[5,8,"H6"],[5,9,"H6"],[5,10,"H6"],[5,11,"H6"],[5,14,"H6"],[5,15,"H6"],[5,16,"H6"],[5,17,"H6"],[5,18,"H6"],[5,21,"H6"],[5,22,"H6"],[5,23,"H6"],[5,24,"H6"],[5,25,"H6"],[5,28,"H6"],[5,29,"H6"],[5,30,"H6"]],"2026-10":[[0,1,"H4"],[0,2,"H5"],[0,5,"H3"],[0,6,"H3"],[0,7,"H5"],[0,8,"H5"],[0,11,"H3"],[0,12,"H3"],[0,13,"H4"],[0,14,"H4"],[0,17,"H3"],[0,18,"H3"],[0,19,"H4"],[0,20,"H4"],[0,23,"H2"],[0,24,"H3"],[0,25,"H4"],[0,26,"H4"],[0,29,"H2"],[0,30,"H2"],[0,31,"H4"],[1,3,"H3"],[1,4,"H3"],[1,5,"H5"],[1,6,"H5"],[1,9,"H2"],[1,10,"H3"],[1,11,"H5"],[1,12,"H4"],[1,15,"H2"],[1,16,"H2"],[1,17,"H5"],[1,18,"H4"],[1,21,"H2"],[1,22,"H2"],[1,23,"H5"],[1,24,"H5"],[1,27,"H2"],[1,28,"H2"],[1,29,"H4"],[1,30,"H5"],[2,1,"H2"],[2,2,"H2"],[2,3,"H5"],[2,4,"H5"],[2,7,"H3"],[2,8,"H3"],[2,9,"H5"],[2,10,"H5"],[2,13,"H2"],[2,14,"H2"],[2,15,"H4"],[2,16,"H5"],[2,19,"H2"],[2,20,"H2"],[2,21,"H4"],[2,22,"H4"],[2,25,"H3"],[2,26,"H2"],[2,27,"H4"],[2,28,"H4"],[2,31,"H3"],[4,1,"H1"],[4,2,"H1"],[4,5,"*VACACIONES"],[4,13,"H1"],[4,14,"H1"],[4,15,"H1"],[4,16,"H1"],[4,19,"H1"],[4,20,"H1"],[4,21,"H1"],[4,22,"H1"],[4,23,"H1"],[4,26,"H1"],[4,27,"H1"],[4,28,"H1"],[4,29,"H1"],[4,30,"H1"],[5,1,"H6"],[5,2,"H6"],[5,5,"H6"],[5,6,"H6"],[5,7,"H6"],[5,8,"H6"],[5,9,"H6"],[5,13,"H6"],[5,14,"H6"],[5,15,"H6"],[5,16,"H6"],[5,19,"H6"],[5,20,"H6"],[5,21,"H6"],[5,22,"H6"],[5,23,"H6"],[5,26,"H6"],[5,27,"H6"],[5,28,"H6"],[5,29,"H6"],[5,30,"H6"]],"2026-11":[[0,1,"H5"],[0,4,"H2"],[0,5,"H2"],[0,6,"H5"],[0,7,"H5"],[0,10,"H2"],[0,11,"H2"],[0,12,"H4"],[0,13,"H5"],[0,16,"H3"],[0,17,"H2"],[0,18,"H5"],[0,19,"H5"],[0,22,"H3"],[0,23,"H3"],[0,24,"H5"],[0,25,"H5"],[0,28,"H3"],[0,29,"H3"],[0,30,"H5"],[1,2,"H3"],[1,3,"H2"],[1,4,"H4"],[1,5,"H4"],[1,8,"H3"],[1,9,"H2"],[1,10,"H4"],[1,11,"H4"],[1,14,"H3"],[1,15,"H3"],[1,16,"H5"],[1,17,"H5"],[1,20,"H2"],[1,21,"H3"],[1,22,"H5"],[1,23,"H5"],[1,26,"H2"],[1,27,"H2"],[1,28,"H5"],[1,29,"H5"],[2,1,"H3"],[2,2,"H4"],[2,3,"H4"],[2,6,"H2"],[2,7,"H3"],[2,8,"H4"],[2,9,"H4"],[2,12,"H2"],[2,13,"H2"],[2,14,"H5"],[2,15,"H5"],[2,18,"H2"],[2,19,"H2"],[2,20,"H5"],[2,21,"H5"],[2,24,"H2"],[2,25,"H2"],[2,26,"H5"],[2,27,"H5"],[2,30,"H2"]]};
+function logCatalogoMes(mes){ return (logData.catalogos && logData.catalogos[mes]) || LOG_CATALOGO[mes] || []; }
 const LOG_PERSONAL_SEED = ['Miguel M.','Milton A.','Manuel H.','Bryan Pérez','Carmenza S.','Miguel J.'];
 let logData = {personal:[], turnos:[]};
 function logImportarCronograma(){
   Object.keys(LOG_CRONOGRAMA).forEach(mes=>{
-    const cat = LOG_CATALOGO[mes] || [];
+    const cat = logCatalogoMes(mes);
     LOG_CRONOGRAMA[mes].forEach(([pi,d,code,neto])=>{
       const nombre = LOG_PERSONAL_SEED[pi];
       let p = logData.personal.find(x=>x.nombre===nombre);
@@ -8687,7 +8743,7 @@ function renderLogisticaHE(){
     : '<tr><td colspan="8" class="empty">No hay turnos registrados en este mes.</td></tr>';
   // cronograma (cuadrícula por colores)
   const [ay, am] = mes.split('-').map(Number), nd = new Date(ay, am, 0).getDate();
-  const cat = LOG_CATALOGO[mes] || [];
+  const cat = logCatalogoMes(mes);
   const colorDe = c => (cat.find(x=>x[0]===c)||[])[6] || '#E5E7EB';
   const txt = hex => { const n=parseInt(hex.slice(1),16); return ((n>>16)*0.299+((n>>8)&255)*0.587+(n&255)*0.114) < 140 ? '#fff' : '#111'; };
   const SEM = ['D','L','M','X','J','V','S'];
@@ -8751,7 +8807,7 @@ function renderLogisticaHE(){
 document.getElementById('heLogMes').addEventListener('change', renderLogisticaHE);
 function logActualizarTurnos(){
   const f = document.getElementById('heLogDesde').value;
-  const cat = LOG_CATALOGO[(f||todayISO()).slice(0,7)] || [];
+  const cat = logCatalogoMes((f||todayISO()).slice(0,7));
   document.getElementById('heLogTurno').innerHTML = cat.length ? cat.map((c,i)=>`<option value="${i}">${c[0]}: ${c[1]} – ${c[2]} (${c[3]}h) ${esc(c[4])}</option>`).join('') : '<option value="">Sin catálogo para ese mes</option>';
   document.getElementById('heLogInfo').textContent = cat.some(c=>c[5]) ? 'Las horas netas de enero son estimadas (el cronograma de enero no trae el dato).' : '';
 }
@@ -8768,7 +8824,7 @@ document.getElementById('btnLogCancelar').addEventListener('click', ()=>document
 document.getElementById('btnLogGuardar').addEventListener('click', async ()=>{
   const personaId = document.getElementById('heLogPersona').value;
   const desde = document.getElementById('heLogDesde').value, hasta = document.getElementById('heLogHasta').value || desde;
-  const cat = LOG_CATALOGO[(desde||'').slice(0,7)] || [];
+  const cat = logCatalogoMes((desde||'').slice(0,7));
   const c = cat[Number(document.getElementById('heLogTurno').value)];
   if(!desde || !c){ showToast('Elige la fecha y un turno del catálogo.'); return; }
   if(hasta<desde){ showToast('La fecha final es anterior a la inicial.'); return; }
@@ -8801,6 +8857,170 @@ document.getElementById('btnLogPGuardar').addEventListener('click', async ()=>{
   renderLogisticaHE();
 });
 
+/* ===== HORARIOS DEL PERSONAL (Mantenimiento y Logística) ===== */
+let horArea = 'mantenimiento';
+let horMant = {personal:[], turnos:[], catalogos:{}};
+const horStore = () => horArea==='logistica' ? logData : horMant;
+function horCatalogo(mes){ return horArea==='logistica' ? logCatalogoMes(mes) : ((horMant.catalogos||{})[mes] || []); }
+async function horGuardar(){
+  if(horArea==='logistica'){ await saveLogisticaHE(); return; }
+  try{ await storageAPI.set('horarioMantenimiento', JSON.stringify(horMant)); }
+  catch(e){ showToast('No se pudo guardar el horario. Intenta de nuevo.'); }
+}
+function horTextoColor(hex){ const n = parseInt(hex.slice(1),16); return ((n>>16)*0.299+((n>>8)&255)*0.587+(n&255)*0.114) < 140 ? '#fff' : '#111'; }
+function horGridHTML(mes){
+  const st = horStore(), cat = horCatalogo(mes);
+  const [ay, am] = mes.split('-').map(Number), nd = new Date(ay, am, 0).getDate();
+  const SEM = ['D','L','M','X','J','V','S'];
+  const colorDe = c => (cat.find(x=>x[0]===c)||[])[6] || '#E5E7EB';
+  let g = '<thead><tr><th rowspan="2" style="text-align:left;min-width:110px;">Personal</th>';
+  for(let d=1; d<=nd; d++){ const w = new Date(ay, am-1, d).getDay(), fest = LOG_FESTIVOS_2026[mes+'-'+String(d).padStart(2,'0')]; g += `<th style="padding:3px 2px;${w===0||fest?'background:#FDE2E2;':''}" title="${fest?esc(fest):''}">${SEM[w]}</th>`; }
+  g += '<th rowspan="2">Horas</th></tr><tr>';
+  for(let d=1; d<=nd; d++){ g += `<th style="padding:3px 2px;">${d}</th>`; }
+  g += '</tr></thead><tbody>';
+  st.personal.forEach(p=>{
+    g += `<tr><td style="text-align:left;font-weight:600;white-space:nowrap;">${esc(p.nombre)}</td>`;
+    let tot = 0;
+    for(let d=1; d<=nd; d++){
+      const f = mes+'-'+String(d).padStart(2,'0');
+      const t = st.turnos.find(x=>x.personaId===p.id && x.fecha===f);
+      let css = 'padding:3px 2px;cursor:pointer;min-width:26px;', tx = '';
+      if(t && t.marca){ css += 'background:#E5E7EB;color:#374151;'; tx = esc(t.marca.slice(0,3)); }
+      else if(t){ const c = colorDe(t.codigo); css += `background:${c};color:${horTextoColor(c)};`; tx = String(t.neto).replace(/\.0+$/,''); tot += t.neto; }
+      g += `<td data-horcelda="${p.id}|${f}" style="${css}" title="${t?esc(t.codigo+' '+(t.ini?t.ini+'–'+t.fin:'')):'Asignar turno'}">${tx}</td>`;
+    }
+    g += `<td style="font-weight:700;">${r2(tot)}</td></tr>`;
+  });
+  return g + '</tbody>';
+}
+function horLeyendaHTML(mes){
+  return horCatalogo(mes).map(c=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:${c[6]};border:1px solid #0002;display:inline-block;"></span><b>${esc(c[0])}</b> ${c[1]}–${c[2]} ${esc(c[4])}</span>`).join('') + '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#E5E7EB;border:1px solid #0002;display:inline-block;"></span>Vacaciones / incapacidad / permiso / otro</span>';
+}
+function renderHorarios(){
+  const inp = document.getElementById('horMes');
+  if(!inp.value) inp.value = todayISO().slice(0,7);
+  const mes = inp.value, st = horStore();
+  document.querySelectorAll('#horAreaTabs [data-horarea]').forEach(b=>b.classList.toggle('active', b.dataset.horarea===horArea));
+  document.getElementById('horTitulo').textContent = 'Horario ' + (horArea==='logistica'?'de Logística':'de Mantenimiento');
+  document.getElementById('horPersonal').innerHTML = st.personal.map(p=>`<span class="pill" style="padding:4px 10px;">${esc(p.nombre)} <button class="ghost" data-hordelpersona="${p.id}" style="padding:0 6px;border:none;" title="Quitar">✕</button></span>`).join('') || '<span class="hint">Aún no hay personal. Usa + Persona.</span>';
+  document.getElementById('horGrid').innerHTML = horGridHTML(mes);
+  document.getElementById('horLeyenda').innerHTML = horLeyendaHTML(mes) + (horCatalogo(mes).length ? '' : '<span class="hint">Este mes no tiene turnos definidos: usa "⚙ Turnos del mes".</span>');
+  document.querySelectorAll('[data-horcelda]').forEach(td=>td.addEventListener('click', ()=>{
+    const [pid, f] = td.dataset.horcelda.split('|'); horAbrirAsignar(pid, f);
+  }));
+  document.querySelectorAll('[data-hordelpersona]').forEach(b=>b.addEventListener('click', async ()=>{
+    const p = st.personal.find(x=>x.id===b.dataset.hordelpersona);
+    if(!p || !await customConfirm(`¿Quitar a ${p.nombre} del horario? También se borrarán sus turnos.`)) return;
+    st.personal = st.personal.filter(x=>x.id!==p.id); st.turnos = st.turnos.filter(t=>t.personaId!==p.id);
+    await horGuardar(); renderHorarios();
+  }));
+}
+document.getElementById('horMes').addEventListener('change', renderHorarios);
+document.querySelectorAll('#horAreaTabs [data-horarea]').forEach(b=>b.addEventListener('click', ()=>{ horArea = b.dataset.horarea; renderHorarios(); }));
+function horAbrirAsignar(personaId, fecha){
+  const st = horStore(), mes = document.getElementById('horMes').value;
+  if(!st.personal.length){ showToast('Primero agrega personal con + Persona.'); return; }
+  document.getElementById('horPersona').innerHTML = st.personal.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+  if(personaId) document.getElementById('horPersona').value = personaId;
+  const f = fecha || mes+'-01';
+  document.getElementById('horDesde').value = f; document.getElementById('horHasta').value = f;
+  const cat = horCatalogo(mes);
+  document.getElementById('horTurno').innerHTML = cat.map((c,i)=>`<option value="t${i}">${esc(c[0])}: ${c[1]} – ${c[2]} (${c[3]}h) ${esc(c[4])}</option>`).join('')
+    + '<option value="m:Vacaciones">Vacaciones</option><option value="m:Incapacidad">Incapacidad</option><option value="m:Permiso">Permiso</option><option value="m:Descanso">Descanso / compensatorio</option><option value="q">— Quitar turno —</option>';
+  document.getElementById('horModalBg').classList.add('active');
+}
+document.getElementById('btnHorCancelar').addEventListener('click', ()=>document.getElementById('horModalBg').classList.remove('active'));
+document.getElementById('btnHorGuardar').addEventListener('click', async ()=>{
+  const st = horStore(), mes = document.getElementById('horMes').value;
+  const personaId = document.getElementById('horPersona').value;
+  const desde = document.getElementById('horDesde').value, hasta = document.getElementById('horHasta').value || desde;
+  const v = document.getElementById('horTurno').value;
+  if(!desde){ showToast('Elige la fecha.'); return; }
+  if(hasta<desde){ showToast('La fecha final es anterior a la inicial.'); return; }
+  if(desde.slice(0,7)!==mes || hasta.slice(0,7)!==mes){ showToast('Las fechas deben estar dentro del mes que estás viendo.'); return; }
+  const dias = [...document.querySelectorAll('#horDias input:checked')].map(i=>Number(i.value));
+  const c = v[0]==='t' ? horCatalogo(mes)[Number(v.slice(1))] : null;
+  let n = 0;
+  for(let f=desde; f<=hasta; f=sumaDias(f,1)){
+    if(!dias.includes(new Date(f+'T00:00:00').getDay())) continue;
+    st.turnos = st.turnos.filter(t=>!(t.personaId===personaId && t.fecha===f));
+    if(v==='q'){ n++; continue; }
+    if(c) st.turnos.push({id:uid(), personaId, fecha:f, codigo:c[0], ini:c[1], fin:c[2], neto:c[3], desc:c[4]});
+    else { const m = v.slice(2); st.turnos.push({id:uid(), personaId, fecha:f, codigo:'*'+m, marca:m, ini:'', fin:'', neto:0, desc:''}); }
+    n++;
+  }
+  await horGuardar();
+  document.getElementById('horModalBg').classList.remove('active');
+  renderHorarios();
+  showToast(n ? `${n} día(s) actualizado(s).` : 'Ningún día coincide con los días elegidos.');
+});
+document.getElementById('btnHorPersona').addEventListener('click', ()=>{
+  document.getElementById('horPNombre').value = '';
+  document.getElementById('horPLista').innerHTML = (horArea==='logistica' ? [] : trabajadores).map(t=>`<option value="${esc(t.nombre)}">`).join('');
+  document.getElementById('horPersonaModalBg').classList.add('active');
+});
+document.getElementById('btnHorPCancelar').addEventListener('click', ()=>document.getElementById('horPersonaModalBg').classList.remove('active'));
+document.getElementById('btnHorPGuardar').addEventListener('click', async ()=>{
+  const nombre = document.getElementById('horPNombre').value.trim(), st = horStore();
+  if(!nombre){ showToast('Escribe el nombre.'); return; }
+  if(st.personal.some(p=>p.nombre.toLowerCase()===nombre.toLowerCase())){ showToast('Esa persona ya está en el horario.'); return; }
+  st.personal.push(horArea==='logistica' ? {id:uid(), nombre, salario:0} : {id:uid(), nombre});
+  await horGuardar();
+  document.getElementById('horPersonaModalBg').classList.remove('active');
+  renderHorarios();
+});
+/* Editor del catálogo de turnos del mes */
+let horCatBorrador = [];
+function horCatPintar(){
+  document.getElementById('horCatFilas').innerHTML = horCatBorrador.map((c,i)=>`<div style="display:grid;grid-template-columns:70px 100px 100px 90px 1fr 46px 34px;gap:6px;align-items:center;">
+    <input type="text" data-hc="${i}|0" value="${esc(c[0])}" placeholder="Código">
+    <input type="time" data-hc="${i}|1" value="${c[1]}"><input type="time" data-hc="${i}|2" value="${c[2]}">
+    <input type="number" step="0.01" min="0" data-hc="${i}|3" value="${c[3]}" placeholder="Netas">
+    <input type="text" data-hc="${i}|4" value="${esc(c[4])}" placeholder="Descripción">
+    <input type="color" data-hc="${i}|6" value="${c[6]}" style="padding:0;height:30px;">
+    <button class="ghost danger" data-hcdel="${i}" style="padding:0 6px;">✕</button></div>`).join('') || '<p class="hint">Sin turnos. Usa + Turno.</p>';
+  document.querySelectorAll('[data-hc]').forEach(inp=>inp.addEventListener('input', ()=>{
+    const [i, k] = inp.dataset.hc.split('|').map(Number);
+    horCatBorrador[i][k] = k===3 ? Number(inp.value) : inp.value;
+  }));
+  document.querySelectorAll('[data-hcdel]').forEach(b=>b.addEventListener('click', ()=>{ horCatBorrador.splice(Number(b.dataset.hcdel),1); horCatPintar(); }));
+}
+const HOR_PALETA = ['#FFC000','#0070C0','#A9D18E','#00B0F0','#7030A0','#AEABAB','#FF9999','#00B050'];
+document.getElementById('btnHorTurnos').addEventListener('click', ()=>{
+  horCatBorrador = horCatalogo(document.getElementById('horMes').value).map(c=>[...c]);
+  horCatPintar(); document.getElementById('horCatModalBg').classList.add('active');
+});
+document.getElementById('btnHorCatAgregar').addEventListener('click', ()=>{
+  horCatBorrador.push(['H'+(horCatBorrador.length+1),'06:00','14:00',8,'',0,HOR_PALETA[horCatBorrador.length%HOR_PALETA.length]]); horCatPintar();
+});
+document.getElementById('btnHorCatCopiar').addEventListener('click', ()=>{
+  const [y, m] = document.getElementById('horMes').value.split('-').map(Number);
+  const ant = new Date(y, m-2, 1), k = ant.getFullYear()+'-'+String(ant.getMonth()+1).padStart(2,'0');
+  const c = horCatalogo(k);
+  if(!c.length){ showToast('El mes anterior no tiene turnos.'); return; }
+  horCatBorrador = c.map(x=>[...x]); horCatPintar();
+});
+document.getElementById('btnHorCatCancelar').addEventListener('click', ()=>document.getElementById('horCatModalBg').classList.remove('active'));
+document.getElementById('btnHorCatGuardar').addEventListener('click', async ()=>{
+  const codigos = horCatBorrador.map(c=>String(c[0]).trim());
+  if(codigos.some(c=>!c) || new Set(codigos).size!==codigos.length){ showToast('Cada turno necesita un código distinto.'); return; }
+  if(horCatBorrador.some(c=>!c[1] || !c[2] || !(c[3]>0))){ showToast('Completa inicio, fin y horas netas de cada turno.'); return; }
+  const st = horStore(); st.catalogos = st.catalogos || {};
+  st.catalogos[document.getElementById('horMes').value] = horCatBorrador.map(c=>[String(c[0]).trim(), c[1], c[2], Number(c[3]), c[4]||'', 0, c[6]]);
+  await horGuardar();
+  document.getElementById('horCatModalBg').classList.remove('active');
+  renderHorarios();
+});
+document.getElementById('btnHorPdf').addEventListener('click', ()=>{
+  const mes = document.getElementById('horMes').value, [y, m] = mes.split('-').map(Number);
+  const css = '<style>@page{size:letter landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#011632;margin:0}table{border-collapse:collapse;width:100%;font-size:10px;text-align:center}th,td{border:1px solid #999;padding:3px 2px}th{background:#011632;color:#fff}td:first-child,th:first-child{text-align:left;white-space:nowrap}</style>';
+  const html = `<html><head><meta charset="utf-8">${css}</head><body><h2 style="margin:0 0 2px;">Horario de ${horArea==='logistica'?'Logística':'Mantenimiento'} — ${LOG_MESES[m-1]} ${y}</h2>
+    <p style="margin:0 0 8px;font-size:11px;color:#555;">Colegio Americano de Barranquilla · Servicios Generales</p>
+    <table>${horGridHTML(mes).replace(/cursor:pointer;/g,'')}</table><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:11px;">${horLeyendaHTML(mes)}</div></body></html>`;
+  document.getElementById('rsPreviewTitulo').textContent = 'Previsualización del horario';
+  document.getElementById('rsPreviewFrame').srcdoc = html;
+  document.getElementById('rsPreviewModalBg').classList.add('active');
+});
 let heEditandoId = null;
 function poblarSelectTrabajadoresHE(){
   document.getElementById('heTrabajador').innerHTML = trabajadores.map(t=>`<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
@@ -10455,6 +10675,7 @@ function showMantSelector(){
   document.getElementById('mantSubHorasExtra').style.display = 'none';
   document.getElementById('mantSubActivos').style.display = 'none';
   document.getElementById('mantSubRecibidos').style.display = 'none';
+  document.getElementById('mantSubHorarios').style.display = 'none';
 }
 /* ===== INVENTARIO DE ACTIVOS FIJOS =====
    Los espacios salen de la ubicación de cada aire (solo lectura, la hoja de vida
@@ -10841,6 +11062,8 @@ function openMantSub(name){
   document.getElementById('mantSubHorasExtra').style.display = name==='horasextra' ? 'block' : 'none';
   document.getElementById('mantSubActivos').style.display = name==='activos' ? 'block' : 'none';
   document.getElementById('mantSubRecibidos').style.display = name==='recibidos' ? 'block' : 'none';
+  document.getElementById('mantSubHorarios').style.display = name==='horarios' ? 'block' : 'none';
+  if(name==='horarios'){ renderHorarios(); }
   if(name==='requisiciones'){ showReqLista(); }
   if(name==='reportes'){ cargarReportesRecibidos(); }
   if(name==='mapas'){ renderMarcadoresExtintores(); renderMarcadoresTrampas(); renderMarcadoresEncuentro(); renderFlechasEvacuacion(); }
