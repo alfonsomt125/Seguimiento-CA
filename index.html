@@ -1449,6 +1449,55 @@
     <button class="year-pill" data-hearea="logistica">🚚 Logística</button>
   </div>
 
+  <!-- ===== Logística: turnos, horas extras y recargos ===== -->
+  <div id="heLogPanel" style="display:none;">
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+        <h2 style="margin:0;">Logística — turnos, horas extras y recargos</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="ghost" id="btnLogPersona">+ Persona</button>
+          <button class="primary" id="btnLogTurnos">+ Registrar turnos</button>
+        </div>
+      </div>
+      <p class="hint" style="margin:0 0 12px;">Se registra cada turno trabajado (catálogo de tu cronograma 2026). Las horas netas se suman por semana (lunes a domingo) y lo que pase del tope semanal es hora extra: 44 h, o 42 h en las semanas que terminan desde el 15-jul-2026 (Ley 2101). Noche desde 7:00 p.m.; domingo por día de la semana (la app no maneja festivos). Los valores usan el salario de la persona o el mínimo 2026.</p>
+      <div class="field" style="max-width:220px;margin-bottom:12px;"><label>Mes</label><input type="month" id="heLogMes"></div>
+      <div id="heLogPersonal" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Persona</th><th>Semana</th><th>Horas</th><th>Tope</th><th>Extra</th><th>Detalle de extras</th><th>Recargos (horas ordinarias)</th><th>Valor est.</th></tr></thead>
+        <tbody id="heLogResumenBody"></tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <h2 style="margin:0 0 10px;">Turnos registrados del mes</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Fecha</th><th>Persona</th><th>Turno</th><th>Horario</th><th>Horas netas</th><th></th></tr></thead>
+        <tbody id="heLogTurnosBody"></tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="modal-bg" id="heLogModalBg"><div class="modal" style="max-width:460px;">
+    <h2>Registrar turnos</h2>
+    <div class="field"><label>Persona</label><select id="heLogPersona"></select></div>
+    <div class="grid-2" style="margin-top:12px;">
+      <div class="field"><label>Desde</label><input type="date" id="heLogDesde"></div>
+      <div class="field"><label>Hasta</label><input type="date" id="heLogHasta"></div>
+    </div>
+    <div class="field" style="margin-top:12px;"><label>Días de la semana</label>
+      <div id="heLogDias" style="display:flex;gap:10px;flex-wrap:wrap;font-size:13px;">
+        <label><input type="checkbox" value="1" checked> L</label><label><input type="checkbox" value="2" checked> M</label><label><input type="checkbox" value="3" checked> X</label><label><input type="checkbox" value="4" checked> J</label><label><input type="checkbox" value="5" checked> V</label><label><input type="checkbox" value="6" checked> S</label><label><input type="checkbox" value="0" checked> D</label>
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px;"><label>Turno (catálogo del mes)</label><select id="heLogTurno"></select></div>
+    <p class="hint" id="heLogInfo" style="margin:8px 0 0;"></p>
+    <div class="modal-actions"><button class="ghost" id="btnLogCancelar">Cancelar</button><button class="primary" id="btnLogGuardar">Guardar</button></div>
+  </div></div>
+  <div class="modal-bg" id="heLogPersonaModalBg"><div class="modal" style="max-width:380px;">
+    <h2>Agregar persona a Logística</h2>
+    <div class="field"><label>Nombre</label><input type="text" id="heLogPNombre"></div>
+    <div class="field" style="margin-top:12px;"><label>Salario mensual (opcional, si no usa el mínimo 2026)</label><input type="number" id="heLogPSalario" min="0" step="1000"></div>
+    <div class="modal-actions"><button class="ghost" id="btnLogPCancelar">Cancelar</button><button class="primary" id="btnLogPGuardar">Guardar</button></div>
+  </div></div>
+
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
       <h2 style="margin:0;" id="heTituloResumen">Horas extras — resumen del período</h2>
@@ -3951,6 +4000,12 @@ async function loadAll(){
     const he = await storageAPI.get('horasExtras');
     horasExtras = JSON.parse(he.value);
   }catch(e){ horasExtras = []; }
+  try{
+    const lg = await storageAPI.get('logisticaHE');
+    logData = JSON.parse(lg.value);
+  }catch(e){
+    if(e.message==='not found') logData = {personal: LOG_PERSONAL_SEED.map(n=>({id:uid(), nombre:n, salario:0})), turnos:[]};
+  }
   try{
     const hc = await storageAPI.get('heCompensaciones');
     heCompensaciones = JSON.parse(hc.value);
@@ -8248,6 +8303,10 @@ document.querySelectorAll('#heCortesRapidos [data-corte]').forEach(btn=>{
 
 function renderHorasExtra(){
   document.querySelectorAll('#heAreaTabs [data-hearea]').forEach(b=>b.classList.toggle('active', b.dataset.hearea===heAreaActual));
+  const esLog = heAreaActual==='logistica';
+  document.getElementById('heLogPanel').style.display = esLog ? 'block' : 'none';
+  document.querySelectorAll('#mantSubHorasExtra > .panel').forEach(pn=>pn.style.display = esLog ? 'none' : '');
+  if(esLog){ renderLogisticaHE(); return; }
   document.getElementById('heTituloResumen').textContent = 'Horas extras ' + (heAreaActual==='logistica'?'Logística':'Mantenimiento') + ' — resumen del período';
   actualizarTextoLimitesHE();
   if(!document.getElementById('heDesdePeriodo').value || !document.getElementById('heHastaPeriodo').value){
@@ -8344,6 +8403,159 @@ function renderHorasExtra(){
 }
 document.getElementById('heDesdePeriodo').addEventListener('change', renderHorasExtra);
 document.getElementById('heHastaPeriodo').addEventListener('change', renderHorasExtra);
+
+const LOG_CATALOGO = {"2026-01":[["H1","06:10","14:18",7.63,"TURNO DIA L-V GARITA",1],["H2","06:00","14:00",7.5,"TURNO DIA S-D-F GARITA",1],["H3","14:00","21:00",7.0,"TURNO TARDE GARITA",1],["H4","21:00","07:00",10.0,"TURNO NOCHE D-J GARITA",1],["H5","21:00","06:00",9.0,"TURNO NOCHE S-D-F GARITA",1],["H6","06:10","14:20",7.67,"TURNO DIA PATIO",1],["H7","21:00","06:00",9.0,"TURNO NOCHE PATIO",1],["H8","21:00","07:00",10.0,"TURNO NOCHE PATIO-CL76",1],["H9","07:00","16:18",8.3,"TURNO ENT. PRINCIPAL L-V",1],["H10","07:00","12:40",5.67,"TURNO ENT. PRINCIPAL SAB",1]],"2026-02":[["H1","06:10","14:20",7.67,"DIURNO GARITA-PATIO L-V"],["H2","06:10","15:58",8.75,"DIURNO PATIO L-V"],["H3","07:00","13:30",6.5,"DIURNO PATIO D-F"],["H4","13:50","21:00",7.17,"TARDE PATIO L-D"],["H5","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H6","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H7","06:10","15:28",8.8,"DIURNO RECEPCION L-V"],["H8","07:00","12:30",5.5,"DIURNO RECEPCION D"]],"2026-03":[["H1","06:10","14:30",7.83,"DIURNO GARITA-PATIO L-V"],["H2","06:10","15:58",8.8,"DIURNO PATIO L-V"],["H3","07:00","13:30",6.5,"DIURNO PATIO S-D-F"],["H4","13:50","21:00",7.17,"TARDE PATIO L-D"],["H5","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H6","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H7","06:10","15:28",8.8,"DIURNO RECEPCION L-V"],["H8","07:00","13:30",6.5,"DIURNO RECEPCION D"]],"2026-04":[["H1","06:10","14:30",7.83,"DIURNO GARITA-PATIO L-V"],["H2","06:10","15:58",8.8,"DIURNO PATIO L-V"],["H3","07:00","13:30",6.5,"DIURNO PATIO S-D-F"],["H4","13:50","21:00",7.17,"TARDE PATIO L-D"],["H5","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H6","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H7","06:10","15:28",8.8,"DIURNO RECEPCION L-V"],["H8","07:00","13:30",6.5,"DIURNO RECEPCION D"]],"2026-05":[["H1","06:10","14:30",7.83,"DIURNO GARITA-PATIO L-V"],["H2","06:10","15:58",8.8,"DIURNO PATIO L-V"],["H3","07:00","13:30",6.5,"DIURNO PATIO S-D-F"],["H4","13:50","21:00",7.17,"TARDE PATIO L-D"],["H5","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H6","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H7","06:10","15:28",8.8,"DIURNO RECEPCION L-V"],["H8","07:00","13:30",6.5,"DIURNO RECEPCION D"]],"2026-06":[["H1","06:10","14:30",7.83,"DIURNO GARITA-PATIO L-V"],["H2","06:10","15:58",8.8,"DIURNO PATIO L-V"],["H3","11:00","21:00",10,"TARDE PATIO L-D"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H6","06:10","15:28",8.8,"DIURNO RECEPCION L-V"],["H7","06:00","14:00",8,"DIURNO RECEPCION D"]],"2026-07":[["H1","06:10","15:58",8.8,"DIURNO PATIO L-V"],["H2","06:10","15:34",8.4,"DIURNO PATIO S-D-F"],["H3","11:00","21:00",10,"TARDE PATIO L-D"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H6","06:10","15:28",8.4,"DIURNO RECEPCION L-V"],["H7","06:00","14:00",8,"DIURNO RECEPCION S"]],"2026-08":[["H1","06:10","15:34",8.4,"DIURNO PATIO S-D-F"],["H2","11:00","21:00",9.5,"TARDE PATIO L-D"],["H3","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H4","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H5","06:30","15:00",8.4,"DIURNO RECEPCION L-V"]],"2026-09":[["H1","06:10","15:34",8.4,"DIURNO PATIO S-D-F"],["H2","11:00","21:00",9.5,"TARDE PATIO L-V"],["H3","06:00","14:00",7.5,"TARDE PATIO S-D Y FESTIVOS"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H6","06:30","15:00",8.4,"DIURNO RECEPCION L-V"]],"2026-10":[["H1","06:10","15:34",8.4,"DIURNO PATIO S-D-F"],["H2","11:00","21:00",9.5,"TARDE PATIO L-D"],["H3","06:00","14:00",7.5,"TARDE PATIO S-D Y FESTIVOS"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H6","06:30","15:00",8.4,"DIURNO RECEPCION L-V"]],"2026-11":[["H1","06:10","15:34",8.4,"DIURNO PATIO S-D-F"],["H2","11:00","21:00",9.5,"TARDE PATIO L-D"],["H3","06:00","14:00",7.5,"TARDE PATIO S-D Y FESTIVOS"],["H4","21:00","07:00",10,"NOCTURNO PATIO V-S"],["H5","21:00","06:00",9,"NOCTURNO PATIO D-J"],["H6","06:30","15:00",8.4,"DIURNO RECEPCION L-V"]]};
+const LOG_PERSONAL_SEED = ['Miguel M.','Milton A.','Manuel H.','Bryan Pérez','Carmenza S.','Miguel J.'];
+let logData = {personal:[], turnos:[]};
+async function saveLogisticaHE(){
+  try{ await storageAPI.set('logisticaHE', JSON.stringify(logData)); }
+  catch(e){ showToast('No se pudo guardar (Logística). Intenta de nuevo.'); }
+}
+function isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function lunesDe(iso){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()-((d.getDay()+6)%7)); return isoLocal(d); }
+function sumaDias(iso,n){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return isoLocal(d); }
+function logLimiteSemanal(lunes){ return sumaDias(lunes,6) >= '2026-07-15' ? 42 : 44; }
+function logRecargoDom(fecha){ return fecha < '2026-07-01' ? 0.80 : 0.90; }
+/* Reparte los minutos netos de un turno entre ordinarios y extra (la extra son los
+   últimos minutos del turno) y los clasifica por tipo (noche desde 7 p.m., domingo). */
+function logClasificarTurno(t, extraH){
+  const hm = s=>+s.slice(0,2)*60 + +s.slice(3);
+  const a = hm(t.ini); let b = hm(t.fin); if(b<=a) b += 1440;
+  let lunch = Math.max(0, Math.round((b-a) - t.neto*60));
+  const mins = [];
+  for(let m=a; m<b; m++){
+    const tm = m%1440, noche = tm>=1140 || tm<360;
+    if(lunch>0 && !noche){ lunch--; continue; }
+    mins.push(m);
+  }
+  const nExtra = Math.min(mins.length, Math.round(extraH*60));
+  const ord = {ordinaria:0,nocturna:0,dominical:0,nocturnaDominical:0}, ext = {ordinaria:0,nocturna:0,dominical:0,nocturnaDominical:0};
+  const base = new Date(t.fecha+'T00:00:00');
+  mins.forEach((m,i)=>{
+    const d = new Date(base); d.setDate(d.getDate()+Math.floor(m/1440));
+    const dom = d.getDay()===0, tm = m%1440, noche = tm>=1140 || tm<360;
+    const k = dom ? (noche?'nocturnaDominical':'dominical') : (noche?'nocturna':'ordinaria');
+    (i >= mins.length-nExtra ? ext : ord)[k] += 1/60;
+  });
+  return {ord, ext};
+}
+function logCalcularSemanas(personaId, mesISO){
+  const persona = logData.personal.find(p=>p.id===personaId);
+  const valorHora = ((persona && Number(persona.salario)) || SMMLV_2026) / HE_DIVISOR_MENSUAL;
+  const desde = mesISO+'-01', hasta = mesISO+'-31';
+  const porSemana = {};
+  logData.turnos.filter(t=>t.personaId===personaId).forEach(t=>{ (porSemana[lunesDe(t.fecha)] = porSemana[lunesDe(t.fecha)] || []).push(t); });
+  return Object.keys(porSemana).sort().filter(l=>sumaDias(l,6)>=desde && l<=hasta).map(lunes=>{
+    const lim = logLimiteSemanal(lunes);
+    const turnos = porSemana[lunes].sort((x,y)=>(x.fecha+x.ini).localeCompare(y.fecha+y.ini));
+    let cum = 0, valor = 0;
+    const ext = {ordinaria:0,nocturna:0,dominical:0,nocturnaDominical:0}, ord = {...ext};
+    turnos.forEach(t=>{
+      const extra = Math.min(t.neto, Math.max(0, cum + t.neto - lim));
+      cum += t.neto;
+      const c = logClasificarTurno(t, extra), dr = logRecargoDom(t.fecha);
+      const fe = {ordinaria:1.25, nocturna:1.75, dominical:1.25+dr, nocturnaDominical:1.75+dr};
+      const fo = {ordinaria:0, nocturna:0.35, dominical:dr, nocturnaDominical:0.35+dr};
+      Object.keys(ext).forEach(k=>{ ext[k]+=c.ext[k]; ord[k]+=c.ord[k]; valor += c.ext[k]*fe[k]*valorHora + c.ord[k]*fo[k]*valorHora; });
+    });
+    Object.keys(ext).forEach(k=>{ ext[k]=r2(ext[k]); ord[k]=r2(ord[k]); });
+    return {persona, lunes, total:r2(cum), lim, extra:r2(Math.max(0,cum-lim)), ext, ord, valor:Math.round(valor)};
+  });
+}
+function logTextoCats(o, omitirOrd){
+  const L = {ordinaria:'diurna', nocturna:'nocturna', dominical:'dominical', nocturnaDominical:'noct. dominical'};
+  const partes = Object.keys(L).filter(k=>o[k]>0 && !(omitirOrd && k==='ordinaria')).map(k=>`${o[k]}h ${L[k]}`);
+  return partes.length ? partes.join(' · ') : '—';
+}
+function renderLogisticaHE(){
+  const mesInput = document.getElementById('heLogMes');
+  if(!mesInput.value) mesInput.value = todayISO().slice(0,7);
+  const mes = mesInput.value;
+  document.getElementById('heLogPersonal').innerHTML = logData.personal.map(p=>
+    `<span class="pill" style="padding:4px 10px;">${esc(p.nombre)} <button class="ghost" data-logdelpersona="${p.id}" style="padding:0 6px;border:none;" title="Quitar">✕</button></span>`).join('') || '<span class="hint">Aún no hay personal. Usa + Persona.</span>';
+  const filas = [];
+  logData.personal.forEach(p=>logCalcularSemanas(p.id, mes).forEach(w=>filas.push(w)));
+  filas.sort((a,b)=>a.persona.nombre.localeCompare(b.persona.nombre) || a.lunes.localeCompare(b.lunes));
+  document.getElementById('heLogResumenBody').innerHTML = filas.length ? filas.map(w=>`
+    <tr>
+      <td>${esc(w.persona.nombre)}</td>
+      <td>${fmtDate(w.lunes)} – ${fmtDate(sumaDias(w.lunes,6))}</td>
+      <td>${w.total}h</td><td>${w.lim}h</td>
+      <td style="${w.extra>0?'color:var(--red);font-weight:700;':''}">${w.extra}h</td>
+      <td>${logTextoCats(w.ext)}</td>
+      <td>${logTextoCats(w.ord,true)}</td>
+      <td>$${w.valor.toLocaleString('es-CO')}</td>
+    </tr>`).join('') + `<tr style="font-weight:700;background:var(--paper-2,#f4f5f8);"><td colspan="4">Total semanas mostradas</td><td>${r2(filas.reduce((s,w)=>s+w.extra,0))}h</td><td colspan="2"></td><td>$${filas.reduce((s,w)=>s+w.valor,0).toLocaleString('es-CO')}</td></tr>`
+    : '<tr><td colspan="8" class="empty">No hay turnos registrados en este mes.</td></tr>';
+  const turnos = logData.turnos.filter(t=>t.fecha.slice(0,7)===mes).sort((a,b)=>(b.fecha+b.ini).localeCompare(a.fecha+a.ini));
+  document.getElementById('heLogTurnosBody').innerHTML = turnos.length ? turnos.map(t=>{
+    const p = logData.personal.find(x=>x.id===t.personaId);
+    return `<tr><td>${fmtDate(t.fecha)}</td><td>${esc(p?p.nombre:'—')}</td><td>${esc(t.codigo)} ${esc(t.desc||'')}</td><td>${t.ini} – ${t.fin}</td><td>${t.neto}h</td><td><button class="ghost danger" data-logdelturno="${t.id}">Eliminar</button></td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty">Sin turnos en este mes.</td></tr>';
+  document.querySelectorAll('[data-logdelturno]').forEach(b=>b.addEventListener('click', async ()=>{
+    logData.turnos = logData.turnos.filter(t=>t.id!==b.dataset.logdelturno);
+    await saveLogisticaHE(); renderLogisticaHE();
+  }));
+  document.querySelectorAll('[data-logdelpersona]').forEach(b=>b.addEventListener('click', async ()=>{
+    const p = logData.personal.find(x=>x.id===b.dataset.logdelpersona);
+    if(!p || !await customConfirm(`¿Quitar a ${p.nombre} de Logística? También se borrarán sus turnos registrados.`)) return;
+    logData.personal = logData.personal.filter(x=>x.id!==p.id);
+    logData.turnos = logData.turnos.filter(t=>t.personaId!==p.id);
+    await saveLogisticaHE(); renderLogisticaHE();
+  }));
+}
+document.getElementById('heLogMes').addEventListener('change', renderLogisticaHE);
+function logActualizarTurnos(){
+  const f = document.getElementById('heLogDesde').value;
+  const cat = LOG_CATALOGO[(f||todayISO()).slice(0,7)] || [];
+  document.getElementById('heLogTurno').innerHTML = cat.length ? cat.map((c,i)=>`<option value="${i}">${c[0]}: ${c[1]} – ${c[2]} (${c[3]}h) ${esc(c[4])}</option>`).join('') : '<option value="">Sin catálogo para ese mes</option>';
+  document.getElementById('heLogInfo').textContent = cat.some(c=>c[5]) ? 'Las horas netas de enero son estimadas (el cronograma de enero no trae el dato).' : '';
+}
+document.getElementById('heLogDesde').addEventListener('change', logActualizarTurnos);
+document.getElementById('btnLogTurnos').addEventListener('click', ()=>{
+  if(!logData.personal.length){ showToast('Primero agrega personal con + Persona.'); return; }
+  document.getElementById('heLogPersona').innerHTML = logData.personal.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+  const hoy = todayISO();
+  document.getElementById('heLogDesde').value = hoy; document.getElementById('heLogHasta').value = hoy;
+  logActualizarTurnos();
+  document.getElementById('heLogModalBg').classList.add('active');
+});
+document.getElementById('btnLogCancelar').addEventListener('click', ()=>document.getElementById('heLogModalBg').classList.remove('active'));
+document.getElementById('btnLogGuardar').addEventListener('click', async ()=>{
+  const personaId = document.getElementById('heLogPersona').value;
+  const desde = document.getElementById('heLogDesde').value, hasta = document.getElementById('heLogHasta').value || desde;
+  const cat = LOG_CATALOGO[(desde||'').slice(0,7)] || [];
+  const c = cat[Number(document.getElementById('heLogTurno').value)];
+  if(!desde || !c){ showToast('Elige la fecha y un turno del catálogo.'); return; }
+  if(hasta<desde){ showToast('La fecha final es anterior a la inicial.'); return; }
+  if(hasta.slice(0,7)!==desde.slice(0,7)){ showToast('El rango debe estar dentro de un mismo mes (cada mes tiene sus turnos).'); return; }
+  const dias = [...document.querySelectorAll('#heLogDias input:checked')].map(i=>Number(i.value));
+  let n = 0;
+  for(let f=desde; f<=hasta; f=sumaDias(f,1)){
+    if(!dias.includes(new Date(f+'T00:00:00').getDay())) continue;
+    if(logData.turnos.some(t=>t.personaId===personaId && t.fecha===f && t.codigo===c[0])) continue;
+    logData.turnos.push({id:uid(), personaId, fecha:f, codigo:c[0], ini:c[1], fin:c[2], neto:c[3], desc:c[4]});
+    n++;
+  }
+  await saveLogisticaHE();
+  document.getElementById('heLogModalBg').classList.remove('active');
+  document.getElementById('heLogMes').value = desde.slice(0,7);
+  renderLogisticaHE();
+  showToast(n ? `${n} turno(s) registrado(s).` : 'No había turnos nuevos por registrar.');
+});
+document.getElementById('btnLogPersona').addEventListener('click', ()=>{
+  document.getElementById('heLogPNombre').value = ''; document.getElementById('heLogPSalario').value = '';
+  document.getElementById('heLogPersonaModalBg').classList.add('active');
+});
+document.getElementById('btnLogPCancelar').addEventListener('click', ()=>document.getElementById('heLogPersonaModalBg').classList.remove('active'));
+document.getElementById('btnLogPGuardar').addEventListener('click', async ()=>{
+  const nombre = document.getElementById('heLogPNombre').value.trim();
+  if(!nombre){ showToast('Escribe el nombre.'); return; }
+  logData.personal.push({id:uid(), nombre, salario:Number(document.getElementById('heLogPSalario').value)||0});
+  await saveLogisticaHE();
+  document.getElementById('heLogPersonaModalBg').classList.remove('active');
+  renderLogisticaHE();
+});
 
 let heEditandoId = null;
 function poblarSelectTrabajadoresHE(){
