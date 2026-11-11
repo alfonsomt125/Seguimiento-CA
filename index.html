@@ -1477,6 +1477,18 @@
       </table></div>
     </div>
     <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+        <h2 style="margin:0;">Liquidación por empleado — salario mínimo 2026</h2>
+        <div style="display:flex;gap:8px;align-items:center;"><select id="heLogLiqPersona"></select><button class="ghost" id="btnLogLiqPdf">⬇ Exportar a PDF</button></div>
+      </div>
+      <p class="hint" style="margin:0 0 12px;">Todo el año partido en el 15-jul-2026 (jornada 44 h → 42 h, divisor 220 → 210, dominical 80% → 90% desde el 1-jul). Incluye recargos nocturnos y dominicales de las horas ordinarias y las horas extras, como si nada se hubiera pagado.</p>
+      <div class="table-wrap" style="margin-bottom:14px;"><table>
+        <thead><tr><th>Empleado</th><th>Antes del 15-jul</th><th>Desde el 15-jul</th><th>Total a reconocer</th></tr></thead>
+        <tbody id="heLogLiqResumen"></tbody>
+      </table></div>
+      <div id="heLogLiqDetalle"></div>
+    </div>
+    <div class="panel">
       <h2 style="margin:0 0 10px;">Turnos registrados del mes</h2>
       <div class="table-wrap"><table>
         <thead><tr><th>Fecha</th><th>Persona</th><th>Turno</th><th>Horario</th><th>Horas netas</th><th></th></tr></thead>
@@ -8468,11 +8480,11 @@ function logClasificarTurno(t, extraH){
 }
 function logCalcularSemanas(personaId, mesISO){
   const persona = logData.personal.find(p=>p.id===personaId);
-  const valorHora = ((persona && Number(persona.salario)) || SMMLV_2026) / HE_DIVISOR_MENSUAL;
-  const desde = mesISO+'-01', hasta = mesISO+'-31';
+  const salarioBase = (persona && Number(persona.salario)) || SMMLV_2026;
+  const desde = mesISO ? mesISO+'-01' : '', hasta = mesISO ? mesISO+'-31' : '';
   const porSemana = {};
   logData.turnos.filter(t=>t.personaId===personaId && !t.marca).forEach(t=>{ (porSemana[lunesDe(t.fecha)] = porSemana[lunesDe(t.fecha)] || []).push(t); });
-  return Object.keys(porSemana).sort().filter(l=>sumaDias(l,6)>=desde && l<=hasta).map(lunes=>{
+  return Object.keys(porSemana).sort().filter(l=>!mesISO || (sumaDias(l,6)>=desde && l<=hasta)).map(lunes=>{
     const lim = logLimiteSemanal(lunes);
     const turnos = porSemana[lunes].sort((x,y)=>(x.fecha+x.ini).localeCompare(y.fecha+y.ini));
     let cum = 0, valor = 0; const detalle = [];
@@ -8483,9 +8495,10 @@ function logCalcularSemanas(personaId, mesISO){
       const c = logClasificarTurno(t, extra), dr = logRecargoDom(t.fecha);
       const fe = {ordinaria:1.25, nocturna:1.75, dominical:1.25+dr, nocturnaDominical:1.75+dr};
       const fo = {ordinaria:0, nocturna:0.35, dominical:dr, nocturnaDominical:0.35+dr};
-      let vt = 0;
-      Object.keys(ext).forEach(k=>{ ext[k]+=c.ext[k]; ord[k]+=c.ord[k]; vt += c.ext[k]*fe[k]*valorHora + c.ord[k]*fo[k]*valorHora; });
-      valor += vt; detalle.push({fecha:t.fecha, neto:t.neto, ord:c.ord, ext:c.ext, valor:vt});
+      const valorHora = salarioBase / (t.fecha >= '2026-07-15' ? 210 : 220);
+      let vt = 0; const vo = {}, ve = {};
+      Object.keys(ext).forEach(k=>{ ext[k]+=c.ext[k]; ord[k]+=c.ord[k]; ve[k] = c.ext[k]*fe[k]*valorHora; vo[k] = c.ord[k]*fo[k]*valorHora; vt += ve[k] + vo[k]; });
+      valor += vt; detalle.push({fecha:t.fecha, neto:t.neto, ord:c.ord, ext:c.ext, valor:vt, vo, ve, valorHora});
     });
     Object.keys(ext).forEach(k=>{ ext[k]=r2(ext[k]); ord[k]=r2(ord[k]); });
     return {persona, lunes, total:r2(cum), lim, extra:r2(Math.max(0,cum-lim)), ext, ord, valor:Math.round(valor), detalle};
@@ -8496,6 +8509,69 @@ function logTextoCats(o, omitirOrd){
   const partes = Object.keys(L).filter(k=>o[k]>0 && !(omitirOrd && k==='ordinaria')).map(k=>`${o[k]}h ${L[k]}`);
   return partes.length ? partes.join(' · ') : '—';
 }
+/* Liquidación por empleado (salario mínimo 2026 o el salario de la persona), partida en el 15-jul-2026:
+   antes: jornada 44 h/sem, divisor 220, dominical 80% · desde: 42 h/sem, divisor 210, dominical 90% (desde 1-jul). */
+const LOG_CONCEPTOS = [
+  ['o','nocturna','Recargo nocturno (hora ordinaria)', f=>35],
+  ['o','dominical','Recargo dominical/festivo diurno (hora ordinaria)', f=>f<'2026-07-01'?80:90],
+  ['o','nocturnaDominical','Recargo nocturno dominical (hora ordinaria)', f=>35+(f<'2026-07-01'?80:90)],
+  ['e','ordinaria','Hora extra diurna', f=>125],
+  ['e','nocturna','Hora extra nocturna', f=>175],
+  ['e','dominical','Hora extra diurna dominical/festiva', f=>125+(f<'2026-07-01'?80:90)],
+  ['e','nocturnaDominical','Hora extra nocturna dominical/festiva', f=>175+(f<'2026-07-01'?80:90)]
+];
+function logLiquidar(personaId){
+  const per = {A:{}, B:{}};
+  ['A','B'].forEach(x=>LOG_CONCEPTOS.forEach(c=>per[x][c[0]+c[1]] = {h:0, v:0, vh:0}));
+  logCalcularSemanas(personaId, null).flatMap(w=>w.detalle).forEach(d=>{
+    const x = d.fecha < '2026-07-15' ? 'A' : 'B';
+    LOG_CONCEPTOS.forEach(c=>{
+      const r = per[x][c[0]+c[1]], horas = (c[0]==='o'?d.ord:d.ext)[c[1]], val = (c[0]==='o'?d.vo:d.ve)[c[1]];
+      r.h += horas; r.v += val; r.vh = d.valorHora;
+    });
+  });
+  const tot = x => Math.round(Object.values(per[x]).reduce((s,r)=>s+r.v,0));
+  return {per, totA:tot('A'), totB:tot('B')};
+}
+const logMoneda = n => '$'+Math.round(n).toLocaleString('es-CO');
+function logTablaLiq(personaId, estilos){
+  const L = logLiquidar(personaId), p = logData.personal.find(x=>x.id===personaId);
+  const sal = (p && Number(p.salario)) || SMMLV_2026;
+  const th = estilos ? estilos.th : '', td = estilos ? estilos.td : '';
+  const bloque = (x, titulo, fRef, tope, div) => {
+    const filas = LOG_CONCEPTOS.map(c=>{ const r = L.per[x][c[0]+c[1]]; return r.h>0.004 ? `<tr><td style="${td}">${c[2]}</td><td style="${td}text-align:right;">${r2(r.h)}</td><td style="${td}text-align:right;">${c[3](fRef)}%</td><td style="${td}text-align:right;">${logMoneda(r.vh)}</td><td style="${td}text-align:right;">${logMoneda(r.v)}</td></tr>` : ''; }).join('');
+    return `<h4 style="margin:14px 0 4px;">${titulo}</h4><p style="margin:0 0 6px;font-size:12px;color:#555;">Jornada máxima ${tope} h/semana · divisor mensual ${div} h · valor hora ordinaria ${logMoneda(sal/div)}</p>
+    <table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}text-align:left;">Concepto</th><th style="${th}">Horas</th><th style="${th}">% aplicado</th><th style="${th}">Valor hora base</th><th style="${th}">Valor a pagar</th></tr></thead><tbody>${filas || `<tr><td colspan="5" style="${td}text-align:center;">Sin horas en este período.</td></tr>`}<tr style="font-weight:700;"><td style="${td}" colspan="4">Subtotal</td><td style="${td}text-align:right;">${logMoneda(x==='A'?L.totA:L.totB)}</td></tr></tbody></table>`;
+  };
+  return `<p style="margin:0 0 4px;font-size:13px;"><b>${esc(p.nombre)}</b> · salario base ${logMoneda(sal)}${Number(p.salario)?'':' (salario mínimo 2026)'}</p>`
+    + bloque('A','Del 1 de enero al 14 de julio de 2026','2026-03-01',44,220)
+    + bloque('B','Del 15 de julio de 2026 en adelante','2026-08-01',42,210)
+    + `<p style="margin:14px 0 0;font-size:15px;font-weight:700;">Total a reconocer: ${logMoneda(L.totA+L.totB)}</p>`;
+}
+function renderLogLiquidacion(){
+  const sel = document.getElementById('heLogLiqPersona');
+  const prev = sel.value;
+  sel.innerHTML = logData.personal.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+  if(prev && logData.personal.some(p=>p.id===prev)) sel.value = prev;
+  const resumen = logData.personal.map(p=>{ const L = logLiquidar(p.id); return {p, a:L.totA, b:L.totB}; });
+  document.getElementById('heLogLiqResumen').innerHTML = resumen.map(r=>`<tr><td>${esc(r.p.nombre)}</td><td>${logMoneda(r.a)}</td><td>${logMoneda(r.b)}</td><td><b>${logMoneda(r.a+r.b)}</b></td></tr>`).join('')
+    + `<tr style="font-weight:700;background:var(--paper-2,#f4f5f8);"><td>Total</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.a,0))}</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.b,0))}</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.a+r.b,0))}</td></tr>`;
+  document.getElementById('heLogLiqDetalle').innerHTML = sel.value ? logTablaLiq(sel.value, {th:'padding:6px 8px;border-bottom:2px solid var(--line);font-size:12px;text-align:right;', td:'padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;'}) : '';
+}
+document.getElementById('heLogLiqPersona').addEventListener('change', renderLogLiquidacion);
+document.getElementById('btnLogLiqPdf').addEventListener('click', ()=>{
+  const id = document.getElementById('heLogLiqPersona').value;
+  if(!id) return;
+  const e = {th:'border:1px solid #999;padding:6px;font-size:12px;background:#011632;color:#fff;text-align:right;', td:'border:1px solid #999;padding:6px;font-size:12px;'};
+  const html = `<html><head><meta charset="utf-8"><style>@page{size:letter;margin:14mm}body{font-family:Arial,sans-serif;color:#011632;margin:0}th:first-child{text-align:left}</style></head><body>
+    <h2 style="margin:0 0 2px;">Liquidación de recargos y horas extras 2026 — Logística</h2>
+    <p style="margin:0 0 10px;font-size:12px;color:#555;">Colegio Americano de Barranquilla · Servicios Generales · ${fmtDate(todayISO())}</p>
+    ${logTablaLiq(id, e)}
+    <p style="margin-top:16px;font-size:11px;color:#555;">Base: turnos del cronograma de Logística 2026. Horas extras por semana (lunes a domingo) sobre la jornada máxima vigente; noche desde las 7:00 p.m. (Ley 2466 de 2025); dominical 80% hasta el 30-jun-2026 y 90% desde el 1-jul-2026; divisor mensual 220 h antes del 15-jul-2026 y 210 h desde esa fecha (Ley 2101). No incluye festivos. Los valores son estimados y deben validarse con Talento Humano / asesoría laboral.</p></body></html>`;
+  document.getElementById('rsPreviewTitulo').textContent = 'Previsualización de la liquidación';
+  document.getElementById('rsPreviewFrame').srcdoc = html;
+  document.getElementById('rsPreviewModalBg').classList.add('active');
+});
 function renderLogisticaHE(){
   const mesInput = document.getElementById('heLogMes');
   if(!mesInput.value) mesInput.value = todayISO().slice(0,7);
@@ -8548,6 +8624,7 @@ function renderLogisticaHE(){
     document.getElementById('heLogDesde').value = f; document.getElementById('heLogHasta').value = f;
     logActualizarTurnos();
   }));
+  renderLogLiquidacion();
   // horas laboradas según la norma (por turnos del mes)
   const filasN = logData.personal.map(p=>{
     const dets = logCalcularSemanas(p.id, mes).flatMap(w=>w.detalle).filter(x=>x.fecha.slice(0,7)===mes);
