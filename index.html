@@ -1444,10 +1444,14 @@
   <!-- ===================== SUB-MÓDULO: HORAS EXTRAS DEL PERSONAL ===================== -->
   <div id="mantSubHorasExtra" style="display:none;">
   <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+  <div class="year-pills" id="heAreaTabs" style="margin:10px 0 14px;">
+    <button class="year-pill active" data-hearea="mantenimiento">🔧 Mantenimiento</button>
+    <button class="year-pill" data-hearea="logistica">🚚 Logística</button>
+  </div>
 
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
-      <h2 style="margin:0;">Horas extras — resumen del período</h2>
+      <h2 style="margin:0;" id="heTituloResumen">Horas extras — resumen del período</h2>
       <button class="ghost" id="btnExportarResumenHE">⬇ Exportar a PDF</button>
       <button class="ghost" id="btnConfigLimitesHE">⚙ Configurar límites</button>
     </div>
@@ -3582,6 +3586,13 @@ let trampas = [];
 let puntosEncuentro = [];
 let flechasEvacuacion = [];
 let horasExtras = [];
+let heAreaActual = 'mantenimiento';
+const heEnArea = h => (h.area||'mantenimiento')===heAreaActual;
+function trabajadoresHE(){
+  const enLog = new Set(horasExtras.filter(h=>h.area==='logistica').map(h=>h.trabajadorId));
+  const enMan = new Set(horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId));
+  return heAreaActual==='logistica' ? trabajadores.filter(t=>enLog.has(t.id)) : trabajadores.filter(t=>!(enLog.has(t.id) && !enMan.has(t.id)));
+}
 let heCompensaciones = [];
 let limitesHorasExtras = {diario: 2, mensual: 50, tope: 50};
 let editingAireId = null;
@@ -7754,11 +7765,11 @@ function actualizarTextoLimitesHE(){
     `Límite diario: ${limitesHorasExtras.diario}h por persona · Límite por período: ${limitesHorasExtras.mensual}h por persona.`;
 }
 function horasDelDia(trabajadorId, fecha, excluirId){
-  return r2(horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha===fecha && h.id!==excluirId)
+  return r2(horasExtras.filter(heEnArea).filter(h=>h.trabajadorId===trabajadorId && h.fecha===fecha && h.id!==excluirId)
     .reduce((s,h)=>s+Number(h.horas||0), 0));
 }
 function horasDelPeriodo(trabajadorId, desde, hasta, excluirId){
-  return r2(horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha>=desde && h.fecha<=hasta && h.id!==excluirId && (h.estadoPago||'normal')==='normal')
+  return r2(horasExtras.filter(heEnArea).filter(h=>h.trabajadorId===trabajadorId && h.fecha && h.fecha>=desde && h.fecha<=hasta && h.id!==excluirId && (h.estadoPago||'normal')==='normal')
     .reduce((s,h)=>s+Number(h.horas||0), 0));
 }
 
@@ -7851,7 +7862,7 @@ document.getElementById('btnQuitarCompensarHE').addEventListener('click', async 
 function abrirDetalleHE(trabajadorId){
   const trabajador = trabajadores.find(t=>t.id===trabajadorId);
   const {desde, hasta} = periodoActualHE();
-  const registros = horasExtras.filter(h=>h.trabajadorId===trabajadorId && h.fecha>=desde && h.fecha<=hasta)
+  const registros = horasExtras.filter(heEnArea).filter(h=>h.trabajadorId===trabajadorId && h.fecha>=desde && h.fecha<=hasta)
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
 
   const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
@@ -7911,8 +7922,8 @@ function limitarHorasPriorizandoRecargos(totales, limite){
   return limitado;
 }
 function calcularHEPorPersona(desde, hasta){
-  return trabajadores.map(t=>{
-    const registros = horasExtras.filter(h=>h.trabajadorId===t.id && h.fecha>=desde && h.fecha<=hasta && (h.estadoPago||'normal')==='normal');
+  return trabajadoresHE().map(t=>{
+    const registros = horasExtras.filter(heEnArea).filter(h=>h.trabajadorId===t.id && h.fecha>=desde && h.fecha<=hasta && (h.estadoPago||'normal')==='normal');
     const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
     registros.forEach(h=>{
       const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
@@ -7939,8 +7950,8 @@ function calcularHEPorPersona(desde, hasta){
    la cola completa de lo que falta por pagar, sin importar de qué corte
    vino originalmente. */
 function renderHePendientes(){
-  const cruzadas = horasExtras.filter(h=>h.estadoPago==='pendiente' && h.cruzaTipo);
-  const pendientes = horasExtras.filter(h=>h.estadoPago==='pendiente' && !h.cruzaTipo).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  const cruzadas = horasExtras.filter(heEnArea).filter(h=>h.estadoPago==='pendiente' && h.cruzaTipo);
+  const pendientes = horasExtras.filter(heEnArea).filter(h=>h.estadoPago==='pendiente' && !h.cruzaTipo).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
   const tbody = document.getElementById('hePendientesBody');
   tbody.innerHTML = pendientes.length ? pendientes.map(h=>`
     <tr>
@@ -8095,7 +8106,7 @@ document.getElementById('btnGenerarHeExport').addEventListener('click', async ()
 function construirResumenHEHtml(idsSeleccionados, desde, hasta, conLiquidacion){
   const personas = idsSeleccionados.map(id=>{
     const t = trabajadores.find(x=>x.id===id);
-    const registros = horasExtras.filter(h=>h.trabajadorId===id && h.fecha>=desde && h.fecha<=hasta && (h.estadoPago||'normal')==='normal');
+    const registros = horasExtras.filter(heEnArea).filter(h=>h.trabajadorId===id && h.fecha>=desde && h.fecha<=hasta && (h.estadoPago||'normal')==='normal');
     const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
     registros.forEach(h=>{
       const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
@@ -8221,6 +8232,10 @@ document.querySelectorAll('th[data-hesort]').forEach(th=>{
   });
 });
 document.getElementById('heBuscar').addEventListener('input', renderHorasExtra);
+document.querySelectorAll('#heAreaTabs [data-hearea]').forEach(b=>b.addEventListener('click', ()=>{
+  heAreaActual = b.dataset.hearea;
+  renderHorasExtra();
+}));
 document.querySelectorAll('#heCortesRapidos [data-corte]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     const [desde, hasta] = btn.dataset.corte.split('|');
@@ -8232,6 +8247,8 @@ document.querySelectorAll('#heCortesRapidos [data-corte]').forEach(btn=>{
 });
 
 function renderHorasExtra(){
+  document.querySelectorAll('#heAreaTabs [data-hearea]').forEach(b=>b.classList.toggle('active', b.dataset.hearea===heAreaActual));
+  document.getElementById('heTituloResumen').textContent = 'Horas extras ' + (heAreaActual==='logistica'?'Logística':'Mantenimiento') + ' — resumen del período';
   actualizarTextoLimitesHE();
   if(!document.getElementById('heDesdePeriodo').value || !document.getElementById('heHastaPeriodo').value){
     const def = periodoPorDefecto();
@@ -8246,7 +8263,7 @@ function renderHorasExtra(){
   });
 
   const resumenWrap = document.getElementById('heResumenPorTrabajador');
-  const filas = trabajadores.map(t=>{
+  const filas = trabajadoresHE().map(t=>{
     const total = horasDelPeriodo(t.id, desde, hasta);
     const pctReal = r2(total/limitesHorasExtras.mensual*100);
     const pct = Math.min(100, pctReal);
@@ -8269,7 +8286,7 @@ function renderHorasExtra(){
         ${f.pct>=18 ? `<span class="he-bar-pct">${Math.round(f.pctReal)}%</span>` : ''}
       </div>
       <span class="count" style="width:auto;min-width:96px;text-align:right;font-weight:700;color:${f.color};">${f.total}h / ${limitesHorasExtras.mensual}h${f.excedido?` <span style="font-weight:700;">(+${f.pctExceso}%)</span>`:''}</span>
-    </div>`).join('') : '<p class="empty">Aún no hay trabajadores registrados (se agregan desde Salida de Insumos).</p>';
+    </div>`).join('') : `<p class="empty">${heAreaActual==='logistica'?'Aún no hay horas extras de Logística. Usa + Agregar y elige al trabajador.':'Aún no hay trabajadores registrados (se agregan desde Salida de Insumos).'}</p>`;
   resumenWrap.querySelectorAll('[data-horariohe]').forEach(el=>{
     el.addEventListener('click', (e)=>{ e.stopPropagation(); abrirHeHorarioModal(el.dataset.horariohe); });
   });
@@ -8277,7 +8294,7 @@ function renderHorasExtra(){
     el.addEventListener('click', ()=>abrirDetalleHE(el.dataset.vertrabajadorhe));
   });
 
-  const registrosDelPeriodo = (desde && hasta ? horasExtras.filter(h=>h.fecha && h.fecha>=desde && h.fecha<=hasta) : []);
+  const registrosDelPeriodo = (desde && hasta ? horasExtras.filter(heEnArea).filter(h=>h.fecha && h.fecha>=desde && h.fecha<=hasta) : []);
   const busqueda = document.getElementById('heBuscar').value.toLowerCase().trim();
   const registrosFiltrados = busqueda
     ? registrosDelPeriodo.filter(h=>(h.trabajadorNombre||'').toLowerCase().includes(busqueda) || (h.motivo||'').toLowerCase().includes(busqueda))
@@ -8580,7 +8597,7 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
       if(!await customConfirm(`${diasQueExceden.length} de los ${dias.length} día(s) superarían el límite diario y/o del período configurado. ¿Registrarlos de todas formas?`)) return;
     }
     dias.forEach(f=>{
-      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo, createdAt: new Date().toISOString()});
+      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo, area: heAreaActual, createdAt: new Date().toISOString()});
     });
     await saveHorasExtras();
     document.getElementById('heModalBg').classList.remove('active');
@@ -8604,7 +8621,7 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
     const idx = horasExtras.findIndex(h=>h.id===heEditandoId);
     if(idx!==-1) horasExtras[idx] = {...horasExtras[idx], trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo};
   }else{
-    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo, createdAt: new Date().toISOString()});
+    horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo, area: heAreaActual, createdAt: new Date().toISOString()});
   }
   await saveHorasExtras();
   document.getElementById('heModalBg').classList.remove('active');
