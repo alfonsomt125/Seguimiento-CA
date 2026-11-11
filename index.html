@@ -1480,7 +1480,9 @@
     <div class="panel" id="heLogLiqPanel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
         <h2 style="margin:0;">Liquidación por empleado — salario mínimo 2026</h2>
-        <div style="display:flex;gap:8px;align-items:center;"><select id="heLogLiqPersona"></select><button class="ghost" id="btnLogLiqPdf">⬇ Exportar a PDF</button></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><select id="heLogLiqPersona"></select><select id="heLogLiqPeriodo"></select>
+          <label style="font-size:13px;"><input type="checkbox" id="heLogLiqExt" checked> Horas extras</label>
+          <label style="font-size:13px;"><input type="checkbox" id="heLogLiqRec" checked> Recargos</label><button class="ghost" id="btnLogLiqPdf">⬇ Exportar a PDF</button></div>
       </div>
       <p class="hint" style="margin:0 0 12px;">Todo el año partido en el 15-jul-2026 (jornada 44 h → 42 h, divisor 220 → 210, dominical 80% → 90% desde el 1-jul). Incluye recargos nocturnos y dominicales/festivos de las horas ordinarias y las horas extras, como si nada se hubiera pagado. Cada mes se liquida de las 12:00 a.m. del día 1 a las 12:00 a.m. del mes siguiente (las horas pasada la medianoche cuentan en el mes en que caen) y se aplican los festivos de 2026.</p>
       <div class="table-wrap" style="margin-bottom:14px;"><table>
@@ -8535,12 +8537,17 @@ const LOG_CONCEPTOS = [
   ['e','dominical','Hora extra diurna dominical/festiva', f=>125+(f<'2026-07-01'?80:90)],
   ['e','nocturnaDominical','Hora extra nocturna dominical/festiva', f=>175+(f<'2026-07-01'?80:90)]
 ];
+function logLiqFiltro(){ return {mes:document.getElementById('heLogLiqPeriodo').value, ext:document.getElementById('heLogLiqExt').checked, rec:document.getElementById('heLogLiqRec').checked}; }
+function logConceptosActivos(){ const f = logLiqFiltro(); return LOG_CONCEPTOS.filter(c=>c[0]==='e' ? f.ext : f.rec); }
+function logDetallesFiltrados(id){ const f = logLiqFiltro(); return logCalcularSemanas(id, null).flatMap(w=>w.detalle).filter(d=>!f.mes || d.fecha.slice(0,7)===f.mes); }
+function logValorDet(d){ return logConceptosActivos().reduce((s,c)=>s+(c[0]==='o'?d.vo:d.ve)[c[1]],0); }
 function logLiquidar(personaId){
   const per = {A:{}, B:{}};
-  ['A','B'].forEach(x=>LOG_CONCEPTOS.forEach(c=>per[x][c[0]+c[1]] = {h:0, v:0, vh:0}));
-  logCalcularSemanas(personaId, null).flatMap(w=>w.detalle).forEach(d=>{
+  const act = logConceptosActivos();
+  ['A','B'].forEach(x=>act.forEach(c=>per[x][c[0]+c[1]] = {h:0, v:0, vh:0}));
+  logDetallesFiltrados(personaId).forEach(d=>{
     const x = d.fecha < '2026-07-15' ? 'A' : 'B';
-    LOG_CONCEPTOS.forEach(c=>{
+    act.forEach(c=>{
       const r = per[x][c[0]+c[1]], horas = (c[0]==='o'?d.ord:d.ext)[c[1]], val = (c[0]==='o'?d.vo:d.ve)[c[1]];
       r.h += horas; r.v += val; r.vh = d.valorHora;
     });
@@ -8554,7 +8561,7 @@ function logTablaLiq(personaId, estilos){
   const sal = (p && Number(p.salario)) || SMMLV_2026;
   const th = estilos ? estilos.th : '', td = estilos ? estilos.td : '';
   const bloque = (x, titulo, fRef, tope, div) => {
-    const filas = LOG_CONCEPTOS.map(c=>{ const r = L.per[x][c[0]+c[1]]; return r.h>0.004 ? `<tr><td style="${td}">${c[2]}</td><td style="${td}text-align:right;">${r2(r.h)}</td><td style="${td}text-align:right;">${c[3](fRef)}%</td><td style="${td}text-align:right;">${logMoneda(r.vh)}</td><td style="${td}text-align:right;">${logMoneda(r.v)}</td></tr>` : ''; }).join('');
+    const filas = logConceptosActivos().map(c=>{ const r = L.per[x][c[0]+c[1]]; return r.h>0.004 ? `<tr><td style="${td}">${c[2]}</td><td style="${td}text-align:right;">${r2(r.h)}</td><td style="${td}text-align:right;">${c[3](fRef)}%</td><td style="${td}text-align:right;">${logMoneda(r.vh)}</td><td style="${td}text-align:right;">${logMoneda(r.v)}</td></tr>` : ''; }).join('');
     return `<h4 style="margin:14px 0 4px;">${titulo}</h4><p style="margin:0 0 6px;font-size:12px;color:#555;">Jornada máxima ${tope} h/semana · divisor mensual ${div} h · valor hora ordinaria ${logMoneda(sal/div)}</p>
     <table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}text-align:left;">Concepto</th><th style="${th}">Horas</th><th style="${th}">% aplicado</th><th style="${th}">Valor hora base</th><th style="${th}">Valor a pagar</th></tr></thead><tbody>${filas || `<tr><td colspan="5" style="${td}text-align:center;">Sin horas en este período.</td></tr>`}<tr style="font-weight:700;"><td style="${td}" colspan="4">Subtotal</td><td style="${td}text-align:right;">${logMoneda(x==='A'?L.totA:L.totB)}</td></tr></tbody></table>`;
   };
@@ -8566,11 +8573,11 @@ function logTablaLiq(personaId, estilos){
 const LOG_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function logPorMes(personaId){
   const m = {};
-  logCalcularSemanas(personaId, null).flatMap(w=>w.detalle).forEach(d=>{
+  logDetallesFiltrados(personaId).forEach(d=>{
     const k = d.fecha.slice(0,7);
     const r = m[k] = m[k] || {tot:0, c:{}, v:0};
-    r.tot += d.neto; r.v += d.valor;
-    LOG_CONCEPTOS.forEach(c=>{ const key = c[0]+c[1]; r.c[key] = (r.c[key]||0) + (c[0]==='o'?d.ord:d.ext)[c[1]]; });
+    r.tot += d.neto; r.v += logValorDet(d);
+    logConceptosActivos().forEach(c=>{ const key = c[0]+c[1]; r.c[key] = (r.c[key]||0) + (c[0]==='o'?d.ord:d.ext)[c[1]]; });
   });
   return m;
 }
@@ -8598,16 +8605,39 @@ function logMatrizMeses(estilos){
 function logResumenGeneral(estilos){
   const th = estilos.th, td = estilos.td;
   const datos = logData.personal.map(p=>{
-    const t = {}; LOG_CONCEPTOS.forEach(c=>t[c[0]+c[1]] = {h:0, v:0});
-    logCalcularSemanas(p.id, null).flatMap(w=>w.detalle).forEach(d=>LOG_CONCEPTOS.forEach(c=>{ const r = t[c[0]+c[1]]; r.h += (c[0]==='o'?d.ord:d.ext)[c[1]]; r.v += (c[0]==='o'?d.vo:d.ve)[c[1]]; }));
+    const t = {}; logConceptosActivos().forEach(c=>t[c[0]+c[1]] = {h:0, v:0});
+    logDetallesFiltrados(p.id).forEach(d=>logConceptosActivos().forEach(c=>{ const r = t[c[0]+c[1]]; r.h += (c[0]==='o'?d.ord:d.ext)[c[1]]; r.v += (c[0]==='o'?d.vo:d.ve)[c[1]]; }));
     return {p, t};
   });
   const fila = c => { const k = c[0]+c[1]; const h = datos.reduce((s,d)=>s+d.t[k].h,0), v = datos.reduce((s,d)=>s+d.t[k].v,0);
     return `<tr><td style="${td}">${c[2]}</td>${datos.map(d=>`<td style="${td}text-align:right;">${r2(d.t[k].h)||'—'}</td>`).join('')}<td style="${td}text-align:right;font-weight:700;">${r2(h)}</td><td style="${td}text-align:right;font-weight:700;">${logMoneda(v)}</td></tr>`; };
   const totV = datos.reduce((s,d)=>s+Object.values(d.t).reduce((a,r)=>a+r.v,0),0);
-  return `<table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}text-align:left;">Concepto (horas)</th>${datos.map(d=>`<th style="${th}">${esc(d.p.nombre)}</th>`).join('')}<th style="${th}">Total horas</th><th style="${th}">Valor total</th></tr></thead><tbody>${LOG_CONCEPTOS.map(fila).join('')}<tr style="font-weight:700;"><td style="${td}">Total a reconocer</td>${datos.map(d=>`<td style="${td}text-align:right;">${logMoneda(Object.values(d.t).reduce((a,r)=>a+r.v,0))}</td>`).join('')}<td style="${td}"></td><td style="${td}text-align:right;">${logMoneda(totV)}</td></tr></tbody></table>`;
+  return `<table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}text-align:left;">Concepto (horas)</th>${datos.map(d=>`<th style="${th}">${esc(d.p.nombre)}</th>`).join('')}<th style="${th}">Total horas</th><th style="${th}">Valor total</th></tr></thead><tbody>${logConceptosActivos().map(fila).join('')}<tr style="font-weight:700;"><td style="${td}">Total a reconocer</td>${datos.map(d=>`<td style="${td}text-align:right;">${logMoneda(Object.values(d.t).reduce((a,r)=>a+r.v,0))}</td>`).join('')}<td style="${td}"></td><td style="${td}text-align:right;">${logMoneda(totV)}</td></tr></tbody></table>`;
+}
+function logTablaComparacion(personaId, estilos){
+  const th = estilos.th, td = estilos.td, m = {};
+  logCalcularSemanas(personaId, null).flatMap(w=>w.detalle).forEach(d=>{
+    const k = d.fecha.slice(0,7), r = m[k] = m[k] || {h:0, x:0};
+    r.h += d.neto; r.x += Object.values(d.ext).reduce((a,b)=>a+b,0);
+  });
+  const meses = Object.keys(m).sort();
+  if(!meses.length) return '';
+  let tm = 0, tx = 0, th_ = 0;
+  const filas = meses.map(k=>{
+    const [y, mo] = k.split('-').map(Number), nd = new Date(y, mo, 0).getDate();
+    let tope = 0; for(let d=1; d<=nd; d++) tope += (k+'-'+String(d).padStart(2,'0') >= '2026-07-15' ? 42 : 44)/7;
+    const r = m[k], mensual = Math.max(0, r.h - tope), dif = r.x - mensual;
+    tm += mensual; tx += r.x; th_ += r.h;
+    return `<tr><td style="${td}">${LOG_MESES[mo-1]}</td><td style="${td}text-align:right;">${r2(r.h)}</td><td style="${td}text-align:right;">${r2(tope)}</td><td style="${td}text-align:right;">${r2(mensual)||'0'}</td><td style="${td}text-align:right;">${r2(r.x)||'0'}</td><td style="${td}text-align:right;font-weight:700;">${r2(dif)||'0'}</td></tr>`;
+  }).join('');
+  return `<h4 style="margin:16px 0 4px;">Por qué no se detectaron: control mensual vs. control semanal</h4>
+  <p style="margin:0 0 6px;font-size:12px;color:#555;">Control mensual: se compara el total del mes con el tope mensual (jornada semanal × días del mes ÷ 7). Control según la norma: la jornada máxima se verifica cada semana, así que las horas que pasan el tope en una semana son extra aunque el mes completo no exceda el límite.</p>
+  <table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}text-align:left;">Mes</th><th style="${th}">Horas laboradas</th><th style="${th}">Tope mensual</th><th style="${th}">Extra con control mensual</th><th style="${th}">Extra según la norma (semanal)</th><th style="${th}">Extra no detectada</th></tr></thead><tbody>${filas}<tr style="font-weight:700;"><td style="${td}">Total</td><td style="${td}text-align:right;">${r2(th_)}</td><td style="${td}"></td><td style="${td}text-align:right;">${r2(tm)}</td><td style="${td}text-align:right;">${r2(tx)}</td><td style="${td}text-align:right;">${r2(tx-tm)}</td></tr></tbody></table>`;
 }
 function renderLogLiquidacion(){
+  const selP = document.getElementById('heLogLiqPeriodo'), prevP = selP.value;
+  selP.innerHTML = '<option value="">Todo el año</option>' + [...new Set(logData.turnos.filter(t=>!t.marca).map(t=>t.fecha.slice(0,7)))].sort().map(k=>`<option value="${k}">${LOG_MESES[+k.slice(5)-1]} ${k.slice(0,4)}</option>`).join('');
+  selP.value = prevP;
   const sel = document.getElementById('heLogLiqPersona');
   const prev = sel.value;
   sel.innerHTML = logData.personal.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
@@ -8616,19 +8646,20 @@ function renderLogLiquidacion(){
   document.getElementById('heLogLiqResumen').innerHTML = resumen.map(r=>`<tr><td>${esc(r.p.nombre)}</td><td>${logMoneda(r.a)}</td><td>${logMoneda(r.b)}</td><td><b>${logMoneda(r.a+r.b)}</b></td></tr>`).join('')
     + `<tr style="font-weight:700;background:var(--paper-2,#f4f5f8);"><td>Total</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.a,0))}</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.b,0))}</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.a+r.b,0))}</td></tr>`;
   const est = {th:'padding:6px 8px;border-bottom:2px solid var(--line);font-size:12px;text-align:right;', td:'padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;'};
-  document.getElementById('heLogLiqDetalle').innerHTML = sel.value ? '<h4 style="margin:6px 0 4px;">Resumen general de horas extras y recargos (todos los empleados, todo el año)</h4><div class="table-wrap" style="padding:0 4px;">'+logResumenGeneral(est)+'</div><div class="table-wrap" style="padding:0 4px;">'+logMatrizMeses(est)+'</div><hr style="margin:18px 0;border:none;border-top:1px solid var(--line);">'+logTablaLiq(sel.value, est)+'<div class="table-wrap" style="padding:0 4px;">'+logTablaMeses(sel.value, est)+'</div>' : '';
+  document.getElementById('heLogLiqDetalle').innerHTML = sel.value ? '<h4 style="margin:6px 0 4px;">Resumen general de horas extras y recargos (todos los empleados, todo el año)</h4><div class="table-wrap" style="padding:0 4px;">'+logResumenGeneral(est)+'</div><div class="table-wrap" style="padding:0 4px;">'+logMatrizMeses(est)+'</div><hr style="margin:18px 0;border:none;border-top:1px solid var(--line);">'+logTablaLiq(sel.value, est)+'<div class="table-wrap" style="padding:0 4px;">'+logTablaMeses(sel.value, est)+logTablaComparacion(sel.value, est)+'</div>' : '';
 }
 document.getElementById('btnLogIrLiq').addEventListener('click', ()=>document.getElementById('heLogLiqPanel').scrollIntoView({behavior:'smooth'}));
-document.getElementById('heLogLiqPersona').addEventListener('change', renderLogLiquidacion);
+['heLogLiqPersona','heLogLiqPeriodo','heLogLiqExt','heLogLiqRec'].forEach(i=>document.getElementById(i).addEventListener('change', renderLogLiquidacion));
 document.getElementById('btnLogLiqPdf').addEventListener('click', ()=>{
   const id = document.getElementById('heLogLiqPersona').value;
   if(!id) return;
   const e = {th:'border:1px solid #999;padding:6px;font-size:12px;background:#011632;color:#fff;text-align:right;', td:'border:1px solid #999;padding:6px;font-size:12px;'};
   const html = `<html><head><meta charset="utf-8"><style>@page{size:letter;margin:14mm}body{font-family:Arial,sans-serif;color:#011632;margin:0}th:first-child{text-align:left}</style></head><body>
-    <h2 style="margin:0 0 2px;">Liquidación de recargos y horas extras 2026 — Logística</h2>
+    <h2 style="margin:0 0 2px;">Liquidación 2026 — Logística (${[logLiqFiltro().ext?'horas extras':'',logLiqFiltro().rec?'recargos':''].filter(Boolean).join(' y ')||'sin conceptos'}${logLiqFiltro().mes?' · '+logLiqFiltro().mes:' · todo el año'})</h2>
     <p style="margin:0 0 10px;font-size:12px;color:#555;">Colegio Americano de Barranquilla · Servicios Generales · ${fmtDate(todayISO())}</p>
     ${logTablaLiq(id, e)}
     ${logTablaMeses(id, e)}
+    ${logTablaComparacion(id, e)}
     <p style="margin-top:16px;font-size:11px;color:#555;">Base: turnos del cronograma de Logística 2026. Horas extras por semana (lunes a domingo) sobre la jornada máxima vigente; noche desde las 7:00 p.m. (Ley 2466 de 2025); dominical 80% hasta el 30-jun-2026 y 90% desde el 1-jul-2026; divisor mensual 220 h antes del 15-jul-2026 y 210 h desde esa fecha (Ley 2101). Festivos 2026 aplicados como dominical; cada mes liquida de 12:00 a.m. del día 1 a 12:00 a.m. del mes siguiente. Los valores son estimados y deben validarse con Talento Humano / asesoría laboral.</p></body></html>`;
   document.getElementById('rsPreviewTitulo').textContent = 'Previsualización de la liquidación';
   document.getElementById('rsPreviewFrame').srcdoc = html;
