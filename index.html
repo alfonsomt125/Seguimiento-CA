@@ -9281,7 +9281,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-12-1015';
+const APP_VERSION = '2026-11-12-1030';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -9388,6 +9388,7 @@ function hora24aTexto12(hora24){
 }
 function leerHoraInicioSelects(){ return selectsAHora24(document.getElementById('heHoraInicioH').value, document.getElementById('heHoraInicioM').value, document.getElementById('heHoraInicioAP').value); }
 function leerHoraFinSelects(){ return selectsAHora24(document.getElementById('heHoraFinH').value, document.getElementById('heHoraFinM').value, document.getElementById('heHoraFinAP').value); }
+['heHoraInicioM','heHoraFinM'].forEach(id=>{ document.getElementById(id).innerHTML = Array.from({length:60},(_,i)=>{ const v = String(i).padStart(2,'0'); return `<option value="${v}">${v}</option>`; }).join(''); });
 function ponerHoraEnSelects(prefijo, hora24){
   const {h12,min,ampm} = hora24aSelects(hora24);
   document.getElementById(prefijo+'H').value = h12;
