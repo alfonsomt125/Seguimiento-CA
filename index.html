@@ -8899,7 +8899,20 @@ function horGridHTML(mes){
 function horLeyendaHTML(mes){
   return horCatalogo(mes).map(c=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:${c[6]};border:1px solid #0002;display:inline-block;"></span><b>${esc(c[0])}</b> ${c[1]}–${c[2]} ${esc(c[4])}</span>`).join('') + '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#E5E7EB;border:1px solid #0002;display:inline-block;"></span>Vacaciones / incapacidad / permiso / otro</span>';
 }
-function renderHorarios(){
+/* Mantenimiento: las personas del horario son las mismas que ya tienen horas extras registradas en esa área. */
+function horSincronizarPersonalMant(){
+  const ids = new Set(horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId));
+  let nuevos = 0;
+  trabajadores.filter(t=>ids.has(t.id)).forEach(t=>{
+    const nom = t.nombre.trim().toLowerCase();
+    const p = horMant.personal.find(x=>x.trabajadorId===t.id || x.nombre.trim().toLowerCase()===nom);
+    if(p){ if(!p.trabajadorId){ p.trabajadorId = t.id; nuevos++; } return; }
+    horMant.personal.push({id:uid(), nombre:t.nombre, trabajadorId:t.id}); nuevos++;
+  });
+  return nuevos;
+}
+async function renderHorarios(){
+  if(horArea==='mantenimiento' && horSincronizarPersonalMant()) await horGuardar();
   const inp = document.getElementById('horMes');
   if(!inp.value) inp.value = todayISO().slice(0,7);
   const mes = inp.value, st = horStore();
@@ -9028,7 +9041,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-11-1602';
+const APP_VERSION = '2026-11-11-2215';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -9040,7 +9053,7 @@ const APP_VERSION = '2026-11-11-1602';
     try{
       const r = await fetch(location.pathname + '?chk=' + Date.now(), {cache:'no-store'});
       if(!r.ok) return;
-      const m = (await r.text()).match(/const APP_VERSION = '([^']+)'/);
+      const m = (await r.text()).match(/const APP_VERSION = '2026-11-11-2215']+)'/);
       if(m && m[1] !== APP_VERSION){
         avisado = true;
         const b = document.createElement('div');
