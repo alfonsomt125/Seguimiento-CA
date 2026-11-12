@@ -1507,53 +1507,87 @@
   <!-- ===== Logística: turnos, horas extras y recargos ===== -->
   <div id="heLogPanel" style="display:none;">
     <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
-        <h2 style="margin:0;">Logística — turnos, horas extras y recargos</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+        <h2 style="margin:0;">Logística</h2>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="ghost" id="btnLogIrLiq">💰 Liquidación</button>
           <button class="ghost" id="btnLogPersona">+ Persona</button>
           <button class="primary" id="btnLogTurnos">+ Registrar turnos</button>
         </div>
       </div>
-      <p class="hint" style="margin:0 0 12px;">Se registra cada turno trabajado (catálogo de tu cronograma 2026). Las horas netas se suman por semana (lunes a domingo) y lo que pase del tope semanal es hora extra: 44 h, o 42 h en las semanas que terminan desde el 15-jul-2026 (Ley 2101). Noche desde 7:00 p.m.; domingos y festivos de 2026 como dominical. Los valores usan el salario de la persona o el mínimo 2026.</p>
-      <div class="field" style="max-width:220px;margin-bottom:12px;"><label>Mes</label><input type="month" id="heLogMes"></div>
-      <div id="heLogPersonal" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
-      <h3 style="margin:6px 0 8px;font-size:15px;">Cronograma del mes</h3>
-      <div class="table-wrap"><table id="heLogGrid" style="font-size:12px;text-align:center;"></table></div>
-      <div id="heLogLeyenda" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px;font-size:12px;"></div>
-      <h3 style="margin:6px 0 8px;font-size:15px;">Horas laboradas del mes según la norma</h3>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Persona</th><th>Total laboradas</th><th>Diurnas</th><th>Nocturnas</th><th>Dominical diurna</th><th>Dominical nocturna</th><th>Extra diurna</th><th>Extra nocturna</th><th>Extra dominical</th><th>Extra noct. dominical</th><th>Valor est.</th></tr></thead>
-        <tbody id="heLogNormaBody"></tbody>
-      </table></div>
-      <h3 style="margin:18px 0 8px;font-size:15px;">Detalle semanal (tope y extras)</h3>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Persona</th><th>Semana</th><th>Horas</th><th>Tope</th><th>Extra</th><th>Detalle de extras</th><th>Recargos (horas ordinarias)</th><th>Valor est.</th></tr></thead>
-        <tbody id="heLogResumenBody"></tbody>
-      </table></div>
-    </div>
-    <div class="panel" id="heLogLiqPanel">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
-        <h2 style="margin:0;">Liquidación por empleado — salario mínimo 2026</h2>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><select id="heLogLiqPersona"></select><select id="heLogLiqPeriodo"></select>
-          <label style="font-size:13px;"><input type="checkbox" id="heLogLiqExt" checked> Horas extras</label>
-          <label style="font-size:13px;"><input type="checkbox" id="heLogLiqRec" checked> Recargos</label><button class="ghost" id="btnLogLiqPdf">⬇ Exportar a PDF</button></div>
+      <div class="year-pills" id="heLogTabs" style="margin-bottom:12px;">
+        <button class="year-pill active" data-logtab="cron">Cronograma</button>
+        <button class="year-pill" data-logtab="horas">Horas del mes</button>
+        <button class="year-pill" data-logtab="liq">Liquidación</button>
+        <button class="year-pill" data-logtab="turnos">Turnos registrados</button>
       </div>
-      <p class="hint" style="margin:0 0 12px;">Todo el año partido en el 15-jul-2026 (jornada 44 h → 42 h, divisor 220 → 210, dominical 80% → 90% desde el 1-jul). Incluye recargos nocturnos y dominicales/festivos de las horas ordinarias y las horas extras, como si nada se hubiera pagado. Cada mes se liquida de las 12:00 a.m. del día 1 a las 12:00 a.m. del mes siguiente (las horas pasada la medianoche cuentan en el mes en que caen) y se aplican los festivos de 2026.</p>
-      <div class="table-wrap" style="margin-bottom:14px;"><table>
-        <thead><tr><th>Empleado</th><th>Antes del 15-jul</th><th>Desde el 15-jul</th><th>Total a reconocer</th></tr></thead>
-        <tbody id="heLogLiqResumen"></tbody>
-      </table></div>
-      <div id="heLogLiqDetalle"></div>
+      <div class="field" id="heLogMesWrap" style="max-width:220px;margin:0;"><label>Mes</label><input type="month" id="heLogMes"></div>
+      <details style="margin-top:12px;"><summary style="cursor:pointer;font-size:13px;color:var(--gray);">Cómo se calcula</summary><p class="hint" style="margin:8px 0 0;">Se registra cada turno trabajado (catálogo de tu cronograma 2026). Las horas netas se suman por semana (lunes a domingo) y lo que pase del tope semanal es hora extra: 44 h, o 42 h en las semanas que terminan desde el 15-jul-2026 (Ley 2101). Noche desde 7:00 p.m.; domingos y festivos de 2026 como dominical. Los valores usan el salario de la persona o el mínimo 2026.</p></details>
     </div>
-    <div class="panel">
-      <h2 style="margin:0 0 10px;">Turnos registrados del mes</h2>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Fecha</th><th>Persona</th><th>Turno</th><th>Horario</th><th>Horas netas</th><th></th></tr></thead>
-        <tbody id="heLogTurnosBody"></tbody>
-      </table></div>
+
+    <div id="heLogSecCron">
+      <div class="panel">
+        <div id="heLogPersonal" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
+        <div class="table-wrap"><table id="heLogGrid" style="font-size:12px;text-align:center;"></table></div>
+        <div id="heLogLeyenda" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0;font-size:12px;"></div>
+      </div>
+    </div>
+
+    <div id="heLogSecHoras" style="display:none;">
+      <div class="panel">
+        <h3 style="margin:0 0 10px;font-size:15px;">Horas laboradas del mes según la norma</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Persona</th><th>Total laboradas</th><th>Diurnas</th><th>Nocturnas</th><th>Dominical diurna</th><th>Dominical nocturna</th><th>Extra diurna</th><th>Extra nocturna</th><th>Extra dominical</th><th>Extra noct. dominical</th><th>Valor est.</th></tr></thead>
+          <tbody id="heLogNormaBody"></tbody>
+        </table></div>
+      </div>
+      <div class="panel">
+        <h3 style="margin:0 0 10px;font-size:15px;">Detalle semanal (tope y extras)</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Persona</th><th>Semana</th><th>Horas</th><th>Tope</th><th>Extra</th><th>Detalle de extras</th><th>Recargos (horas ordinarias)</th><th>Valor est.</th></tr></thead>
+          <tbody id="heLogResumenBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div id="heLogSecLiq" style="display:none;">
+      <div class="panel">
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+          <div class="field" style="margin:0;"><label>Período</label><select id="heLogLiqPeriodo"></select></div>
+          <label style="font-size:13px;"><input type="checkbox" id="heLogLiqExt" checked> Horas extras</label>
+          <label style="font-size:13px;"><input type="checkbox" id="heLogLiqRec" checked> Recargos</label>
+        </div>
+        <details style="margin-top:12px;"><summary style="cursor:pointer;font-size:13px;color:var(--gray);">Cómo se liquida</summary><p class="hint" style="margin:8px 0 0;">Todo el año partido en el 15-jul-2026 (jornada 44 h → 42 h, divisor 220 → 210, dominical 80% → 90% desde el 1-jul). Incluye recargos nocturnos y dominicales/festivos de las horas ordinarias y las horas extras, como si nada se hubiera pagado. Cada mes se liquida de las 12:00 a.m. del día 1 a las 12:00 a.m. del mes siguiente (las horas pasada la medianoche cuentan en el mes en que caen) y se aplican los festivos de 2026.</p></details>
+      </div>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+          <h2 style="margin:0;">Resumen de todos los empleados</h2>
+          <button class="ghost" id="btnLogLiqPdfTodos">⬇ PDF</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Empleado</th><th>Antes del 15-jul</th><th>Desde el 15-jul</th><th>Total a reconocer</th></tr></thead>
+          <tbody id="heLogLiqResumen"></tbody>
+        </table></div>
+        <details style="margin-top:12px;"><summary style="cursor:pointer;font-size:13px;color:var(--gray);">Ver horas por concepto y valor por mes</summary><div id="heLogLiqGeneral" class="table-wrap" style="padding:0 4px;"></div></details>
+      </div>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+          <h2 style="margin:0;">Detalle por trabajador</h2>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><select id="heLogLiqPersona"></select><button class="ghost" id="btnLogLiqPdf">⬇ PDF</button></div>
+        </div>
+        <div id="heLogLiqDetalle"></div>
+      </div>
+    </div>
+
+    <div id="heLogSecTurnos" style="display:none;">
+      <div class="panel">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Fecha</th><th>Persona</th><th>Turno</th><th>Horario</th><th>Horas netas</th><th></th></tr></thead>
+          <tbody id="heLogTurnosBody"></tbody>
+        </table></div>
+      </div>
     </div>
   </div>
+
   <div class="modal-bg" id="heLogModalBg"><div class="modal" style="max-width:460px;">
     <h2>Registrar turnos</h2>
     <div class="field"><label>Persona</label><select id="heLogPersona"></select></div>
@@ -8597,7 +8631,7 @@ const LOG_CONCEPTOS = [
   ['e','dominical','Hora extra diurna dominical/festiva', f=>125+(f<'2026-07-01'?80:90)],
   ['e','nocturnaDominical','Hora extra nocturna dominical/festiva', f=>175+(f<'2026-07-01'?80:90)]
 ];
-function logPersonasSel(){ const v = document.getElementById('heLogLiqPersona').value; return (!v || v==='__todos') ? logData.personal : logData.personal.filter(p=>p.id===v); }
+function logPersonasSel(){ return logData.personal; }
 function logLiqFiltro(){ return {mes:document.getElementById('heLogLiqPeriodo').value, ext:document.getElementById('heLogLiqExt').checked, rec:document.getElementById('heLogLiqRec').checked}; }
 function logConceptosActivos(){ const f = logLiqFiltro(); return LOG_CONCEPTOS.filter(c=>c[0]==='e' ? f.ext : f.rec); }
 function logDetallesFiltrados(id){ const f = logLiqFiltro(); return logCalcularSemanas(id, null).flatMap(w=>w.detalle).filter(d=>!f.mes || d.fecha.slice(0,7)===f.mes); }
@@ -8701,20 +8735,27 @@ function renderLogLiquidacion(){
   selP.value = prevP;
   const sel = document.getElementById('heLogLiqPersona');
   const prev = sel.value;
-  sel.innerHTML = '<option value="__todos">Todos los empleados</option>' + logData.personal.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
-  sel.value = (prev && (prev==='__todos' || logData.personal.some(p=>p.id===prev))) ? prev : '__todos';
+  sel.innerHTML = logData.personal.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+  sel.value = (prev && logData.personal.some(p=>p.id===prev)) ? prev : (logData.personal[0]?logData.personal[0].id:'');
   const resumen = logPersonasSel().map(p=>{ const L = logLiquidar(p.id); return {p, a:L.totA, b:L.totB}; });
   document.getElementById('heLogLiqResumen').innerHTML = resumen.map(r=>`<tr><td>${esc(r.p.nombre)}</td><td>${logMoneda(r.a)}</td><td>${logMoneda(r.b)}</td><td><b>${logMoneda(r.a+r.b)}</b></td></tr>`).join('')
     + `<tr style="font-weight:700;background:var(--paper-2,#f4f5f8);"><td>Total</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.a,0))}</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.b,0))}</td><td>${logMoneda(resumen.reduce((s,r)=>s+r.a+r.b,0))}</td></tr>`;
   const est = {th:'padding:6px 8px;border-bottom:2px solid var(--line);font-size:12px;text-align:right;', td:'padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;'};
-  document.getElementById('heLogLiqDetalle').innerHTML = sel.value==='__todos'
-    ? '<h4 style="margin:6px 0 4px;">Resumen general de horas extras y recargos (todos los empleados)</h4><div class="table-wrap" style="padding:0 4px;">'+logResumenGeneral(est)+'</div><div class="table-wrap" style="padding:0 4px;">'+logMatrizMeses(est)+'</div><p class="hint" style="margin-top:12px;">Elige un empleado para ver su detalle por período, mes por mes y la comparación mensual vs. semanal.</p>'
-    : logTablaLiq(sel.value, est)+'<div class="table-wrap" style="padding:0 4px;">'+logTablaMeses(sel.value, est)+logTablaComparacion(sel.value, est)+'</div>';
+  document.getElementById('heLogLiqGeneral').innerHTML = logResumenGeneral(est)+logMatrizMeses(est);
+  document.getElementById('heLogLiqDetalle').innerHTML = !sel.value ? '<p class="hint">Aún no hay personal.</p>'
+    : logTablaLiq(sel.value, est)+'<div class="table-wrap" style="padding:0 4px;">'+logTablaMeses(sel.value, est)+'</div><details style="margin-top:12px;"><summary style="cursor:pointer;font-size:13px;color:var(--gray);">Ver comparación: control mensual vs. semanal</summary><div class="table-wrap" style="padding:0 4px;">'+logTablaComparacion(sel.value, est)+'</div></details>';
 }
-document.getElementById('btnLogIrLiq').addEventListener('click', ()=>document.getElementById('heLogLiqPanel').scrollIntoView({behavior:'smooth'}));
+document.querySelectorAll('#heLogTabs [data-logtab]').forEach(b=>b.addEventListener('click', ()=>{
+  const t = b.dataset.logtab;
+  document.querySelectorAll('#heLogTabs [data-logtab]').forEach(x=>x.classList.toggle('active', x===b));
+  [['cron','Cron'],['horas','Horas'],['liq','Liq'],['turnos','Turnos']].forEach(([k,n])=>document.getElementById('heLogSec'+n).style.display = k===t ? 'block' : 'none');
+  document.getElementById('heLogMesWrap').style.display = t==='liq' ? 'none' : 'block';
+  if(t==='liq') renderLogLiquidacion();
+}));
 ['heLogLiqPersona','heLogLiqPeriodo','heLogLiqExt','heLogLiqRec'].forEach(i=>document.getElementById(i).addEventListener('change', renderLogLiquidacion));
-document.getElementById('btnLogLiqPdf').addEventListener('click', ()=>{
-  const id = document.getElementById('heLogLiqPersona').value;
+document.getElementById('btnLogLiqPdfTodos').addEventListener('click', ()=>logLiqPdf('__todos'));
+document.getElementById('btnLogLiqPdf').addEventListener('click', ()=>logLiqPdf(document.getElementById('heLogLiqPersona').value));
+function logLiqPdf(id){
   if(!id) return;
   const todos = id==='__todos';
   const e = {th:'border:1px solid #999;padding:6px;font-size:12px;background:#011632;color:#fff;text-align:right;', td:'border:1px solid #999;padding:6px;font-size:12px;'};
@@ -8726,7 +8767,7 @@ document.getElementById('btnLogLiqPdf').addEventListener('click', ()=>{
   document.getElementById('rsPreviewTitulo').textContent = 'Previsualización de la liquidación';
   document.getElementById('rsPreviewFrame').srcdoc = html;
   document.getElementById('rsPreviewModalBg').classList.add('active');
-});
+}
 function renderLogisticaHE(){
   const mesInput = document.getElementById('heLogMes');
   if(!mesInput.value) mesInput.value = todayISO().slice(0,7);
@@ -9093,7 +9134,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-11-2250';
+const APP_VERSION = '2026-11-11-2310';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
