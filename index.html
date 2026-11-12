@@ -9281,7 +9281,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-12-1030';
+const APP_VERSION = '2026-11-12-1045';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -9604,14 +9604,20 @@ document.getElementById('btnGuardarHE').addEventListener('click', async ()=>{
     if(diasQueExceden.length){
       if(!await customConfirm(`${diasQueExceden.length} de los ${dias.length} día(s) superarían el límite diario y/o del período configurado. ¿Registrarlos de todas formas?`)) return;
     }
+    let ajustados = 0;
     dias.forEach(f=>{
-      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio, horaFin, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo, area: heAreaActual, createdAt: new Date().toISOString()});
+      let hi = horaInicio, hf = horaFin;
+      if(heAreaActual==='mantenimiento' && hi && hf){
+        const ho = horTurnoDe(trabajadorId, f), m = x=>+x.slice(0,2)*60 + +x.slice(3,5), t2 = x=>String(Math.floor(x/60)%24).padStart(2,'0')+':'+String(x%60).padStart(2,'0');
+        if(ho && ho.turno && m(hi) < m(ho.turno.fin) && m(hi) >= m(ho.turno.ini)){ let span = m(hf)-m(hi); if(span<=0) span += 1440; hi = ho.turno.fin; hf = t2(m(hi)+span); ajustados++; }
+      }
+      horasExtras.push({id: uid(), trabajadorId, trabajadorNombre: trabajador?.nombre||'', fecha:f, horas, horaInicio: hi, horaFin: hf, motivo, estadoPago, fechaCompensatoria, cruzaTipo, cruzaEn, cruzaFecha, restaAlmuerzo, area: heAreaActual, createdAt: new Date().toISOString()});
     });
     await saveHorasExtras();
     document.getElementById('heModalBg').classList.remove('active');
     heEditandoId = null;
     renderHorasExtra();
-    showToast(`${dias.length} registros guardados.`);
+    showToast(`${dias.length} registros guardados.` + (ajustados ? ` En ${ajustados} el inicio se ajustó a la hora en que termina su horario.` : ''));
     return;
   }
 
