@@ -1605,6 +1605,17 @@
     </div>
   </div>
 
+  <div class="modal-bg" id="heVerifModalBg"><div class="modal" style="max-width:1000px;">
+    <h3 style="margin-top:0;">Verificación de horas extras vs. horario</h3>
+    <div id="heVerifResumen" class="hint" style="margin:0 0 10px;"></div>
+    <label style="font-size:13px;display:block;margin-bottom:10px;"><input type="checkbox" id="heVerifTodas"> Mostrar también las que están bien</label>
+    <div class="table-wrap" style="max-height:55vh;overflow:auto;"><table>
+      <thead><tr><th>Fecha</th><th>Persona</th><th>Registrado</th><th>Horario ordinario</th><th>Resultado</th><th></th></tr></thead>
+      <tbody id="heVerifBody"></tbody>
+    </table></div>
+    <div class="modal-actions"><button class="ghost" id="btnHeVerifCerrar">Cerrar</button><button class="primary" id="btnHeVerifTodas" style="display:none;">Corregir todas las que se pueden</button></div>
+  </div></div>
+
   <div class="modal-bg" id="heLogModalBg"><div class="modal" style="max-width:460px;">
     <h2>Registrar turnos</h2>
     <div class="field"><label>Persona</label><select id="heLogPersona"></select></div>
@@ -1633,6 +1644,7 @@
       <h2 style="margin:0;" id="heTituloResumen">Horas extras — resumen del período</h2>
       <button class="ghost" id="btnExportarResumenHE">⬇ Exportar a PDF</button>
       <button class="ghost" id="btnConfigLimitesHE">⚙ Configurar límites</button>
+      <button class="ghost" id="btnVerificarHE">🔎 Verificar con horarios</button>
     </div>
     <p class="hint" style="margin:0 0 14px;" id="heLimitesTexto"></p>
     <p class="hint" style="margin:0 0 6px;">Período de corte a revisar (por defecto del 15 al 15, pero lo puedes ajustar cualquier mes que el corte sea distinto — ej. del 20 al 15):</p>
@@ -8263,6 +8275,59 @@ function renderHeExportSalarios(){
     </div>`;
   }).join('');
 }
+function heVerifCalcular(){
+  const hm = x=>+x.slice(0,2)*60 + +x.slice(3,5), f2 = m=>String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  return horasExtras.filter(heEnArea).sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(h=>{
+    const r = {h, ok:true, msg:'', horario:'—', fix:null};
+    if(!h.horaInicio || !h.horaFin){ r.ok = false; r.msg = 'Sin hora de inicio/fin: no se puede verificar'; return r; }
+    const a = hm(h.horaInicio); let b = hm(h.horaFin); if(b<=a) b += 1440;
+    const lun = h.restaAlmuerzo ? 0.5 : 0, esp = r2((b-a)/60 - lun);
+    const ho = horTurnoDe(h.trabajadorId, h.fecha);
+    if(!ho){ r.ok = false; r.msg = 'La persona no está en Horarios del Personal'; }
+    else if(ho.turno){
+      const ta = hm(ho.turno.ini); let tb = hm(ho.turno.fin); if(tb<=ta) tb += 1440;
+      r.horario = `${ho.turno.codigo} ${ho.turno.ini}–${ho.turno.fin}`;
+      const sol = Math.min(b,tb) - Math.max(a,ta);
+      if(sol>0){
+        r.ok = false;
+        if(b>tb){ r.msg = `Empieza ${r2(sol/60)} h antes de terminar su turno (${ho.turno.fin}). Debe iniciar a las ${ho.turno.fin}.`; r.fix = {horaInicio:f2(tb), horas:r2((b-tb)/60 - lun)}; }
+        else r.msg = 'Queda dentro de su turno ordinario: no son horas extras.';
+      } else r.msg = 'Después/antes del turno ordinario';
+    } else if(ho.marca){ r.horario = ho.marca; r.msg = 'Día de '+ho.marca.toLowerCase()+': todo cuenta como extra'; }
+    else { r.horario = 'Sin turno'; r.msg = 'Día sin turno (descanso/domingo/sábado): todo cuenta como extra'; }
+    if(Math.abs(esp - Number(h.horas)) > 0.02){ r.ok = false; r.msg += (r.msg?' · ':'') + `Horas registradas ${r2(h.horas)} ≠ ${esp} del rango`; if(!r.fix) r.fix = {horas:esp}; else r.fix.horas = r.fix.horas; }
+    return r;
+  });
+}
+async function heVerificarHorarios(){
+  if(horSincronizarPersonalMant()) await horGuardar();
+  if(!horMant.base2026 && horMant.personal.length && !horMant.turnos.length) await horAplicarBaseMant();
+  const rs = heVerifCalcular(), mal = rs.filter(r=>!r.ok), todas = document.getElementById('heVerifTodas').checked;
+  document.getElementById('heVerifResumen').textContent = `${rs.length} registros revisados · ${rs.length-mal.length} correctos · ${mal.length} por revisar. Regla: las horas extras empiezan cuando termina el turno ordinario de ese día.`;
+  document.getElementById('heVerifBody').innerHTML = (todas?rs:mal).map(r=>`<tr>
+    <td>${fmtDate(r.h.fecha)}</td><td>${esc(r.h.trabajadorNombre)}</td>
+    <td>${r.h.horaInicio?hora24aTexto12(r.h.horaInicio)+' – '+hora24aTexto12(r.h.horaFin):'—'}<br><span class="hint" style="margin:0;">${r2(r.h.horas)} h</span></td>
+    <td>${esc(r.horario)}</td><td style="color:${r.ok?'#1B7F3B':'#B3261E'};">${r.ok?'✔ ':'⚠ '}${esc(r.msg)}</td>
+    <td><div class="row-actions">${r.fix?`<button class="ghost" data-heverfix="${r.h.id}">Corregir</button>`:''}<button class="ghost" data-heveredit="${r.h.id}">Editar</button></div></td></tr>`).join('')
+    || '<tr><td colspan="6" class="empty">Todo coincide con los horarios.</td></tr>';
+  document.getElementById('btnHeVerifTodas').style.display = mal.some(r=>r.fix) ? '' : 'none';
+  document.querySelectorAll('[data-heveredit]').forEach(b=>b.addEventListener('click', ()=>{ const h = horasExtras.find(x=>x.id===b.dataset.heveredit); if(h){ document.getElementById('heVerifModalBg').classList.remove('active'); abrirHEModal(h); } }));
+  document.querySelectorAll('[data-heverfix]').forEach(b=>b.addEventListener('click', async ()=>{ await heVerifAplicar([b.dataset.heverfix]); }));
+  document.getElementById('heVerifModalBg').classList.add('active');
+}
+async function heVerifAplicar(ids){
+  const rs = heVerifCalcular().filter(r=>ids.includes(r.h.id) && r.fix);
+  rs.forEach(r=>Object.assign(r.h, r.fix));
+  if(rs.length){ await saveHorasExtras(); renderHorasExtra(); showToast(rs.length+' registro(s) corregido(s).'); }
+  heVerificarHorarios();
+}
+document.getElementById('btnVerificarHE').addEventListener('click', heVerificarHorarios);
+document.getElementById('heVerifTodas').addEventListener('change', heVerificarHorarios);
+document.getElementById('btnHeVerifCerrar').addEventListener('click', ()=>document.getElementById('heVerifModalBg').classList.remove('active'));
+document.getElementById('btnHeVerifTodas').addEventListener('click', async ()=>{
+  const ids = heVerifCalcular().filter(r=>!r.ok && r.fix).map(r=>r.h.id);
+  if(ids.length && await customConfirm(`¿Corregir ${ids.length} registro(s)? Se ajustará la hora de inicio al fin del turno ordinario y las horas.`)) await heVerifAplicar(ids);
+});
 document.getElementById('btnExportarResumenHE').addEventListener('click', ()=>{
   const {desde, hasta} = periodoActualHE();
   document.getElementById('heExportSubtitulo').textContent = `Período: ${fmtDate(desde)} al ${fmtDate(hasta)}. Elige quiénes van en el reporte.`;
@@ -9216,7 +9281,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-12-0850';
+const APP_VERSION = '2026-11-12-1015';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
