@@ -1518,6 +1518,7 @@
         <button class="year-pill active" data-logtab="cron">Cronograma</button>
         <button class="year-pill" data-logtab="horas">Horas del mes</button>
         <button class="year-pill" data-logtab="liq">Liquidación</button>
+        <button class="year-pill" data-logtab="mes">Liquidación mensual</button>
         <button class="year-pill" data-logtab="turnos">Turnos registrados</button>
       </div>
       <div class="field" id="heLogMesWrap" style="max-width:220px;margin:0;"><label>Mes</label><input type="month" id="heLogMes"></div>
@@ -1575,6 +1576,21 @@
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><select id="heLogLiqPersona"></select><button class="ghost" id="btnLogLiqPdf">⬇ PDF</button></div>
         </div>
         <div id="heLogLiqDetalle"></div>
+      </div>
+    </div>
+
+    <div id="heLogSecMes" style="display:none;">
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+          <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
+            <div class="field" style="margin:0;"><label>Empleado</label><select id="heLogMesPersona"></select></div>
+            <label style="font-size:13px;"><input type="checkbox" id="heLogMesExt" checked> Horas extras</label>
+            <label style="font-size:13px;"><input type="checkbox" id="heLogMesRec" checked> Recargos</label>
+          </div>
+          <button class="ghost" id="btnLogMesPdf">⬇ PDF</button>
+        </div>
+        <p class="hint" style="margin:0 0 12px;">Salario base: mínimo 2026 (o el salario de la persona si lo registraste). Solo se descuenta salud (4%) y pensión (4%) del empleado; no se calculan parafiscales ni otras cargas.</p>
+        <div class="table-wrap" id="heLogMesTabla"></div>
       </div>
     </div>
 
@@ -8748,9 +8764,10 @@ function renderLogLiquidacion(){
 document.querySelectorAll('#heLogTabs [data-logtab]').forEach(b=>b.addEventListener('click', ()=>{
   const t = b.dataset.logtab;
   document.querySelectorAll('#heLogTabs [data-logtab]').forEach(x=>x.classList.toggle('active', x===b));
-  [['cron','Cron'],['horas','Horas'],['liq','Liq'],['turnos','Turnos']].forEach(([k,n])=>document.getElementById('heLogSec'+n).style.display = k===t ? 'block' : 'none');
-  document.getElementById('heLogMesWrap').style.display = t==='liq' ? 'none' : 'block';
+  [['cron','Cron'],['horas','Horas'],['liq','Liq'],['mes','Mes'],['turnos','Turnos']].forEach(([k,n])=>document.getElementById('heLogSec'+n).style.display = k===t ? 'block' : 'none');
+  document.getElementById('heLogMesWrap').style.display = (t==='liq'||t==='mes') ? 'none' : 'block';
   if(t==='liq') renderLogLiquidacion();
+  if(t==='mes') renderLogLiqMensual();
 }));
 ['heLogLiqPersona','heLogLiqPeriodo','heLogLiqExt','heLogLiqRec'].forEach(i=>document.getElementById(i).addEventListener('change', renderLogLiquidacion));
 document.getElementById('btnLogLiqPdfTodos').addEventListener('click', ()=>logLiqPdf('__todos'));
@@ -8768,6 +8785,47 @@ function logLiqPdf(id){
   document.getElementById('rsPreviewFrame').srcdoc = html;
   document.getElementById('rsPreviewModalBg').classList.add('active');
 }
+function logLiqMensualHTML(id, e){
+  const p = logData.personal.find(x=>x.id===id); if(!p) return '';
+  const ext = document.getElementById('heLogMesExt').checked, rec = document.getElementById('heLogMesRec').checked;
+  const m = {};
+  logCalcularSemanas(id, null).flatMap(w=>w.detalle).forEach(d=>{
+    const r = m[d.fecha.slice(0,7)] = m[d.fecha.slice(0,7)] || {he:0, ve:0, hr:0, vr:0};
+    LOG_CONCEPTOS.forEach(c=>{
+      const h = (c[0]==='o'?d.ord:d.ext)[c[1]], v = (c[0]==='o'?d.vo:d.ve)[c[1]];
+      if(c[0]==='e'){ r.he += h; r.ve += v; } else { r.hr += h; r.vr += v; }
+    });
+  });
+  const meses = Object.keys(m).sort();
+  const sal = Number(p.salario) || SMMLV_2026;
+  const th = e.th, td = e.td, R = 'text-align:right;';
+  const cols = [['Mes',0]]; if(ext) cols.push(['Horas extras',1],['Valor extras',1]); if(rec) cols.push(['Horas recargo',1],['Valor recargos',1]);
+  cols.push(['Total devengado',1],['Salud 4%',1],['Pensión 4%',1],['Neto a pagar',1]);
+  const T = {he:0,ve:0,hr:0,vr:0,dev:0,sal:0,pen:0};
+  const filas = meses.map(k=>{
+    const r = m[k], dev = (ext?r.ve:0)+(rec?r.vr:0), s4 = dev*0.04;
+    T.he+=r.he; T.ve+=ext?r.ve:0; T.hr+=r.hr; T.vr+=rec?r.vr:0; T.dev+=dev; T.sal+=s4; T.pen+=s4;
+    return `<tr><td style="${td}">${LOG_MESES[+k.slice(5)-1]}</td>${ext?`<td style="${td}${R}">${r2(r.he)||'—'}</td><td style="${td}${R}">${logMoneda(r.ve)}</td>`:''}${rec?`<td style="${td}${R}">${r2(r.hr)||'—'}</td><td style="${td}${R}">${logMoneda(r.vr)}</td>`:''}<td style="${td}${R}">${logMoneda(dev)}</td><td style="${td}${R}">-${logMoneda(s4)}</td><td style="${td}${R}">-${logMoneda(s4)}</td><td style="${td}${R}font-weight:700;">${logMoneda(dev-2*s4)}</td></tr>`;
+  }).join('');
+  const tot = `<tr style="font-weight:700;"><td style="${td}">Total</td>${ext?`<td style="${td}${R}">${r2(T.he)}</td><td style="${td}${R}">${logMoneda(T.ve)}</td>`:''}${rec?`<td style="${td}${R}">${r2(T.hr)}</td><td style="${td}${R}">${logMoneda(T.vr)}</td>`:''}<td style="${td}${R}">${logMoneda(T.dev)}</td><td style="${td}${R}">-${logMoneda(T.sal)}</td><td style="${td}${R}">-${logMoneda(T.pen)}</td><td style="${td}${R}">${logMoneda(T.dev-T.sal-T.pen)}</td></tr>`;
+  return `<p style="margin:0 0 8px;font-size:13px;"><b>${esc(p.nombre)}</b> · salario base ${logMoneda(sal)}${Number(p.salario)?'':' (mínimo 2026)'}</p>
+  <table style="width:100%;border-collapse:collapse;"><thead><tr>${cols.map((c,i)=>`<th style="${th}${i?'':'text-align:left;'}">${c[0]}</th>`).join('')}</tr></thead><tbody>${filas||`<tr><td colspan="${cols.length}" style="${td}text-align:center;">Sin turnos registrados.</td></tr>`}${filas?tot:''}</tbody></table>`;
+}
+const LOG_MES_EST = {th:'padding:6px 8px;border-bottom:2px solid var(--line);font-size:12px;text-align:right;', td:'padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;'};
+function renderLogLiqMensual(){
+  const sel = document.getElementById('heLogMesPersona'), prev = sel.value;
+  sel.innerHTML = logData.personal.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
+  sel.value = logData.personal.some(p=>p.id===prev) ? prev : (logData.personal[0]?logData.personal[0].id:'');
+  document.getElementById('heLogMesTabla').innerHTML = logLiqMensualHTML(sel.value, LOG_MES_EST);
+}
+['heLogMesPersona','heLogMesExt','heLogMesRec'].forEach(i=>document.getElementById(i).addEventListener('change', renderLogLiqMensual));
+document.getElementById('btnLogMesPdf').addEventListener('click', ()=>{
+  const id = document.getElementById('heLogMesPersona').value; if(!id) return;
+  const e = {th:'border:1px solid #999;padding:6px;font-size:12px;background:#011632;color:#fff;text-align:right;', td:'border:1px solid #999;padding:6px;font-size:12px;'};
+  document.getElementById('rsPreviewTitulo').textContent = 'Previsualización de la liquidación mensual';
+  document.getElementById('rsPreviewFrame').srcdoc = `<html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:14mm}body{font-family:Arial,sans-serif;color:#011632;margin:0}</style></head><body><h2 style="margin:0 0 2px;">Liquidación mensual 2026 — Logística</h2><p style="margin:0 0 10px;font-size:12px;color:#555;">Colegio Americano de Barranquilla · Servicios Generales · ${fmtDate(todayISO())} · Descuentos: salud 4% y pensión 4%</p>${logLiqMensualHTML(id, e)}</body></html>`;
+  document.getElementById('rsPreviewModalBg').classList.add('active');
+});
 function renderLogisticaHE(){
   const mesInput = document.getElementById('heLogMes');
   if(!mesInput.value) mesInput.value = todayISO().slice(0,7);
@@ -9134,7 +9192,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-11-2310';
+const APP_VERSION = '2026-11-11-2330';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
