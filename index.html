@@ -8569,7 +8569,7 @@ function lunesDe(iso){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()-
 function sumaDias(iso,n){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return isoLocal(d); }
 function logLimiteSemanal(lunes){ return sumaDias(lunes,6) >= '2026-07-15' ? 42 : 44; }
 /* Festivos de Colombia 2026 (Ley Emiliani): se tratan como domingo (recargo dominical/festivo). */
-const LOG_FESTIVOS_2026 = {'2026-01-01':'Año Nuevo','2026-01-12':'Reyes Magos','2026-03-23':'San José','2026-04-02':'Jueves Santo','2026-04-03':'Viernes Santo','2026-05-01':'Día del Trabajo','2026-05-18':'Ascensión del Señor','2026-06-08':'Corpus Christi','2026-06-15':'Sagrado Corazón','2026-06-29':'San Pedro y San Pablo','2026-07-20':'Independencia','2026-08-07':'Batalla de Boyacá','2026-08-17':'Asunción de la Virgen','2026-10-12':'Día de la Raza','2026-11-02':'Todos los Santos','2026-11-16':'Independencia de Cartagena','2026-12-08':'Inmaculada Concepción','2026-12-25':'Navidad'};
+const LOG_FESTIVOS_2026 = {'2026-01-01':'Año Nuevo','2026-01-12':'Reyes Magos','2026-03-23':'San José','2026-04-02':'Jueves Santo','2026-04-03':'Viernes Santo','2026-05-01':'Día del Trabajo','2026-05-18':'Ascensión del Señor','2026-06-08':'Corpus Christi','2026-06-15':'Sagrado Corazón','2026-06-29':'San Pedro y San Pablo','2026-07-13':'Virgen de Chiquinquirá','2026-07-20':'Independencia','2026-08-07':'Batalla de Boyacá','2026-08-17':'Asunción de la Virgen','2026-10-12':'Día de la Raza','2026-11-02':'Todos los Santos','2026-11-16':'Independencia de Cartagena','2026-12-08':'Inmaculada Concepción','2026-12-25':'Navidad'};
 function logRecargoDom(fecha){ return fecha < '2026-07-01' ? 0.80 : 0.90; }
 /* Reparte los minutos netos de un turno entre ordinarios y extra (la extra son los
    últimos minutos del turno) y los clasifica por tipo (noche desde 7 p.m., domingo). */
@@ -8868,9 +8868,9 @@ function renderLogisticaHE(){
   const txt = hex => { const n=parseInt(hex.slice(1),16); return ((n>>16)*0.299+((n>>8)&255)*0.587+(n&255)*0.114) < 140 ? '#fff' : '#111'; };
   const SEM = ['D','L','M','X','J','V','S'];
   let g = '<thead><tr><th rowspan="2" style="text-align:left;min-width:110px;">Personal</th>';
-  for(let d=1; d<=nd; d++){ const w = new Date(ay, am-1, d).getDay(); g += `<th style="padding:3px 2px;${w===0?'background:#FDE2E2;':''}">${SEM[w]}</th>`; }
+  for(let d=1; d<=nd; d++){ const w = new Date(ay, am-1, d).getDay(), fest = LOG_FESTIVOS_2026[mes+'-'+String(d).padStart(2,'0')]; g += `<th style="padding:3px 2px;${w===0||fest?'background:#FDE2E2;':''}" title="${fest?esc(fest):''}">${SEM[w]}</th>`; }
   g += '</tr><tr>';
-  for(let d=1; d<=nd; d++){ g += `<th style="padding:3px 2px;">${d}</th>`; }
+  for(let d=1; d<=nd; d++){ const fe = LOG_FESTIVOS_2026[mes+'-'+String(d).padStart(2,'0')]; g += `<th style="padding:3px 2px;${fe?'background:#FDE2E2;color:#B3261E;':''}" title="${fe?esc(fe):''}">${d}</th>`; }
   g += '</tr></thead><tbody>';
   logData.personal.forEach(p=>{
     g += `<tr><td style="text-align:left;font-weight:600;white-space:nowrap;">${esc(p.nombre)}</td>`;
@@ -8885,7 +8885,7 @@ function renderLogisticaHE(){
     g += '</tr>';
   });
   document.getElementById('heLogGrid').innerHTML = g + '</tbody>';
-  document.getElementById('heLogLeyenda').innerHTML = cat.map(c=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:${c[6]};border:1px solid #0002;display:inline-block;"></span><b>${c[0]}</b> ${c[1]}–${c[2]} ${esc(c[4])}</span>`).join('') + '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#E5E7EB;border:1px solid #0002;display:inline-block;"></span>Vacaciones / incapacidad / apoyo / permiso</span>';
+  document.getElementById('heLogLeyenda').innerHTML = cat.map(c=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:${c[6]};border:1px solid #0002;display:inline-block;"></span><b>${c[0]}</b> ${c[1]}–${c[2]} ${esc(c[4])}</span>`).join('') + '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#E5E7EB;border:1px solid #0002;display:inline-block;"></span>Vacaciones / incapacidad / apoyo / permiso</span>' + logFestivosMes(mes);
   document.querySelectorAll('[data-logcelda]').forEach(td=>td.addEventListener('click', ()=>{
     const [pid, f] = td.dataset.logcelda.split('|');
     document.getElementById('btnLogTurnos').click();
@@ -8996,7 +8996,7 @@ function horGridHTML(mes){
   let g = '<thead><tr><th rowspan="2" style="text-align:left;min-width:110px;">Personal</th>';
   for(let d=1; d<=nd; d++){ const w = new Date(ay, am-1, d).getDay(), fest = LOG_FESTIVOS_2026[mes+'-'+String(d).padStart(2,'0')]; g += `<th style="padding:3px 2px;${w===0||fest?'background:#FDE2E2;':''}" title="${fest?esc(fest):''}">${SEM[w]}</th>`; }
   g += '<th rowspan="2">Horas</th></tr><tr>';
-  for(let d=1; d<=nd; d++){ g += `<th style="padding:3px 2px;">${d}</th>`; }
+  for(let d=1; d<=nd; d++){ const fe = LOG_FESTIVOS_2026[mes+'-'+String(d).padStart(2,'0')]; g += `<th style="padding:3px 2px;${fe?'background:#FDE2E2;color:#B3261E;':''}" title="${fe?esc(fe):''}">${d}</th>`; }
   g += '</tr></thead><tbody>';
   st.personal.forEach(p=>{
     g += `<tr><td style="text-align:left;font-weight:600;white-space:nowrap;">${esc(p.nombre)}</td>`;
@@ -9013,8 +9013,9 @@ function horGridHTML(mes){
   });
   return g + '</tbody>';
 }
+const logFestivosMes = mes => { const f = Object.keys(LOG_FESTIVOS_2026).filter(k=>k.startsWith(mes)); return f.length ? '<span style="display:inline-flex;align-items:center;gap:5px;color:#B3261E;"><span style="width:14px;height:14px;border-radius:3px;background:#FDE2E2;border:1px solid #B3261E55;display:inline-block;"></span>🇨🇴 Festivos: '+f.map(k=>+k.slice(8)+' '+esc(LOG_FESTIVOS_2026[k])).join(' · ')+'</span>' : ''; };
 function horLeyendaHTML(mes){
-  return horCatalogo(mes).map(c=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:${c[6]};border:1px solid #0002;display:inline-block;"></span><b>${esc(c[0])}</b> ${c[1]}–${c[2]} ${esc(c[4])}</span>`).join('') + '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#E5E7EB;border:1px solid #0002;display:inline-block;"></span>Vacaciones / incapacidad / permiso / otro</span>';
+  return horCatalogo(mes).map(c=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:${c[6]};border:1px solid #0002;display:inline-block;"></span><b>${esc(c[0])}</b> ${c[1]}–${c[2]} ${esc(c[4])}</span>`).join('') + '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#E5E7EB;border:1px solid #0002;display:inline-block;"></span>Vacaciones / incapacidad / permiso / otro</span>' + logFestivosMes(mes);
 }
 /* Horario base de Mantenimiento 2026 (jornada 44 h hasta el 14-jul y 42 h desde el 15-jul), almuerzo de 30 min ya descontado.
    Grupo general: L-V desde las 6:00 a.m. · Grupo sábado (Audio, Samith, Jesús, Leonardo): L-V 6:00–2:18 p.m. + sábado 7:00–12:00 m. */
@@ -9207,7 +9208,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-11-2345';
+const APP_VERSION = '2026-11-12-0815';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
