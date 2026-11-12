@@ -8094,6 +8094,12 @@ document.getElementById('btnCerrarHeDetalle').addEventListener('click', ()=>{
 const HE_DIVISOR_MENSUAL = 210;
 const SMMLV_2026 = 1750905; // salario mínimo mensual legal vigente 2026
 const HE_FACTOR = {ordinaria:1.25, nocturna:1.75, dominical:2.15, nocturnaDominical:2.65};
+/* Valor por tipo de un registro según su fecha: dominical/festivo 80% antes del 1-jul-2026 y 90% desde ahí; divisor 220 antes del 15-jul-2026 y 210 desde ahí. */
+function heValorRegistro(fecha, c, salario){
+  const rd = fecha < '2026-07-01' ? 0.80 : 0.90, vh = (salario||SMMLV_2026)/(fecha < '2026-07-15' ? 220 : 210);
+  const f = {ordinaria:1.25, nocturna:1.75, dominical:1.25+rd, nocturnaDominical:1.75+rd};
+  const o = {}; Object.keys(f).forEach(k=>o[k] = (c[k]||0)*f[k]*vh); return o;
+}
 
 /* Calcula, para cada trabajador, sus horas por tipo y su liquidación (si
    tiene salario guardado) dentro del período dado. La comparten el
@@ -8114,21 +8120,21 @@ function limitarHorasPriorizandoRecargos(totales, limite){
 function calcularHEPorPersona(desde, hasta){
   return trabajadoresHE().map(t=>{
     const registros = horasExtras.filter(heEnArea).filter(h=>h.trabajadorId===t.id && h.fecha>=desde && h.fecha<=hasta && (h.estadoPago||'normal')==='normal');
-    const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
+    const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0}, vals = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
     registros.forEach(h=>{
-      const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
-      Object.keys(totales).forEach(k=>totales[k]+=c[k]);
+      const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas), v = heValorRegistro(h.fecha, c, t.salario);
+      Object.keys(totales).forEach(k=>{ totales[k]+=c[k]; vals[k]+=v[k]; });
     });
     Object.keys(totales).forEach(k=>totales[k]=r2(totales[k]));
     const totalHoras = r2(Object.values(totales).reduce((a,b)=>a+b,0));
     const valorHora = (t.salario||SMMLV_2026)/HE_DIVISOR_MENSUAL;
-    let totalPagar = 0;
-    Object.keys(totales).forEach(k=>totalPagar += totales[k]*HE_FACTOR[k]*valorHora);
+    const prom = {}; Object.keys(totales).forEach(k=>prom[k] = totales[k]>0 ? vals[k]/totales[k] : 0);
+    let totalPagar = Object.values(vals).reduce((a,b)=>a+b,0);
     const excede = totalHoras > limitesHorasExtras.tope;
     let totalPagarLimitado = null, excedenteHoras = 0;
     if(excede){
       const limitado = limitarHorasPriorizandoRecargos(totales, limitesHorasExtras.tope);
-      totalPagarLimitado = Math.round(Object.keys(limitado).reduce((s,k)=>s+limitado[k]*HE_FACTOR[k]*valorHora, 0));
+      totalPagarLimitado = Math.round(Object.keys(limitado).reduce((s,k)=>s+limitado[k]*prom[k], 0));
       excedenteHoras = r2(totalHoras - limitesHorasExtras.tope);
     }
     const compensacion = heCompensaciones.find(c=>c.trabajadorId===t.id && c.desde===desde && c.hasta===hasta) || null;
@@ -8297,17 +8303,17 @@ function construirResumenHEHtml(idsSeleccionados, desde, hasta, conLiquidacion){
   const personas = idsSeleccionados.map(id=>{
     const t = trabajadores.find(x=>x.id===id);
     const registros = horasExtras.filter(heEnArea).filter(h=>h.trabajadorId===id && h.fecha>=desde && h.fecha<=hasta && (h.estadoPago||'normal')==='normal');
-    const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
+    const totales = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0}, vals = {ordinaria:0, nocturna:0, dominical:0, nocturnaDominical:0};
     registros.forEach(h=>{
-      const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas);
-      Object.keys(totales).forEach(k=>totales[k]+=c[k]);
+      const c = clasificarHorasExtra(h.fecha, h.horaInicio, h.horaFin, h.horas), v = heValorRegistro(h.fecha, c, t?.salario);
+      Object.keys(totales).forEach(k=>{ totales[k]+=c[k]; vals[k]+=v[k]; });
     });
     Object.keys(totales).forEach(k=>totales[k]=r2(totales[k]));
     const totalHoras = r2(Object.values(totales).reduce((a,b)=>a+b,0));
     let valorHora = 0, subtotales = {}, totalPagar = 0;
     if(conLiquidacion){
       valorHora = (t?.salario||SMMLV_2026)/HE_DIVISOR_MENSUAL;
-      Object.keys(totales).forEach(k=>{ subtotales[k] = Math.round(totales[k]*HE_FACTOR[k]*valorHora); totalPagar += subtotales[k]; });
+      Object.keys(totales).forEach(k=>{ subtotales[k] = Math.round(vals[k]); totalPagar += subtotales[k]; });
     }
     return {t, totales, totalHoras, valorHora, subtotales, totalPagar};
   });
@@ -9210,7 +9216,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-12-0830';
+const APP_VERSION = '2026-11-12-0850';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
