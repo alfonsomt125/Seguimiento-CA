@@ -1584,6 +1584,7 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
           <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
             <div class="field" style="margin:0;"><label>Empleado</label><select id="heLogMesPersona"></select></div>
+            <div class="field" style="margin:0;"><label>Mes</label><select id="heLogMesMes"></select></div>
             <label style="font-size:13px;"><input type="checkbox" id="heLogMesExt" checked> Horas extras</label>
             <label style="font-size:13px;"><input type="checkbox" id="heLogMesRec" checked> Recargos</label>
           </div>
@@ -8788,8 +8789,15 @@ function logLiqPdf(id){
 function logLiqMensualHTML(id, e){
   const p = logData.personal.find(x=>x.id===id); if(!p) return '';
   const ext = document.getElementById('heLogMesExt').checked, rec = document.getElementById('heLogMesRec').checked;
-  const m = {};
-  logCalcularSemanas(id, null).flatMap(w=>w.detalle).forEach(d=>{
+  const m = {}, mesSel = document.getElementById('heLogMesMes').value, conc = {};
+  logCalcularSemanas(id, null).flatMap(w=>w.detalle).filter(d=>!mesSel || d.fecha.slice(0,7)===mesSel).forEach(d=>{
+    LOG_CONCEPTOS.forEach((c,ci)=>{
+      if(c[0]==='e' ? !ext : !rec) return;
+      const h = (c[0]==='o'?d.ord:d.ext)[c[1]]; if(h<=0.004) return;
+      const pct = c[3](d.fecha), k = ci+'|'+pct+'|'+d.valorHora;
+      const o = conc[k] = conc[k] || {ci, pct, vh:d.valorHora, h:0, v:0};
+      o.h += h; o.v += (c[0]==='o'?d.vo:d.ve)[c[1]];
+    });
     const r = m[d.fecha.slice(0,7)] = m[d.fecha.slice(0,7)] || {he:0, ve:0, hr:0, vr:0};
     LOG_CONCEPTOS.forEach(c=>{
       const h = (c[0]==='o'?d.ord:d.ext)[c[1]], v = (c[0]==='o'?d.vo:d.ve)[c[1]];
@@ -8809,16 +8817,23 @@ function logLiqMensualHTML(id, e){
   }).join('');
   const tot = `<tr style="font-weight:700;"><td style="${td}">Total</td>${ext?`<td style="${td}${R}">${r2(T.he)}</td><td style="${td}${R}">${logMoneda(T.ve)}</td>`:''}${rec?`<td style="${td}${R}">${r2(T.hr)}</td><td style="${td}${R}">${logMoneda(T.vr)}</td>`:''}<td style="${td}${R}">${logMoneda(T.dev)}</td><td style="${td}${R}">-${logMoneda(T.sal)}</td><td style="${td}${R}">-${logMoneda(T.pen)}</td><td style="${td}${R}">${logMoneda(T.dev-T.sal-T.pen)}</td></tr>`;
   return `<p style="margin:0 0 8px;font-size:13px;"><b>${esc(p.nombre)}</b> · salario base ${logMoneda(sal)}${Number(p.salario)?'':' (mínimo 2026)'}</p>
-  <table style="width:100%;border-collapse:collapse;"><thead><tr>${cols.map((c,i)=>`<th style="${th}${i?'':'text-align:left;'}">${c[0]}</th>`).join('')}</tr></thead><tbody>${filas||`<tr><td colspan="${cols.length}" style="${td}text-align:center;">Sin turnos registrados.</td></tr>`}${filas?tot:''}</tbody></table>`;
+  <h4 style="margin:0 0 4px;">${mesSel?LOG_MESES[+mesSel.slice(5)-1]+' '+mesSel.slice(0,4):'Mes por mes'}</h4>
+  <table style="width:100%;border-collapse:collapse;"><thead><tr>${cols.map((c,i)=>`<th style="${th}${i?'':'text-align:left;'}">${c[0]}</th>`).join('')}</tr></thead><tbody>${filas||`<tr><td colspan="${cols.length}" style="${td}text-align:center;">Sin turnos registrados.</td></tr>`}${filas?tot:''}</tbody></table>
+  <h4 style="margin:18px 0 4px;">Detalle por concepto${mesSel?' — '+LOG_MESES[+mesSel.slice(5)-1]:' — todos los meses'}</h4>
+  <table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}text-align:left;">Concepto</th><th style="${th}">Horas</th><th style="${th}">% aplicado</th><th style="${th}">Valor hora base</th><th style="${th}">Valor a pagar</th></tr></thead><tbody>${
+    Object.values(conc).sort((a,b)=>a.ci-b.ci||a.pct-b.pct||a.vh-b.vh).map(o=>`<tr><td style="${td}">${LOG_CONCEPTOS[o.ci][2]}</td><td style="${td}${R}">${r2(o.h)}</td><td style="${td}${R}">${o.pct}%</td><td style="${td}${R}">${logMoneda(o.vh)}</td><td style="${td}${R}">${logMoneda(o.v)}</td></tr>`).join('') || `<tr><td colspan="5" style="${td}text-align:center;">Sin horas en este período.</td></tr>`}</tbody></table>`;
 }
 const LOG_MES_EST = {th:'padding:6px 8px;border-bottom:2px solid var(--line);font-size:12px;text-align:right;', td:'padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;'};
 function renderLogLiqMensual(){
   const sel = document.getElementById('heLogMesPersona'), prev = sel.value;
   sel.innerHTML = logData.personal.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('');
   sel.value = logData.personal.some(p=>p.id===prev) ? prev : (logData.personal[0]?logData.personal[0].id:'');
+  const sm = document.getElementById('heLogMesMes'), pm = sm.value;
+  sm.innerHTML = '<option value="">Todos los meses</option>' + [...new Set(logData.turnos.filter(t=>!t.marca).map(t=>t.fecha.slice(0,7)))].sort().map(k=>`<option value="${k}">${LOG_MESES[+k.slice(5)-1]} ${k.slice(0,4)}</option>`).join('');
+  sm.value = pm;
   document.getElementById('heLogMesTabla').innerHTML = logLiqMensualHTML(sel.value, LOG_MES_EST);
 }
-['heLogMesPersona','heLogMesExt','heLogMesRec'].forEach(i=>document.getElementById(i).addEventListener('change', renderLogLiqMensual));
+['heLogMesPersona','heLogMesMes','heLogMesExt','heLogMesRec'].forEach(i=>document.getElementById(i).addEventListener('change', renderLogLiqMensual));
 document.getElementById('btnLogMesPdf').addEventListener('click', ()=>{
   const id = document.getElementById('heLogMesPersona').value; if(!id) return;
   const e = {th:'border:1px solid #999;padding:6px;font-size:12px;background:#011632;color:#fff;text-align:right;', td:'border:1px solid #999;padding:6px;font-size:12px;'};
@@ -9192,7 +9207,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-11-2330';
+const APP_VERSION = '2026-11-11-2345';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
