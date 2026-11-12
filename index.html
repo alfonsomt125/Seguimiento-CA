@@ -1520,6 +1520,7 @@
         <button class="year-pill" data-logtab="liq">Liquidación</button>
         <button class="year-pill" data-logtab="mes">Liquidación mensual</button>
         <button class="year-pill" data-logtab="turnos">Turnos registrados</button>
+        <button class="year-pill" data-logtab="form">📐 Fórmulas</button>
       </div>
       <div class="field" id="heLogMesWrap" style="max-width:220px;margin:0;"><label>Mes</label><input type="month" id="heLogMes"></div>
       <details style="margin-top:12px;"><summary style="cursor:pointer;font-size:13px;color:var(--gray);">Cómo se calcula</summary><p class="hint" style="margin:8px 0 0;">Se registra cada turno trabajado (catálogo de tu cronograma 2026). Las horas netas se suman por semana (lunes a domingo) y lo que pase del tope semanal es hora extra: 44 h, o 42 h en las semanas que terminan desde el 15-jul-2026 (Ley 2101). Noche desde 7:00 p.m.; domingos y festivos de 2026 como dominical. Los valores usan el salario de la persona o el mínimo 2026.</p></details>
@@ -1595,6 +1596,8 @@
       </div>
     </div>
 
+    <div id="heLogSecForm" style="display:none;"><div class="panel" id="heLogFormulas"></div></div>
+
     <div id="heLogSecTurnos" style="display:none;">
       <div class="panel">
         <div class="table-wrap"><table>
@@ -1604,6 +1607,11 @@
       </div>
     </div>
   </div>
+
+  <div class="modal-bg" id="heFormModalBg"><div class="modal" style="max-width:1000px;max-height:88vh;overflow:auto;">
+    <div id="heFormModalCont"></div>
+    <div class="modal-actions"><button class="primary" id="btnHeFormCerrar">Cerrar</button></div>
+  </div></div>
 
   <div class="modal-bg" id="heVerifModalBg"><div class="modal" style="max-width:1000px;">
     <h3 style="margin-top:0;">Verificación de horas extras vs. horario</h3>
@@ -1645,6 +1653,7 @@
       <button class="ghost" id="btnExportarResumenHE">⬇ Exportar a PDF</button>
       <button class="ghost" id="btnConfigLimitesHE">⚙ Configurar límites</button>
       <button class="ghost" id="btnVerificarHE">🔎 Verificar con horarios</button>
+      <button class="ghost" id="btnFormulasHE">📐 Fórmulas</button>
     </div>
     <p class="hint" style="margin:0 0 14px;" id="heLimitesTexto"></p>
     <p class="hint" style="margin:0 0 6px;">Período de corte a revisar (por defecto del 15 al 15, pero lo puedes ajustar cualquier mes que el corte sea distinto — ej. del 20 al 15):</p>
@@ -8275,6 +8284,35 @@ function renderHeExportSalarios(){
     </div>`;
   }).join('');
 }
+function logFormulasHTML(){
+  const th = 'padding:6px 8px;border-bottom:2px solid var(--line);font-size:12px;text-align:right;', td = 'padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;', R = 'text-align:right;';
+  const m = n=>'$'+Math.round(n).toLocaleString('es-CO'), sal = SMMLV_2026, v1 = sal/220, v2 = sal/210;
+  const filas = LOG_CONCEPTOS.map(c=>{
+    const a = c[3]('2026-01-01'), b = c[3]('2026-08-01'), esE = c[0]==='e';
+    return `<tr><td style="${td}">${c[2]}</td><td style="${td}">${esE?'valor hora × % (incluye la hora base)':'valor hora × % (solo el recargo; la hora ya está en el salario)'}</td><td style="${td}${R}">${a}%</td><td style="${td}${R}">${b}%</td><td style="${td}${R}">${m(v1*a/100)}</td><td style="${td}${R}">${m(v2*b/100)}</td></tr>`;
+  }).join('');
+  const sec = t=>`<h3 style="margin:20px 0 6px;font-size:15px;">${t}</h3>`, p = 'margin:4px 0;font-size:13px;line-height:1.5;';
+  return `<h2 style="margin:0 0 4px;">Fórmulas de liquidación</h2><p class="hint" style="margin:0 0 6px;">Código Sustantivo del Trabajo con la Ley 2466 de 2025. Los valores de ejemplo usan el salario mínimo 2026 (${m(sal)}).</p>
+  ${sec('1. Valor de la hora')}
+  <p style="${p}"><b>Valor hora = salario mensual ÷ divisor</b></p>
+  <p style="${p}">Hasta el 14-jul-2026: divisor <b>220</b> → ${m(v1)} · Desde el 15-jul-2026: divisor <b>210</b> → ${m(v2)}</p>
+  ${sec('2. Qué hora es extra')}
+  <p style="${p}">Logística: se cuentan las horas de cada semana (lunes a domingo). El tope es <b>44 h</b> hasta el 14-jul y <b>42 h</b> desde el 15-jul (según el domingo de esa semana). Lo que pasa del tope es extra y se toma de los <b>últimos minutos</b> del turno. Se calcula minuto a minuto, y el turno que cruza la medianoche se reparte por día.</p>
+  <p style="${p}">Mantenimiento: es extra cada hora registrada en Horas extras; debe empezar cuando termina el turno ordinario de ese día.</p>
+  ${sec('3. Clasificación de cada hora')}
+  <p style="${p}"><b>Nocturna:</b> de 7:00 p.m. a 6:00 a.m. · <b>Dominical/festivo:</b> todo el domingo y los festivos de Colombia 2026 (de 12:00 a.m. a 12:00 a.m.). Si es noche y dominical, suma ambos recargos.</p>
+  <p style="${p}">Una hora ordinaria diurna entre semana no genera recargo. El mes se corta a las 12:00 a.m. del día 1.</p>
+  ${sec('4. Porcentajes y valor por hora')}
+  <div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${th}text-align:left;">Concepto</th><th style="${th}text-align:left;">Fórmula</th><th style="${th}">% hasta 30-jun</th><th style="${th}">% desde 1-jul</th><th style="${th}">$ por hora (enero)</th><th style="${th}">$ por hora (agosto)</th></tr></thead><tbody>${filas}</tbody></table></div>
+  <p class="hint" style="margin:6px 0 0;">Dominical/festivo: 80% hasta el 30-jun-2026 y 90% desde el 1-jul-2026. La columna de enero usa divisor 220 y la de agosto divisor 210.</p>
+  ${sec('5. Total y descuentos')}
+  <p style="${p}"><b>Total devengado</b> = Σ (horas de cada concepto × valor hora × %)</p>
+  <p style="${p}"><b>Salud</b> = 4% del total · <b>Pensión</b> = 4% del total · <b>Neto</b> = total − salud − pensión. No se calculan parafiscales ni auxilio de transporte.</p>
+  ${sec('6. Ejemplo')}
+  <p style="${p}">2 h extra nocturna dominical el 9-ago-2026: ${m(v2)} × 265% × 2 = <b>${m(v2*2.65*2)}</b> → salud y pensión ${m(v2*2.65*2*0.04)} cada una → neto <b>${m(v2*2.65*2*0.92)}</b>.</p>`;
+}
+document.getElementById('btnFormulasHE').addEventListener('click', ()=>{ document.getElementById('heFormModalCont').innerHTML = logFormulasHTML(); document.getElementById('heFormModalBg').classList.add('active'); });
+document.getElementById('btnHeFormCerrar').addEventListener('click', ()=>document.getElementById('heFormModalBg').classList.remove('active'));
 function heVerifCalcular(){
   const hm = x=>+x.slice(0,2)*60 + +x.slice(3,5), f2 = m=>String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
   return horasExtras.filter(heEnArea).sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(h=>{
@@ -8838,8 +8876,9 @@ function renderLogLiquidacion(){
 document.querySelectorAll('#heLogTabs [data-logtab]').forEach(b=>b.addEventListener('click', ()=>{
   const t = b.dataset.logtab;
   document.querySelectorAll('#heLogTabs [data-logtab]').forEach(x=>x.classList.toggle('active', x===b));
-  [['cron','Cron'],['horas','Horas'],['liq','Liq'],['mes','Mes'],['turnos','Turnos']].forEach(([k,n])=>document.getElementById('heLogSec'+n).style.display = k===t ? 'block' : 'none');
-  document.getElementById('heLogMesWrap').style.display = (t==='liq'||t==='mes') ? 'none' : 'block';
+  [['cron','Cron'],['horas','Horas'],['liq','Liq'],['mes','Mes'],['turnos','Turnos'],['form','Form']].forEach(([k,n])=>document.getElementById('heLogSec'+n).style.display = k===t ? 'block' : 'none');
+  document.getElementById('heLogMesWrap').style.display = (t==='liq'||t==='mes'||t==='form') ? 'none' : 'block';
+  if(t==='form') document.getElementById('heLogFormulas').innerHTML = logFormulasHTML();
   if(t==='liq') renderLogLiquidacion();
   if(t==='mes') renderLogLiqMensual();
 }));
@@ -9281,7 +9320,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-12-1045';
+const APP_VERSION = '2026-11-12-1100';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
