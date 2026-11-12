@@ -1434,6 +1434,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
         <h2 style="margin:0;" id="horTitulo">Horario del personal</h2>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="ghost" id="btnHorBase" title="Llena los días vacíos de todo 2026 con el horario base (44 h hasta el 14-jul, 42 h desde el 15-jul)">⚡ Horario base 2026</button>
           <button class="ghost" id="btnHorPersona">+ Persona</button>
           <button class="ghost" id="btnHorTurnos">⚙ Turnos del mes</button>
           <button class="ghost" id="btnHorPdf">⬇ Exportar a PDF</button>
@@ -8899,6 +8900,46 @@ function horGridHTML(mes){
 function horLeyendaHTML(mes){
   return horCatalogo(mes).map(c=>`<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:${c[6]};border:1px solid #0002;display:inline-block;"></span><b>${esc(c[0])}</b> ${c[1]}–${c[2]} ${esc(c[4])}</span>`).join('') + '<span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#E5E7EB;border:1px solid #0002;display:inline-block;"></span>Vacaciones / incapacidad / permiso / otro</span>';
 }
+/* Horario base de Mantenimiento 2026 (jornada 44 h hasta el 14-jul y 42 h desde el 15-jul), almuerzo de 30 min ya descontado.
+   Grupo general: L-V desde las 6:00 a.m. · Grupo sábado (Audio, Samith, Jesús, Leonardo): L-V 6:00–2:18 p.m. + sábado 7:00–12:00 m. */
+const HOR_BASE_TURNOS = {
+  L1:['L1','06:00','15:18',8.8,'L-V 44 h',0,'#0070C0'],
+  L2:['L2','06:00','14:54',8.4,'L-V 42 h (desde 15-jul)',0,'#00B0F0'],
+  G1:['G1','06:00','14:18',7.8,'L-J grupo sábado',0,'#A9D18E'],
+  G2:['G2','06:00','12:18',5.8,'Viernes grupo sábado (desde 15-jul)',0,'#00B050'],
+  SA:['SA','07:00','12:00',5,'Sábado',0,'#FFC000']
+};
+function horEsGrupoSabado(nombre){
+  const n = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return ['audio','samith','jesus','leonardo'].some(k=>n.includes(k));
+}
+async function horAplicarBaseMant(){
+  horMant.catalogos = horMant.catalogos || {};
+  for(let m=1; m<=12; m++){
+    const mes = '2026-'+String(m).padStart(2,'0');
+    if(horMant.catalogos[mes]) continue;
+    const cods = m<7 ? ['L1','G1','SA'] : m===7 ? ['L1','L2','G1','G2','SA'] : ['L2','G1','G2','SA'];
+    horMant.catalogos[mes] = cods.map(c=>[...HOR_BASE_TURNOS[c]]);
+  }
+  let n = 0;
+  horMant.personal.forEach(p=>{
+    const sab = horEsGrupoSabado(p.nombre);
+    for(let f='2026-01-01'; f<='2026-12-31'; f=sumaDias(f,1)){
+      if(horMant.turnos.some(t=>t.personaId===p.id && t.fecha===f)) continue;
+      const dow = new Date(f+'T00:00:00').getDay(), post = f>='2026-07-15';
+      let cod = '';
+      if(LOG_FESTIVOS_2026[f]){ horMant.turnos.push({id:uid(), personaId:p.id, fecha:f, codigo:'*Festivo', marca:'Festivo', ini:'', fin:'', neto:0, desc:''}); n++; continue; }
+      if(dow===0) continue;
+      if(sab){ cod = dow===6 ? 'SA' : (dow===5 && post ? 'G2' : 'G1'); }
+      else { if(dow===6) continue; cod = post ? 'L2' : 'L1'; }
+      const c = HOR_BASE_TURNOS[cod];
+      horMant.turnos.push({id:uid(), personaId:p.id, fecha:f, codigo:c[0], ini:c[1], fin:c[2], neto:c[3], desc:''}); n++;
+    }
+  });
+  horMant.base2026 = true;
+  await horGuardar();
+  return n;
+}
 /* Mantenimiento: las personas del horario son las mismas que ya tienen horas extras registradas en esa área. */
 function horSincronizarPersonalMant(){
   const ids = new Set(horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId));
@@ -8912,7 +8953,11 @@ function horSincronizarPersonalMant(){
   return nuevos;
 }
 async function renderHorarios(){
-  if(horArea==='mantenimiento' && horSincronizarPersonalMant()) await horGuardar();
+  if(horArea==='mantenimiento'){
+    if(horSincronizarPersonalMant()) await horGuardar();
+    if(!horMant.base2026 && horMant.personal.length && !horMant.turnos.length) await horAplicarBaseMant();
+  }
+  document.getElementById('btnHorBase').style.display = horArea==='mantenimiento' ? '' : 'none';
   const inp = document.getElementById('horMes');
   if(!inp.value) inp.value = todayISO().slice(0,7);
   const mes = inp.value, st = horStore();
@@ -8932,6 +8977,11 @@ async function renderHorarios(){
   }));
 }
 document.getElementById('horMes').addEventListener('change', renderHorarios);
+document.getElementById('btnHorBase').addEventListener('click', async ()=>{
+  if(!horMant.personal.length){ showToast('Primero agrega personal.'); return; }
+  const n = await horAplicarBaseMant();
+  renderHorarios(); showToast(n ? `Horario base aplicado (${n} días nuevos).` : 'No había días vacíos por llenar.');
+});
 document.querySelectorAll('#horAreaTabs [data-horarea]').forEach(b=>b.addEventListener('click', ()=>{ horArea = b.dataset.horarea; renderHorarios(); }));
 function horAbrirAsignar(personaId, fecha){
   const st = horStore(), mes = document.getElementById('horMes').value;
@@ -9041,7 +9091,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-11-2215';
+const APP_VERSION = '2026-11-11-2225';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -9053,7 +9103,7 @@ const APP_VERSION = '2026-11-11-2215';
     try{
       const r = await fetch(location.pathname + '?chk=' + Date.now(), {cache:'no-store'});
       if(!r.ok) return;
-      const m = (await r.text()).match(/const APP_VERSION = '2026-11-11-2215']+)'/);
+      const m = (await r.text()).match(/const APP_VERSION = '([^']+)'/);
       if(m && m[1] !== APP_VERSION){
         avisado = true;
         const b = document.createElement('div');
