@@ -2349,6 +2349,13 @@
       </div>
     </div>
     <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+        <h2 style="margin:0;">Insumos por categoría</h2>
+        <div class="field" style="margin:0;"><select id="invCatMes" title="Mes del consumo"></select></div>
+      </div>
+      <div id="invCatPies" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;"></div>
+    </div>
+    <div class="panel">
       <h2>Consumo semanal (últimas 8 semanas)</h2>
       <p class="hint" style="margin:0 0 10px;">Lo entregado (salidas de insumos) dentro de cada semana, de lunes a domingo.</p>
       <div id="invConsumoSemanalBars"></div>
@@ -9320,7 +9327,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-12-1100';
+const APP_VERSION = '2026-11-14-0930';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11970,7 +11977,49 @@ function renderInvDashboard(){
     });
   }
 
+  renderInvPiesCategoria();
   renderPedidoSugerido();
+}
+
+/* Tortas por categoría de insumo: cantidad de productos, unidades en stock
+   y unidades entregadas (salidas) en el mes elegido. Tocar una categoría
+   abre el listado de insumos filtrado por ella. */
+const INV_CAT_COLORES = ['#011632','#F29622','#03459B','#1F7A5C','#5D88D6','#E0342A','#8B5CF6','#64748B','#0EA5A4','#B45309'];
+function renderInvPiesCategoria(){
+  const sel = document.getElementById('invCatMes'), prev = sel.value;
+  if(!sel.options.length){
+    const hoy = new Date(); let o = '';
+    for(let i=0;i<12;i++){ const d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1); const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; o += `<option value="${k}">${MESES_CORTOS[d.getMonth()]} ${d.getFullYear()}</option>`; }
+    sel.innerHTML = o + '<option value="todo">Todo el historial</option>';
+    sel.addEventListener('change', renderInvPiesCategoria);
+  }
+  if(prev) sel.value = prev;
+  const mes = sel.value, nombreCat = i=>i.categoria || 'Sin categoría';
+  const cats = [...new Set([...categoriasInsumos, ...insumos.map(nombreCat)])];
+  const color = c=>INV_CAT_COLORES[cats.indexOf(c) % INV_CAT_COLORES.length];
+  const porId = {}; insumos.forEach(i=>porId[i.id] = nombreCat(i));
+  const consumo = {};
+  movimientos.filter(m=>m.tipo==='salida' && m.fecha && (mes==='todo' || m.fecha.slice(0,7)===mes)).forEach(m=>{ const c = porId[m.insumoId] || 'Sin categoría'; consumo[c] = (consumo[c]||0) + Number(m.cantidad||0); });
+  const datos = [
+    {t:'Productos por categoría', sub:'Cantidad de productos distintos', f:c=>insumos.filter(i=>nombreCat(i)===c).length, u:'prod.'},
+    {t:'Stock actual por categoría', sub:'Unidades disponibles', f:c=>insumos.filter(i=>nombreCat(i)===c).reduce((a,i)=>a+Number(i.cantidad||0),0), u:'und.'},
+    {t:'Consumo por categoría', sub:mes==='todo' ? 'Unidades entregadas (todo el historial)' : 'Unidades entregadas en el mes', f:c=>consumo[c]||0, u:'und.'}
+  ];
+  document.getElementById('invCatPies').innerHTML = datos.map((d,di)=>{
+    const filas = cats.map(c=>({c, v:Math.round(d.f(c)*100)/100})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+    const tot = filas.reduce((a,x)=>a+x.v,0);
+    let acc = 0;
+    const stops = filas.map(x=>{ const a = acc/tot*360; acc += x.v; return `${color(x.c)} ${a}deg ${acc/tot*360}deg`; }).join(',');
+    return `<div><h3 style="margin:0;font-size:15px;">${d.t}</h3><p class="hint" style="margin:0 0 10px;">${d.sub}</p>`+(tot ? `<div class="pie-wrap" style="border:0;padding:0;margin:0;"><div class="pie-chart" style="background:conic-gradient(${stops});"></div><div class="pie-legend">${filas.map(x=>`<div class="pie-legend-row" data-invcat="${esc(x.c)}" style="cursor:pointer;"><span class="pie-swatch" style="background:${color(x.c)}"></span><span class="pie-legend-name">${esc(x.c)}</span><span class="pie-legend-val">${x.v} ${d.u} (${Math.round(x.v/tot*100)}%)</span></div>`).join('')}</div></div>` : '<p class="empty">Sin datos.</p>')+'</div>';
+  }).join('');
+  document.querySelectorAll('#invCatPies [data-invcat]').forEach(row=>row.addEventListener('click', ()=>{
+    if(!categoriasInsumos.includes(row.dataset.invcat)) return;
+    document.getElementById('panelSearch').value = ''; panelModuloActual = row.dataset.invcat;
+    document.getElementById('panelStockFilter').value = '';
+    document.querySelectorAll('#panelModuloTabs [data-panelmodulo]').forEach(b=>b.classList.toggle('active', b.dataset.panelmodulo===panelModuloActual));
+    renderPanelCards();
+    document.getElementById('panelBody').closest('.table-wrap').scrollIntoView({behavior:'smooth', block:'center'});
+  }));
 }
 
 /* Al tocar la barra de un mes en "Consumo mensual", abre el detalle de ese
