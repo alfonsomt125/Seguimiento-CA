@@ -2354,6 +2354,9 @@
         <div class="field" style="margin:0;"><select id="invCatMes" title="Mes del consumo"></select></div>
       </div>
       <div id="invCatPies" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;"></div>
+      <h3 style="margin:26px 0 4px;font-size:15px;">Lo que queda en cada categoría</h3>
+      <p class="hint" style="margin:0 0 12px;">Unidades en stock por producto dentro de cada categoría (los 6 con más unidades; el resto va en "Otros").</p>
+      <div id="invCatRestante" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:26px;"></div>
     </div>
     <div class="panel">
       <h2>Consumo semanal (últimas 8 semanas)</h2>
@@ -9327,7 +9330,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-14-0930';
+const APP_VERSION = '2026-11-15-1030';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -12011,6 +12014,14 @@ function renderInvPiesCategoria(){
     let acc = 0;
     const stops = filas.map(x=>{ const a = acc/tot*360; acc += x.v; return `${color(x.c)} ${a}deg ${acc/tot*360}deg`; }).join(',');
     return `<div><h3 style="margin:0;font-size:15px;">${d.t}</h3><p class="hint" style="margin:0 0 10px;">${d.sub}</p>`+(tot ? `<div class="pie-wrap" style="border:0;padding:0;margin:0;"><div class="pie-chart" style="background:conic-gradient(${stops});"></div><div class="pie-legend">${filas.map(x=>`<div class="pie-legend-row" data-invcat="${esc(x.c)}" style="cursor:pointer;"><span class="pie-swatch" style="background:${color(x.c)}"></span><span class="pie-legend-name">${esc(x.c)}</span><span class="pie-legend-val">${x.v} ${d.u} (${Math.round(x.v/tot*100)}%)</span></div>`).join('')}</div></div>` : '<p class="empty">Sin datos.</p>')+'</div>';
+  }).join('');
+  document.getElementById('invCatRestante').innerHTML = cats.map(c=>{
+    const its = insumos.filter(i=>nombreCat(i)===c), total = its.reduce((a,i)=>a+Number(i.cantidad||0),0), falt = its.filter(i=>Number(i.cantidad||0)<=0).length;
+    const con = its.filter(i=>Number(i.cantidad||0)>0).sort((a,b)=>Number(b.cantidad)-Number(a.cantidad));
+    const filas = con.slice(0,6).map(i=>({n:i.nombre, v:Number(i.cantidad), u:i.unidad||''}));
+    const otros = con.slice(6).reduce((a,i)=>a+Number(i.cantidad),0); if(otros>0) filas.push({n:'Otros ('+(con.length-6)+' prod.)', v:otros, u:''});
+    let acc = 0; const stops = filas.map((x,k)=>{ const a = acc/total*360; acc += x.v; return `${INV_CAT_COLORES[k%INV_CAT_COLORES.length]} ${a}deg ${acc/total*360}deg`; }).join(',');
+    return `<div><h4 style="margin:0 0 2px;font-size:14px;">${iconoCategoria(c)} ${esc(c)}</h4><p class="hint" style="margin:0 0 8px;"><b>${Math.round(total*100)/100} unidades</b> en ${its.length} productos${falt?` · <span style="color:var(--red);">${falt} sin stock</span>`:''}</p>`+(total>0 ? `<div class="pie-wrap" style="border:0;padding:0;margin:0;"><div class="pie-chart" style="background:conic-gradient(${stops});"></div><div class="pie-legend">${filas.map((x,k)=>`<div class="pie-legend-row"><span class="pie-swatch" style="background:${INV_CAT_COLORES[k%INV_CAT_COLORES.length]}"></span><span class="pie-legend-name">${esc(x.n)}</span><span class="pie-legend-val">${x.v} ${esc(x.u)}</span></div>`).join('')}</div></div>` : '<p class="empty">Sin stock en esta categoría.</p>')+'</div>';
   }).join('');
   document.querySelectorAll('#invCatPies [data-invcat]').forEach(row=>row.addEventListener('click', ()=>{
     if(!categoriasInsumos.includes(row.dataset.invcat)) return;
