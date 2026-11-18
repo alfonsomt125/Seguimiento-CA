@@ -1612,8 +1612,8 @@
     <h3 style="margin-top:0;">Registro rápido de horas extras del mes</h3>
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
       <div class="field" style="margin:0;"><label>Persona</label><select id="heRapPersona"></select></div>
-      <div class="field" style="margin:0;"><label>Mes</label><input type="month" id="heRapMes"></div>
-      <div class="field" style="margin:0;flex:1;min-width:160px;"><label>Motivo</label><input type="text" id="heRapMotivo" placeholder="Motivo (opcional)"></div>
+      <div class="field" style="margin:0;"><label>Mes</label><div style="display:flex;gap:4px;"><button class="ghost" id="btnHeRapPrev" title="Mes anterior">◀</button><input type="month" id="heRapMes"><button class="ghost" id="btnHeRapNext" title="Mes siguiente">▶</button></div></div>
+      <div class="field" style="margin:0;flex:1;min-width:160px;"><label>Motivo para todos los días</label><input type="text" id="heRapMotivo" placeholder="Se copia a los días sin motivo"></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;padding:10px;background:var(--paper-2,#f4f5f8);border-radius:10px;">
       <div class="field" style="margin:0;"><label>Misma hora de salida para</label><input type="time" id="heRapMisma"></div>
@@ -1623,7 +1623,7 @@
     </div>
     <p class="hint" style="margin:0 0 8px;">Escribe solo la hora de salida de cada día; el inicio es la hora en que termina su horario ese día (o escríbela si no tiene turno). Los días sin salida no se registran.</p>
     <div class="table-wrap" style="max-height:48vh;overflow:auto;"><table>
-      <thead><tr><th>Día</th><th>Horario ordinario</th><th>Inicio extra</th><th>Salida</th><th>Horas</th></tr></thead>
+      <thead><tr><th>Día</th><th>Horario ordinario</th><th>Inicio extra</th><th>Salida</th><th>Motivo</th><th>Horas</th></tr></thead>
       <tbody id="heRapBody"></tbody>
     </table></div>
     <div class="modal-actions"><span class="hint" id="heRapTotal" style="margin-right:auto;"></span><button class="ghost" id="btnHeRapCerrar">Cancelar</button><button class="primary" id="btnHeRapGuardar">Guardar registros</button></div>
@@ -4632,6 +4632,10 @@ function customConfirm(message, title){
     bg.classList.add('active');
     const okBtn = document.getElementById('btnConfirmOk');
     const cancelBtn = document.getElementById('btnConfirmCancel');
+    /* El botón dice "Eliminar" (rojo) solo cuando la acción es destructiva; en el resto, "Confirmar". */
+    const destructivo = /elimin|borrar|borra |quitar|dar de baja|descartar/i.test(message);
+    okBtn.textContent = destructivo ? 'Eliminar' : 'Confirmar';
+    okBtn.style.background = destructivo ? 'var(--red)' : '';
     function cleanup(result){
       bg.classList.remove('active');
       okBtn.removeEventListener('click', onOk);
@@ -9377,7 +9381,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-1830';
+const APP_VERSION = '2026-11-18-1900';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -12099,38 +12103,52 @@ document.getElementById('btnInvAuditCerrar').addEventListener('click', ()=>docum
 
 function heRapMin(x){ return x ? +x.slice(0,2)*60 + +x.slice(3,5) : null; }
 function heRapHoras(ini, fin){ const a = heRapMin(ini), b = heRapMin(fin); if(a===null || b===null) return 0; let d = b-a; if(d<=0) d += 1440; return r2(d/60); }
+let heRapDatos = {};   // {personaId: {fecha: {ini, fin, motivo}}} — se conserva al cambiar de mes o de persona hasta guardar
+function heRapCapturar(){
+  const id = document.getElementById('heRapPersona').dataset.actual;
+  if(!id) return;
+  const st = heRapDatos[id] = heRapDatos[id] || {};
+  document.querySelectorAll('#heRapBody [data-rapfecha]').forEach(r=>{
+    const ini = r.querySelector('.rap-ini'); if(!ini) return;
+    const v = {ini:ini.value, fin:r.querySelector('.rap-fin').value, motivo:r.querySelector('.rap-mot').value};
+    if(v.fin || v.motivo || v.ini !== r.dataset.raphorfin) st[r.dataset.rapfecha] = v; else delete st[r.dataset.rapfecha];
+  });
+}
 function heRapRender(){
   const id = document.getElementById('heRapPersona').value, mes = document.getElementById('heRapMes').value;
+  document.getElementById('heRapPersona').dataset.actual = id || '';
   if(!id || !mes){ document.getElementById('heRapBody').innerHTML = ''; return; }
   const [y,m] = mes.split('-').map(Number), nd = new Date(y, m, 0).getDate(), DS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  const previo = {}; document.querySelectorAll('#heRapBody [data-rapfecha]').forEach(r=>{ previo[r.dataset.rapfecha] = {ini:r.querySelector('.rap-ini')?.value, fin:r.querySelector('.rap-fin')?.value}; });
+  const st = heRapDatos[id] || {};
   let h = '';
   for(let d=1; d<=nd; d++){
     const f = `${mes}-${String(d).padStart(2,'0')}`, w = new Date(y, m-1, d).getDay(), fest = (typeof LOG_FESTIVOS_2026!=='undefined' && LOG_FESTIVOS_2026[f]) || '';
     const ho = horTurnoDe(id, f), ya = horasExtras.filter(x=>heEnArea(x) && x.trabajadorId===id && x.fecha===f);
     const hor = ho && ho.turno ? `${ho.turno.ini}–${ho.turno.fin}` : (ho && ho.marca ? ho.marca : (w===0||fest ? (fest||'Domingo') : 'Sin turno'));
-    const pv = previo[f] || {};
-    const ini = pv.ini || (ho && ho.turno ? ho.turno.fin : '');
-    h += `<tr data-rapfecha="${f}" data-raptiene="${ho && ho.turno ? 1 : 0}" style="${w===0||fest?'background:#FDEEEE;':''}">
+    const hf = ho && ho.turno ? ho.turno.fin : '', pv = st[f] || {};
+    h += `<tr data-rapfecha="${f}" data-raptiene="${ho && ho.turno ? 1 : 0}" data-raphorfin="${hf}" style="${w===0||fest?'background:#FDEEEE;':''}">
       <td style="white-space:nowrap;"><b>${DS[w]} ${d}</b>${fest?`<br><span class="hint" style="margin:0;color:#B3261E;">${esc(fest)}</span>`:''}</td>
       <td>${esc(hor)}</td>
-      <td>${ya.length ? '' : `<input type="time" class="rap-ini" value="${ini}" style="width:140px;">`}</td>
+      <td>${ya.length ? '' : `<input type="time" class="rap-ini" value="${pv.ini!==undefined?pv.ini:hf}" style="width:140px;">`}</td>
       <td>${ya.length ? `<span class="hint" style="margin:0;">Ya registrado (${ya.map(x=>r2(x.horas)+'h').join(', ')})</span>` : `<input type="time" class="rap-fin" value="${pv.fin||''}" style="width:140px;">`}</td>
+      <td>${ya.length ? '' : `<input type="text" class="rap-mot" value="${esc(pv.motivo||'')}" placeholder="Motivo" style="min-width:120px;">`}</td>
       <td class="rap-horas" style="text-align:right;font-weight:700;"></td></tr>`;
   }
   document.getElementById('heRapBody').innerHTML = h;
-  document.querySelectorAll('#heRapBody input').forEach(i=>i.addEventListener('input', heRapCalc));
+  document.querySelectorAll('#heRapBody input').forEach(i=>i.addEventListener('input', ()=>{ heRapCapturar(); heRapCalc(); }));
   heRapCalc();
 }
+function heRapCambiar(){ heRapCapturar(); document.getElementById('heRapBody').innerHTML = ''; heRapRender(); }
 function heRapCalc(){
-  let n = 0, tot = 0;
   document.querySelectorAll('#heRapBody [data-rapfecha]').forEach(r=>{
     const ini = r.querySelector('.rap-ini'), fin = r.querySelector('.rap-fin'), c = r.querySelector('.rap-horas');
     if(!ini || !fin){ c.textContent = ''; return; }
     const hh = ini.value && fin.value ? heRapHoras(ini.value, fin.value) : 0;
-    c.textContent = hh ? hh+' h' : ''; if(hh){ n++; tot += hh; }
+    c.textContent = hh ? hh+' h' : '';
   });
-  document.getElementById('heRapTotal').textContent = n ? `${n} día(s) · ${r2(tot)} h` : 'Sin días por registrar';
+  let n = 0, tot = 0;
+  Object.values(heRapDatos).forEach(dias=>Object.values(dias).forEach(v=>{ const hh = v.ini && v.fin ? heRapHoras(v.ini, v.fin) : 0; if(hh){ n++; tot += hh; } }));
+  document.getElementById('heRapTotal').textContent = n ? `${n} día(s) por guardar · ${r2(tot)} h (todos los meses y personas)` : 'Sin días por registrar';
 }
 function heRapAbrir(){
   if(horSincronizarPersonalMant()) horGuardar();
@@ -12138,31 +12156,45 @@ function heRapAbrir(){
   const sel = document.getElementById('heRapPersona');
   sel.innerHTML = trabajadoresHE().slice().sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(t=>`<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
   if(!document.getElementById('heRapMes').value) document.getElementById('heRapMes').value = todayISO().slice(0,7);
+  heRapDatos = {};
   document.getElementById('heRapBody').innerHTML = '';
   heRapRender();
   document.getElementById('heRapidoModalBg').classList.add('active');
 }
-function heRapAbrirPara(id){ heRapAbrir(); document.getElementById('heRapPersona').value = id; document.getElementById('heRapBody').innerHTML = ''; heRapRender(); }
+function heRapAbrirPara(id){ heRapAbrir(); document.getElementById('heRapPersona').value = id; document.getElementById('heRapPersona').dataset.actual = ''; document.getElementById('heRapBody').innerHTML = ''; heRapRender(); }
 document.getElementById('btnHeRapido').addEventListener('click', heRapAbrir);
-['heRapPersona','heRapMes'].forEach(i=>document.getElementById(i).addEventListener('change', ()=>{ document.getElementById('heRapBody').innerHTML = ''; heRapRender(); }));
+['heRapPersona','heRapMes'].forEach(i=>document.getElementById(i).addEventListener('change', heRapCambiar));
+const heRapMover = n=>{ const inp = document.getElementById('heRapMes'); const [y,m] = (inp.value || todayISO().slice(0,7)).split('-').map(Number); const d = new Date(y, m-1+n, 1); inp.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; heRapCambiar(); };
+document.getElementById('btnHeRapPrev').addEventListener('click', ()=>heRapMover(-1));
+document.getElementById('btnHeRapNext').addEventListener('click', ()=>heRapMover(1));
 const heRapAplicar = soloConHorario=>{
   const v = document.getElementById('heRapMisma').value; if(!v) return;
   document.querySelectorAll('#heRapBody [data-rapfecha]').forEach(r=>{ const fin = r.querySelector('.rap-fin'); if(fin && (!soloConHorario || r.dataset.raptiene==='1')) fin.value = v; });
-  heRapCalc();
+  heRapCapturar(); heRapCalc();
 };
 document.getElementById('btnHeRapLab').addEventListener('click', ()=>heRapAplicar(true));
 document.getElementById('btnHeRapTodos').addEventListener('click', ()=>heRapAplicar(false));
-document.getElementById('btnHeRapLimpiar').addEventListener('click', ()=>{ document.querySelectorAll('#heRapBody .rap-fin').forEach(i=>i.value=''); heRapCalc(); });
+document.getElementById('btnHeRapLimpiar').addEventListener('click', ()=>{ document.querySelectorAll('#heRapBody .rap-fin').forEach(i=>i.value=''); heRapCapturar(); heRapCalc(); });
 document.getElementById('btnHeRapCerrar').addEventListener('click', ()=>document.getElementById('heRapidoModalBg').classList.remove('active'));
 document.getElementById('btnHeRapGuardar').addEventListener('click', async ()=>{
-  const id = document.getElementById('heRapPersona').value, t = trabajadores.find(x=>x.id===id), motivo = document.getElementById('heRapMotivo').value.trim();
-  const nuevos = [...document.querySelectorAll('#heRapBody [data-rapfecha]')].map(r=>({f:r.dataset.rapfecha, ini:r.querySelector('.rap-ini')?.value, fin:r.querySelector('.rap-fin')?.value})).filter(x=>x.ini && x.fin && heRapHoras(x.ini,x.fin)>0);
-  if(!nuevos.length){ showToast('Escribe la hora de salida de al menos un día.'); return; }
-  nuevos.forEach(x=>horasExtras.push({id: uid(), trabajadorId:id, trabajadorNombre:t?.nombre||'', fecha:x.f, horas:heRapHoras(x.ini,x.fin), horaInicio:x.ini, horaFin:x.fin, motivo, estadoPago:'normal', fechaCompensatoria:'', cruzaTipo:'', cruzaEn:'', cruzaFecha:'', restaAlmuerzo:false, area:heAreaActual, createdAt:new Date().toISOString()}));
+  heRapCapturar();
+  const motivoGral = document.getElementById('heRapMotivo').value.trim();
+  let n = 0;
+  Object.entries(heRapDatos).forEach(([id,dias])=>{
+    const t = trabajadores.find(x=>x.id===id);
+    Object.entries(dias).forEach(([f,v])=>{
+      if(!v.ini || !v.fin || !(heRapHoras(v.ini,v.fin)>0)) return;
+      if(horasExtras.some(x=>heEnArea(x) && x.trabajadorId===id && x.fecha===f)) return;
+      horasExtras.push({id: uid(), trabajadorId:id, trabajadorNombre:t?.nombre||'', fecha:f, horas:heRapHoras(v.ini,v.fin), horaInicio:v.ini, horaFin:v.fin, motivo:(v.motivo||'').trim()||motivoGral, estadoPago:'normal', fechaCompensatoria:'', cruzaTipo:'', cruzaEn:'', cruzaFecha:'', restaAlmuerzo:false, area:heAreaActual, createdAt:new Date().toISOString()});
+      n++;
+    });
+  });
+  if(!n){ showToast('Escribe la hora de salida de al menos un día.'); return; }
   await saveHorasExtras();
+  heRapDatos = {};
   document.getElementById('heRapidoModalBg').classList.remove('active');
   renderHorasExtra();
-  showToast(nuevos.length+' registro(s) guardado(s).');
+  showToast(n+' registro(s) guardado(s).');
 });
 
 function renderInvPiesCategoria(){
