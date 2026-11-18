@@ -1722,6 +1722,8 @@
       <h2 style="margin:0;">Registros de horas extras</h2>
       <button class="primary" id="btnNuevaHoraExtra">+ Agregar</button>
     </div>
+    <p class="hint" style="margin:0 0 6px;">Agregar horas extras a una persona:</p>
+    <div id="heAgregarRapido" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
     <div class="field" style="max-width:280px;margin-bottom:14px;">
       <label>Buscar</label>
       <input type="text" id="heBuscar" placeholder="Trabajador o motivo...">
@@ -8653,9 +8655,12 @@ function renderHorasExtra(){
         <button class="ghost danger" data-eliminarhe="${h.id}">Eliminar</button>
       </div></td>
     </tr>`).join('');
-    return `<tr style="background:var(--paper-2,#f4f5f8);"><td colspan="5" style="font-weight:700;color:var(--navy);">${esc(nombre)} — ${totalPersona}h</td></tr>${filasHtml}`;
+    return `<tr style="background:var(--paper-2,#f4f5f8);"><td colspan="4" style="font-weight:700;color:var(--navy);">${esc(nombre)} — ${totalPersona}h</td><td style="text-align:right;"><button class="ghost" data-agregarhe="${filas[0].trabajadorId}">+ Agregar</button></td></tr>${filasHtml}`;
   }).join('') : `<tr><td colspan="5" class="empty">${busqueda ? 'Nada coincide con la búsqueda.' : 'No hay horas extras registradas en este período.'}</td></tr>`;
 
+  const rapido = document.getElementById('heAgregarRapido');
+  rapido.innerHTML = trabajadoresHE().slice().sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(t=>`<button class="ghost" data-agregarhe="${t.id}">+ ${esc(t.nombre)}</button>`).join('') || '<span class="hint">Aún no hay trabajadores.</span>';
+  [rapido, tbody].forEach(c=>c.querySelectorAll('[data-agregarhe]').forEach(b=>b.addEventListener('click', ()=>abrirHEModal(null, b.dataset.agregarhe))));
   tbody.querySelectorAll('[data-editarhe]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const h = horasExtras.find(x=>x.id===btn.dataset.editarhe);
@@ -9347,7 +9352,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-1400';
+const APP_VERSION = '2026-11-18-1810';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -9379,11 +9384,11 @@ let heEditandoId = null;
 function poblarSelectTrabajadoresHE(){
   document.getElementById('heTrabajador').innerHTML = trabajadores.map(t=>`<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
 }
-function abrirHEModal(registro){
+function abrirHEModal(registro, trabajadorId){
   poblarSelectTrabajadoresHE();
   heEditandoId = registro ? registro.id : null;
   document.getElementById('heModalTitulo').textContent = registro ? 'Editar hora extra' : 'Nueva hora extra';
-  document.getElementById('heTrabajador').value = registro ? registro.trabajadorId : (trabajadores[0]?.id || '');
+  document.getElementById('heTrabajador').value = registro ? registro.trabajadorId : (trabajadorId || trabajadores[0]?.id || '');
   document.getElementById('heFecha').value = registro ? registro.fecha : todayISO();
   document.getElementById('heFechaLabel').textContent = registro ? 'Fecha' : 'Fecha (o marca varios días abajo)';
   document.getElementById('heModoVariosDias').checked = false;
