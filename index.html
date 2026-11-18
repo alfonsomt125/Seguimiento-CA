@@ -9394,7 +9394,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-1930';
+const APP_VERSION = '2026-11-18-1950';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -12119,7 +12119,7 @@ function heRapHoras(ini, fin){ const a = heRapMin(ini), b = heRapMin(fin); if(a=
 function heAutAbrir(){
   const sugeridos = new Set([...horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId), ...horMant.personal.map(p=>p.trabajadorId).filter(Boolean)]);
   const marcado = t=>heAutorizados ? heAutorizados.includes(t.id) : sugeridos.has(t.id);
-  document.getElementById('heAutLista').innerHTML = trabajadores.slice().sort((a,b)=>(marcado(b)-marcado(a)) || a.nombre.localeCompare(b.nombre)).map(t=>`<label style="display:flex;gap:8px;align-items:center;font-size:14px;padding:4px 6px;border-radius:8px;"><input type="checkbox" value="${t.id}" ${marcado(t)?'checked':''}> ${esc(t.nombre)}</label>`).join('') || '<p class="empty">Aún no hay trabajadores.</p>';
+  document.getElementById('heAutLista').innerHTML = trabajadores.slice().sort((a,b)=>(marcado(b)-marcado(a)) || a.nombre.localeCompare(b.nombre)).map(t=>`<label style="display:flex;gap:10px;align-items:center;justify-content:flex-start;text-align:left;font-size:14px;padding:6px 8px;border-radius:8px;cursor:pointer;margin:0;"><input type="checkbox" value="${t.id}" ${marcado(t)?'checked':''} style="width:18px;height:18px;flex:none;margin:0;"><span style="text-align:left;">${esc(t.nombre)}</span></label>`).join('') || '<p class="empty">Aún no hay trabajadores.</p>';
   document.getElementById('heAutModalBg').classList.add('active');
 }
 document.getElementById('btnAutorizadosHE').addEventListener('click', heAutAbrir);
