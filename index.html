@@ -1608,6 +1608,14 @@
     </div>
   </div>
 
+  <div class="modal-bg" id="heAutModalBg"><div class="modal" style="max-width:520px;max-height:88vh;overflow:auto;">
+    <h3 style="margin-top:0;">Personal autorizado para horas extras</h3>
+    <p class="hint" style="margin:0 0 10px;">Solo estas personas aparecen en Horas extras de Mantenimiento (resúmenes, registros, horarios y liquidación). Los registros de quienes no marques no se borran: quedan guardados y vuelven a verse si los autorizas de nuevo.</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;"><button class="ghost" id="btnHeAutTodos">Marcar todos</button><button class="ghost" id="btnHeAutNinguno">Ninguno</button></div>
+    <div id="heAutLista" style="display:grid;gap:4px;"></div>
+    <div class="modal-actions"><button class="ghost" id="btnHeAutCerrar">Cancelar</button><button class="primary" id="btnHeAutGuardar">Guardar</button></div>
+  </div></div>
+
   <div class="modal-bg" id="heRapidoModalBg"><div class="modal" style="max-width:760px;max-height:90vh;overflow:auto;">
     <h3 style="margin-top:0;">Registro rápido de horas extras del mes</h3>
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;">
@@ -1679,6 +1687,7 @@
       <h2 style="margin:0;" id="heTituloResumen">Horas extras — resumen del período</h2>
       <button class="ghost" id="btnExportarResumenHE">⬇ Exportar a PDF</button>
       <button class="ghost" id="btnConfigLimitesHE">⚙ Configurar límites</button>
+      <button class="ghost" id="btnAutorizadosHE">👥 Personal autorizado</button>
       <button class="ghost" id="btnVerificarHE">🔎 Verificar con horarios</button>
       <button class="ghost" id="btnFormulasHE">📐 Fórmulas</button>
     </div>
@@ -3841,11 +3850,14 @@ let puntosEncuentro = [];
 let flechasEvacuacion = [];
 let horasExtras = [];
 let heAreaActual = 'mantenimiento';
-const heEnArea = h => (h.area||'mantenimiento')===heAreaActual;
+/* Personal autorizado para horas extras en Mantenimiento (null = sin configurar: aplica a todos). */
+let heAutorizados = null;
+const heAutoriza = id => !heAutorizados || heAutorizados.includes(id);
+const heEnArea = h => (h.area||'mantenimiento')===heAreaActual && (heAreaActual!=='mantenimiento' || heAutoriza(h.trabajadorId));
 function trabajadoresHE(){
   const enLog = new Set(horasExtras.filter(h=>h.area==='logistica').map(h=>h.trabajadorId));
   const enMan = new Set(horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId));
-  return heAreaActual==='logistica' ? trabajadores.filter(t=>enLog.has(t.id)) : trabajadores.filter(t=>!(enLog.has(t.id) && !enMan.has(t.id)));
+  return heAreaActual==='logistica' ? trabajadores.filter(t=>enLog.has(t.id)) : trabajadores.filter(t=>!(enLog.has(t.id) && !enMan.has(t.id)) && heAutoriza(t.id));
 }
 let heCompensaciones = [];
 let limitesHorasExtras = {diario: 2, mensual: 50, tope: 50};
@@ -4215,6 +4227,7 @@ async function loadAll(){
   else if(!cargaFallida && !logData.importadoEnero){ logImportarCronograma('2026-01'); logData.importadoEnero = true; await saveLogisticaHE(); }
   if(!cargaFallida && !logData.importadoNovCS){ logImportarCronograma('2026-11',[4,5]); logData.importadoNovCS = true; await saveLogisticaHE(); }
   try{ horMant = JSON.parse((await storageAPI.get('horarioMantenimiento')).value); }catch(e){}
+  try{ const a = JSON.parse((await storageAPI.get('heAutorizados')).value); if(Array.isArray(a)) heAutorizados = a; }catch(e){}
   try{
     const hc = await storageAPI.get('heCompensaciones');
     heCompensaciones = JSON.parse(hc.value);
@@ -9232,7 +9245,7 @@ async function horAplicarBaseMant(){
 }
 /* Mantenimiento: las personas del horario son las mismas que ya tienen horas extras registradas en esa área. */
 function horSincronizarPersonalMant(){
-  const ids = new Set(horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId));
+  const ids = new Set(horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento' && heAutoriza(h.trabajadorId)).map(h=>h.trabajadorId));
   let nuevos = 0;
   trabajadores.filter(t=>ids.has(t.id)).forEach(t=>{
     const nom = t.nombre.trim().toLowerCase();
@@ -9381,7 +9394,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-1900';
+const APP_VERSION = '2026-11-18-1930';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -9411,7 +9424,7 @@ const APP_VERSION = '2026-11-18-1900';
 })();
 let heEditandoId = null;
 function poblarSelectTrabajadoresHE(){
-  document.getElementById('heTrabajador').innerHTML = trabajadores.map(t=>`<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
+  document.getElementById('heTrabajador').innerHTML = trabajadores.filter(t=>heAreaActual!=='mantenimiento' || heAutoriza(t.id)).map(t=>`<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
 }
 function abrirHEModal(registro, trabajadorId){
   poblarSelectTrabajadoresHE();
@@ -12103,6 +12116,22 @@ document.getElementById('btnInvAuditCerrar').addEventListener('click', ()=>docum
 
 function heRapMin(x){ return x ? +x.slice(0,2)*60 + +x.slice(3,5) : null; }
 function heRapHoras(ini, fin){ const a = heRapMin(ini), b = heRapMin(fin); if(a===null || b===null) return 0; let d = b-a; if(d<=0) d += 1440; return r2(d/60); }
+function heAutAbrir(){
+  const sugeridos = new Set([...horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId), ...horMant.personal.map(p=>p.trabajadorId).filter(Boolean)]);
+  const marcado = t=>heAutorizados ? heAutorizados.includes(t.id) : sugeridos.has(t.id);
+  document.getElementById('heAutLista').innerHTML = trabajadores.slice().sort((a,b)=>(marcado(b)-marcado(a)) || a.nombre.localeCompare(b.nombre)).map(t=>`<label style="display:flex;gap:8px;align-items:center;font-size:14px;padding:4px 6px;border-radius:8px;"><input type="checkbox" value="${t.id}" ${marcado(t)?'checked':''}> ${esc(t.nombre)}</label>`).join('') || '<p class="empty">Aún no hay trabajadores.</p>';
+  document.getElementById('heAutModalBg').classList.add('active');
+}
+document.getElementById('btnAutorizadosHE').addEventListener('click', heAutAbrir);
+document.getElementById('btnHeAutTodos').addEventListener('click', ()=>document.querySelectorAll('#heAutLista input').forEach(i=>i.checked=true));
+document.getElementById('btnHeAutNinguno').addEventListener('click', ()=>document.querySelectorAll('#heAutLista input').forEach(i=>i.checked=false));
+document.getElementById('btnHeAutCerrar').addEventListener('click', ()=>document.getElementById('heAutModalBg').classList.remove('active'));
+document.getElementById('btnHeAutGuardar').addEventListener('click', async ()=>{
+  heAutorizados = [...document.querySelectorAll('#heAutLista input:checked')].map(i=>i.value);
+  try{ await storageAPI.set('heAutorizados', JSON.stringify(heAutorizados)); }catch(e){ showToast('No se pudo guardar el personal autorizado.'); return; }
+  document.getElementById('heAutModalBg').classList.remove('active');
+  renderHorasExtra(); showToast(heAutorizados.length+' persona(s) autorizada(s).');
+});
 let heRapDatos = {};   // {personaId: {fecha: {ini, fin, motivo}}} — se conserva al cambiar de mes o de persona hasta guardar
 function heRapCapturar(){
   const id = document.getElementById('heRapPersona').dataset.actual;
