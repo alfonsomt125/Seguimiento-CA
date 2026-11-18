@@ -9329,7 +9329,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-0945';
+const APP_VERSION = '2026-11-18-1000';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11752,8 +11752,8 @@ function renderPanelCards(){
   const rows = insumos.filter(i=>{
     if(search && !i.nombre.toLowerCase().includes(search)) return false;
     if(catF && i.categoria!==catF) return false;
-    if(stockF==='bajo' && !(Number(i.cantidad) <= Number(i.stockMin))) return false;
-    if(stockF==='faltante' && !(Number(i.cantidad||0)<=0)) return false;
+    if(stockF==='bajo' && !(invAplicaFalt(i) && Number(i.cantidad) <= Number(i.stockMin))) return false;
+    if(stockF==='faltante' && !(invAplicaFalt(i) && Number(i.cantidad||0)<=0)) return false;
     return true;
   });
   ordenarLista(rows, panelSort);
@@ -11761,7 +11761,7 @@ function renderPanelCards(){
 
   const tbody = document.getElementById('panelBody');
   tbody.innerHTML = rows.length ? rows.map(i=>{
-    const bajo = Number(i.cantidad) <= Number(i.stockMin);
+    const bajo = invAplicaFalt(i) && Number(i.cantidad) <= Number(i.stockMin);
     return `
     <tr class="panel-row" data-panelrow="${i.id}">
       <td><strong>${esc(i.nombre)}</strong></td>
@@ -11949,8 +11949,8 @@ function renderInvDashboard(){
 
   // --- Torta: productos faltantes vs. disponibles (por catálogo, interactiva) ---
   const faltantesEl = document.getElementById('invFaltantesPie');
-  const faltantes = insumos.filter(i=>Number(i.cantidad||0)<=0);
-  const disponibles = insumos.filter(i=>Number(i.cantidad||0)>0);
+  const faltantes = insumos.filter(i=>invAplicaFalt(i) && Number(i.cantidad||0)<=0);
+  const disponibles = insumos.filter(i=>invAplicaFalt(i) && Number(i.cantidad||0)>0);
   const totalCatalogo = faltantes.length + disponibles.length;
   if(!totalCatalogo){
     faltantesEl.innerHTML = '<p class="empty">Sin datos aún.</p>';
@@ -11986,9 +11986,12 @@ function renderInvDashboard(){
 /* Tortas por categoría de insumo: cantidad de productos, unidades en stock
    y unidades entregadas (salidas) en el mes elegido. Tocar una categoría
    abre el listado de insumos filtrado por ella. */
+/* Solo estas categorías se marcan como faltantes/bajo mínimo; el resto (p. ej. Biblioteca) no. */
+const INV_CATS_FALTANTE = ['enfermeria','ferreteria','aseo','cafeteria','papeleria','jardineria'];
+const invAplicaFalt = i=>INV_CATS_FALTANTE.includes(String(i.categoria||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim());
 let invCatTab = 'resumen';
 /* Fracción que falta de un producto para llegar a su stock mínimo (0 = cubierto, 1 = sin stock), independiente de sus unidades. */
-const invFaltFrac = i=>{ const m = Number(i.stockMin||0); return m>0 ? Math.max(0, 1 - Number(i.cantidad||0)/m) : 0; };
+const invFaltFrac = i=>{ const m = Number(i.stockMin||0); return m>0 && invAplicaFalt(i) ? Math.max(0, 1 - Number(i.cantidad||0)/m) : 0; };
 const INV_CAT_COLORES = ['#011632','#F29622','#03459B','#1F7A5C','#5D88D6','#E0342A','#8B5CF6','#64748B','#0EA5A4','#B45309'];
 function renderInvPiesCategoria(){
   const sel = document.getElementById('invCatMes'), prev = sel.value;
@@ -12030,8 +12033,8 @@ function renderInvPiesCategoria(){
     const conMin = its.filter(i=>Number(i.stockMin)>0);
     const falt = conMin.map(i=>({i, f:invFaltFrac(i)})).filter(x=>x.f>0).sort((a,b)=>b.f-a.f);
     const pctFalt = conMin.length ? conMin.reduce((a,i)=>a+invFaltFrac(i),0)/conMin.length*100 : 0, pctOk = 100-pctFalt;
-    rest.innerHTML = `<p class="hint" style="margin:0 0 10px;">${its.length} productos · <span style="color:var(--red);">${its.filter(i=>Number(i.cantidad||0)<=0).length} sin stock</span> · ${falt.length} por debajo de su stock mínimo. Cada producto pesa igual, sin importar cuántas unidades maneje.</p>`
-      + (conMin.length ? `<div class="pie-wrap" style="border:0;padding:0;margin:0 0 14px;"><div class="pie-chart" style="background:conic-gradient(#1F9E6B 0deg ${pctOk*3.6}deg,#E0342A ${pctOk*3.6}deg 360deg);width:190px;height:190px;"></div><div class="pie-legend"><div class="pie-legend-row"><span class="pie-swatch" style="background:#1F9E6B"></span><span class="pie-legend-name">Cubierto (vs. stock mínimo)</span><span class="pie-legend-val">${Math.round(pctOk)}%</span></div><div class="pie-legend-row"><span class="pie-swatch" style="background:#E0342A"></span><span class="pie-legend-name">Faltante</span><span class="pie-legend-val">${Math.round(pctFalt)}%</span></div></div></div>` : '<p class="empty">Estos productos no tienen stock mínimo definido.</p>')
+    rest.innerHTML = `<p class="hint" style="margin:0 0 10px;">${its.length} productos · ${invAplicaFalt(its[0]||{})?`<span style="color:var(--red);">${its.filter(i=>Number(i.cantidad||0)<=0).length} sin stock</span> · ${falt.length} por debajo de su stock mínimo. Cada producto pesa igual, sin importar cuántas unidades maneje.`:'En esta categoría no se controlan faltantes.'}</p>`
+      + (conMin.length && invAplicaFalt(its[0]||{}) ? `<div class="pie-wrap" style="border:0;padding:0;margin:0 0 14px;"><div class="pie-chart" style="background:conic-gradient(#1F9E6B 0deg ${pctOk*3.6}deg,#E0342A ${pctOk*3.6}deg 360deg);width:190px;height:190px;"></div><div class="pie-legend"><div class="pie-legend-row"><span class="pie-swatch" style="background:#1F9E6B"></span><span class="pie-legend-name">Cubierto (vs. stock mínimo)</span><span class="pie-legend-val">${Math.round(pctOk)}%</span></div><div class="pie-legend-row"><span class="pie-swatch" style="background:#E0342A"></span><span class="pie-legend-name">Faltante</span><span class="pie-legend-val">${Math.round(pctFalt)}%</span></div></div></div>` : (invAplicaFalt(its[0]||{}) ? '<p class="empty">Estos productos no tienen stock mínimo definido.</p>' : ''))
       + (falt.length ? `<h4 style="margin:6px 0 6px;font-size:14px;">Productos con faltante</h4><div class="pie-legend">${falt.map(x=>`<div class="pie-legend-row"><span class="pie-legend-name">${esc(x.i.nombre)}</span><span class="pie-legend-val">hay ${Number(x.i.cantidad||0)} de ${Number(x.i.stockMin||0)} · falta ${Math.round(x.f*100)}%</span></div>`).join('')}</div>` : '');
   }
   document.querySelectorAll('#invCatPies [data-invcat]').forEach(row=>row.addEventListener('click', ()=>{
@@ -12348,8 +12351,8 @@ function construirInventarioDisponibleHTML(){
   const rows = insumos.filter(i=>{
     if(search && !i.nombre.toLowerCase().includes(search)) return false;
     if(catF && i.categoria!==catF) return false;
-    if(stockF==='bajo' && !(Number(i.cantidad) <= Number(i.stockMin))) return false;
-    if(stockF==='faltante' && !(Number(i.cantidad||0)<=0)) return false;
+    if(stockF==='bajo' && !(invAplicaFalt(i) && Number(i.cantidad) <= Number(i.stockMin))) return false;
+    if(stockF==='faltante' && !(invAplicaFalt(i) && Number(i.cantidad||0)<=0)) return false;
     return true;
   });
   ordenarLista(rows, panelSort);
@@ -12358,8 +12361,8 @@ function construirInventarioDisponibleHTML(){
   const filtroLabel = stockF==='bajo' ? ' — Solo bajo mínimo' : stockF==='faltante' ? ' — Solo faltantes' : '';
 
   const filas = rows.map(i=>{
-    const faltante = Number(i.cantidad||0)<=0;
-    const bajo = !faltante && Number(i.cantidad) <= Number(i.stockMin);
+    const faltante = invAplicaFalt(i) && Number(i.cantidad||0)<=0;
+    const bajo = invAplicaFalt(i) && !faltante && Number(i.cantidad) <= Number(i.stockMin);
     const colorFila = faltante ? 'color:#E0342A;font-weight:700;' : bajo ? 'color:#D97F0A;font-weight:700;' : '';
     return `<tr>
       <td style="padding:6px 8px;border:1px solid #D6E5E0;font-weight:600;">${esc(i.nombre)}</td>
