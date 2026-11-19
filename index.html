@@ -9727,7 +9727,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2226';
+const APP_VERSION = '2026-11-18-2230';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11538,7 +11538,7 @@ function construirCotizacionHTML(r, firmaImg){
   .nota{font-size:11px;text-align:justify;margin:10px 0;}
   .firma{margin-top:22px;} .firma img{height:60px;display:block;margin-bottom:2px;}
   .pie{margin-top:auto;text-align:center;border-top:1.5px solid #03459B;padding-top:6px;font-size:10px;color:#03459B;}
-  .pie img{height:46px;display:block;margin:6px auto 0;}
+  .pie{position:relative;min-height:56px;}.pie img{height:46px;position:absolute;right:0;bottom:0;}
   .btn-volver-noprint{position:fixed;top:14px;left:14px;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
   @media print{.btn-volver-noprint{display:none !important;}}
   </style></head><body><div class="wrap">
