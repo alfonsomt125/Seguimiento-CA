@@ -1441,7 +1441,7 @@
         </div>
       </div>
       <p class="hint" style="margin:0 0 12px;">Toca una celda para asignar un turno (o un rango de días). Las horas netas de cada turno se suman por persona. En Logística, lo que armes aquí alimenta directamente las horas extras y recargos.</p>
-      <div class="field" style="max-width:220px;margin-bottom:12px;"><label>Mes</label><input type="month" id="horMes"></div>
+      <div class="field" style="max-width:300px;margin-bottom:12px;"><label>Mes</label><div style="display:flex;gap:4px;"><button class="ghost" id="btnHorPrev" title="Mes anterior">◀</button><input type="month" id="horMes"><button class="ghost" id="btnHorNext" title="Mes siguiente">▶</button></div></div>
       <div id="horPersonal" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
       <div class="table-wrap"><table id="horGrid" style="font-size:12px;text-align:center;"></table></div>
       <div id="horLeyenda" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-size:12px;"></div>
@@ -9297,6 +9297,9 @@ async function renderHorarios(){
   }));
 }
 document.getElementById('horMes').addEventListener('change', renderHorarios);
+function horMoverMes(d){ const i = document.getElementById('horMes'); const [y,m] = (i.value||todayISO().slice(0,7)).split('-').map(Number); const f = new Date(y, m-1+d, 1); i.value = f.getFullYear()+'-'+String(f.getMonth()+1).padStart(2,'0'); renderHorarios(); }
+document.getElementById('btnHorPrev').addEventListener('click', ()=>horMoverMes(-1));
+document.getElementById('btnHorNext').addEventListener('click', ()=>horMoverMes(1));
 document.getElementById('btnHorBase').addEventListener('click', async ()=>{
   if(!horMant.personal.length){ showToast('Primero agrega personal.'); return; }
   const n = await horAplicarBaseMant();
@@ -9411,7 +9414,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2015';
+const APP_VERSION = '2026-11-18-2025';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
