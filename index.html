@@ -691,7 +691,63 @@
   .mod-tabs{gap:26px;overflow-x:auto;scrollbar-width:none;}
   .mod-tabs button{white-space:nowrap;flex:none;}
   .pronto-tag{font-size:10px;font-weight:600;color:#9E6525;background:#FDF4E4;padding:2px 7px;border-radius:999px;margin-left:5px;}
+
+  /* ===== Login ===== */
+  #loginScreen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(160deg,#011632 0%,#123B60 55%,#011632 100%);overflow:auto;}
+  .lg-card{width:100%;max-width:400px;background:#fff;border-radius:22px;padding:34px 30px 24px;box-shadow:0 24px 60px rgba(0,0,0,.35);text-align:center;}
+  .lg-escudo{width:70px;height:70px;object-fit:contain;border-radius:50%;}
+  .lg-eyebrow{margin:10px 0 2px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);}
+  .lg-title{margin:0 0 22px;font-size:24px;color:var(--navy);}
+  .lg-card form{text-align:left;}
+  .lg-card label{display:block;font-size:13px;font-weight:600;color:var(--navy);margin:12px 0 6px;}
+  .lg-card input{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-family:inherit;}
+  .lg-card input:focus{outline:2px solid var(--primary);border-color:transparent;}
+  .lg-pass{position:relative;}
+  .lg-pass button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:16px;cursor:pointer;padding:6px 8px;}
+  .lg-btn{width:100%;margin-top:18px;padding:13px;border:none;border-radius:12px;background:#E89A40;color:#fff;font-weight:600;font-size:15px;cursor:pointer;font-family:inherit;}
+  .lg-btn:disabled{opacity:.6;cursor:wait;}
+  .lg-link{display:block;text-align:center;margin-top:14px;font-size:13px;color:var(--primary);text-decoration:none;}
+  .lg-txt{font-size:13px;color:var(--gray);margin:0 0 4px;}
+  .lg-msg{min-height:18px;margin:14px 0 0;font-size:13px;}
+  .lg-msg.err{color:#B93F3E;} .lg-msg.ok{color:#0F6E4A;} .lg-msg.info{color:#9E6525;}
+  .lg-nota{margin:10px 0 0;font-size:11px;color:var(--gray);}
+  #btnSalir{position:fixed;top:12px;right:14px;z-index:70;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12px;color:var(--gray);cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(1,22,50,.08);}
+  #btnSalir:hover{color:var(--navy);}
 </style></head><body>
+
+<div id="loginScreen" style="display:none;">
+  <div class="lg-card">
+    <img class="lg-escudo" src="https://www.colegioamericano.edu.co/wp-content/uploads/2025/11/Escudo-Colegio-Americano.jpg" alt="Escudo" onerror="this.style.display='none'">
+    <p class="lg-eyebrow">Colegio Americano de Barranquilla</p>
+    <h1 class="lg-title">Servicios Generales</h1>
+    <form id="lgFormLogin" autocomplete="on">
+      <label>Cédula</label>
+      <input id="lgCedula" type="text" inputmode="numeric" autocomplete="username" placeholder="Tu número de cédula">
+      <label>Contraseña</label>
+      <div class="lg-pass"><input id="lgPass" type="password" autocomplete="current-password"><button type="button" id="lgOjo" aria-label="Mostrar contraseña">👁</button></div>
+      <button class="lg-btn" id="lgEntrar" type="submit">Ingresar</button>
+      <a href="#" class="lg-link" id="lgOlvide">¿Olvidaste tu contraseña?</a>
+    </form>
+    <form id="lgFormOlvide" style="display:none;">
+      <p class="lg-txt">Escribe tu cédula y te enviaremos un enlace a tu correo institucional para crear una nueva contraseña.</p>
+      <label>Cédula</label>
+      <input id="lgCedula2" type="text" inputmode="numeric" placeholder="Tu número de cédula">
+      <button class="lg-btn" type="submit" id="lgEnviar">Enviar enlace</button>
+      <a href="#" class="lg-link" id="lgVolver">← Volver a ingresar</a>
+    </form>
+    <form id="lgFormNueva" style="display:none;">
+      <p class="lg-txt">Crea tu nueva contraseña (mínimo 8 caracteres).</p>
+      <label>Nueva contraseña</label>
+      <input id="lgNueva1" type="password" autocomplete="new-password">
+      <label>Repite la contraseña</label>
+      <input id="lgNueva2" type="password" autocomplete="new-password">
+      <button class="lg-btn" type="submit" id="lgGuardar">Guardar y entrar</button>
+    </form>
+    <p class="lg-msg" id="lgMsg"></p>
+    <p class="lg-nota">Acceso exclusivo para personal autorizado.</p>
+  </div>
+</div>
+<button id="btnSalir" style="display:none;" title="Cerrar sesión">Cerrar sesión</button>
 
 <div class="loading-screen" id="loadingScreen">Cargando bitácora…</div>
 
@@ -9632,7 +9688,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2147';
+const APP_VERSION = '2026-11-18-2152';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11860,7 +11916,7 @@ document.getElementById('btnCancelPin').addEventListener('click', closePinModal)
 
 
 document.querySelectorAll('.module-card').forEach(card=>{
-  card.addEventListener('click', ()=> openPinModal(card.dataset.open));
+  card.addEventListener('click', ()=> authActiva ? openModule(card.dataset.open) : openPinModal(card.dataset.open));
 });
 document.querySelectorAll('[data-back]').forEach(btn=>{
   btn.addEventListener('click', showSelector);
@@ -14155,10 +14211,116 @@ document.addEventListener('keydown', (e)=>{
 });
 
 setTimeout(()=>{ const l=document.getElementById('loadingScreen'); if(l && l.style.display!=='none') l.textContent='No se pudo conectar con la base de datos (Supabase). Revisa tu internet o que el proyecto no esté pausado, y recarga.'; },30000);
-init().catch(err=>{
-  document.getElementById('loadingScreen').textContent = 'Ocurrió un error al cargar la bitácora. Recarga la página.';
-  console.error(err);
+
+/* ============================================================
+   INICIO DE SESIÓN (Supabase Auth) — cédula + contraseña, sesión de 15 min
+   de inactividad que sobrevive al cierre de la pestaña. Solo se activa cuando
+   ya existe al menos un perfil en la tabla "perfiles" (ver CONFIGURAR_LOGIN_SUPABASE.sql);
+   mientras no, la app abre como antes (con PIN por módulo).
+   ============================================================ */
+const AUTH_MIN = 15, LS_ACT = 'cab_ultima_actividad';
+let authActiva = false, authRecuperacion = false, appIniciada = false;
+function iniciarApp(){
+  if(appIniciada) return; appIniciada = true;
+  init().catch(err=>{
+    document.getElementById('loadingScreen').textContent = 'Ocurrió un error al cargar la bitácora. Recarga la página.';
+    console.error(err);
+  });
+}
+function authMarcar(){ try{ localStorage.setItem(LS_ACT, String(Date.now())); }catch(e){} }
+function authExpirada(){ try{ const t = Number(localStorage.getItem(LS_ACT)||0); return !t || Date.now()-t > AUTH_MIN*60000; }catch(e){ return false; } }
+function lgMsg(t, tipo){ const m = document.getElementById('lgMsg'); m.textContent = t||''; m.className = 'lg-msg '+(tipo||''); }
+function lgPanel(n){
+  ['Login','Olvide','Nueva'].forEach(k=>document.getElementById('lgForm'+k).style.display = k===n ? 'block' : 'none');
+  lgMsg('');
+}
+function lgMostrar(panel){
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  lgPanel(panel||'Login');
+  let m = null; try{ m = sessionStorage.getItem('cab_msg'); sessionStorage.removeItem('cab_msg'); }catch(e){}
+  if(m) lgMsg(m, 'info');
+  setTimeout(()=>{ const f = document.getElementById(panel==='Nueva'?'lgNueva1':'lgCedula'); if(f) f.focus(); }, 50);
+}
+const lgCedulaLimpia = v => String(v||'').replace(/\D/g,'');
+async function lgEmailDe(cedula){
+  const { data, error } = await supabaseAPI.rpc('email_por_cedula', { p_cedula: cedula });
+  return error ? null : (data||null);
+}
+function authEntrar(){
+  authActiva = true; authMarcar();
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('loadingScreen').style.display = '';
+  document.getElementById('btnSalir').style.display = 'block';
+  let ult = 0;
+  ['click','keydown','touchstart','mousemove','scroll'].forEach(ev=>document.addEventListener(ev, ()=>{ const n = Date.now(); if(n-ult>10000){ ult = n; authMarcar(); } }, {passive:true, capture:true}));
+  const vigilar = ()=>{ if(authExpirada()) authCerrar('Tu sesión se cerró después de '+AUTH_MIN+' minutos sin actividad. Ingresa de nuevo.'); };
+  setInterval(vigilar, 30000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) vigilar(); });
+  iniciarApp();
+}
+async function authCerrar(msg){
+  try{ if(msg) sessionStorage.setItem('cab_msg', msg); }catch(e){}
+  try{ localStorage.removeItem(LS_ACT); await supabaseAPI.auth.signOut(); }catch(e){}
+  location.reload();
+}
+async function arrancar(){
+  if(!supabaseAPI){ iniciarApp(); return; }
+  supabaseAPI.auth.onAuthStateChange(ev=>{ if(ev==='PASSWORD_RECOVERY') authRecuperacion = true; });
+  const { data } = await supabaseAPI.auth.getSession();
+  const session = data && data.session;
+  if(authRecuperacion || (session && /type=recovery/.test(location.hash))){ lgMostrar('Nueva'); return; }
+  if(session && !authExpirada()){ authEntrar(); return; }
+  if(session){ try{ await supabaseAPI.auth.signOut(); }catch(e){} }
+  let configurada = false;
+  try{ const r = await supabaseAPI.rpc('auth_configurada'); configurada = !r.error && r.data===true; }catch(e){}
+  if(!configurada){ iniciarApp(); return; }
+  lgMostrar('Login');
+}
+document.getElementById('lgOjo').addEventListener('click', ()=>{ const i = document.getElementById('lgPass'); i.type = i.type==='password' ? 'text' : 'password'; });
+document.getElementById('lgOlvide').addEventListener('click', e=>{ e.preventDefault(); document.getElementById('lgCedula2').value = document.getElementById('lgCedula').value; lgPanel('Olvide'); });
+document.getElementById('lgVolver').addEventListener('click', e=>{ e.preventDefault(); lgPanel('Login'); });
+document.getElementById('lgFormLogin').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const ced = lgCedulaLimpia(document.getElementById('lgCedula').value), pass = document.getElementById('lgPass').value;
+  if(!ced || !pass){ lgMsg('Escribe tu cédula y tu contraseña.', 'err'); return; }
+  const b = document.getElementById('lgEntrar'); b.disabled = true; lgMsg('Verificando…', 'info');
+  try{
+    const email = await lgEmailDe(ced);
+    const r = email ? await supabaseAPI.auth.signInWithPassword({ email, password: pass }) : { error:true };
+    if(r.error){ lgMsg('Cédula o contraseña incorrectos.', 'err'); b.disabled = false; return; }
+    authEntrar();
+  }catch(err){ lgMsg('No se pudo conectar. Revisa tu internet.', 'err'); }
+  b.disabled = false;
 });
+document.getElementById('lgFormOlvide').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const ced = lgCedulaLimpia(document.getElementById('lgCedula2').value);
+  if(!ced){ lgMsg('Escribe tu cédula.', 'err'); return; }
+  const b = document.getElementById('lgEnviar'); b.disabled = true; lgMsg('Enviando…', 'info');
+  try{
+    const email = await lgEmailDe(ced);
+    if(email){
+      const r = await supabaseAPI.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      if(r.error){ lgMsg('No se pudo enviar el correo ahora. Intenta de nuevo en unos minutos.', 'err'); b.disabled = false; return; }
+    }
+    lgMsg('Si la cédula está registrada, enviamos un enlace a tu correo institucional. Revisa también la carpeta de spam.', 'ok');
+  }catch(err){ lgMsg('No se pudo conectar. Revisa tu internet.', 'err'); }
+  b.disabled = false;
+});
+document.getElementById('lgFormNueva').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const a = document.getElementById('lgNueva1').value, c = document.getElementById('lgNueva2').value;
+  if(a.length<8){ lgMsg('Mínimo 8 caracteres.', 'err'); return; }
+  if(a!==c){ lgMsg('Las contraseñas no coinciden.', 'err'); return; }
+  const b = document.getElementById('lgGuardar'); b.disabled = true;
+  const r = await supabaseAPI.auth.updateUser({ password: a });
+  if(r.error){ lgMsg('No se pudo guardar: '+r.error.message, 'err'); b.disabled = false; return; }
+  history.replaceState(null, '', location.pathname);
+  authEntrar();
+});
+document.getElementById('btnSalir').addEventListener('click', ()=>authCerrar());
+arrancar().catch(err=>{ console.error(err); iniciarApp(); });
 
 /* ============================================================
    BLOQUEO DE FONDO MIENTRAS HAY UN MODAL ABIERTO
