@@ -680,6 +680,17 @@
   .mant-subcard.frozen{opacity:.55;cursor:not-allowed;filter:grayscale(.7);}
   .mant-subcard.frozen:hover{transform:none;box-shadow:none;}
   .mant-subcard em{font-style:normal;font-size:11px;font-weight:600;color:#9E6525;background:#FDF4E4;padding:3px 9px;border-radius:999px;margin-top:2px;}
+
+  .mant-flat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
+  @media(max-width:900px){.mant-flat{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  #mantSubReportes > *:not(.module-back):not(.mod-tabs):not(.pronto){display:none !important;}
+  .pronto{background:#fff;border:1px dashed var(--line);border-radius:16px;padding:60px 24px;text-align:center;color:var(--gray);}
+  .pronto-ic{font-size:34px;margin-bottom:8px;}
+  .pronto h2{margin:0 0 6px;color:var(--navy);}
+
+  .mod-tabs{gap:26px;overflow-x:auto;scrollbar-width:none;}
+  .mod-tabs button{white-space:nowrap;flex:none;}
+  .pronto-tag{font-size:10px;font-weight:600;color:#9E6525;background:#FDF4E4;padding:2px 7px;border-radius:999px;margin-left:5px;}
 </style></head><body>
 
 <div class="loading-screen" id="loadingScreen">Cargando bitácora…</div>
@@ -757,15 +768,10 @@
 
   <!-- Sub-selector: Seguimiento de Actividades / Seguimiento de Aires Acondicionados -->
   <div id="mantSelector" class="mant-selector-wrap">
-    <div class="mant-groups">
-      <div class="mant-group"><div class="mant-group-label"><b>Operación diaria</b><span>3 módulos</span></div><div class="mant-group-grid">
+    <div class="mant-flat">
         <button class="mant-subcard hue-blue" data-mantopen="actividades" title="Actividades, aires acondicionados, recibidos a satisfacción, mapas de seguridad y emergencias (SST) y espacios."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="3.2" fill="currentColor" fill-opacity=".16"/><rect x="9" y="2.5" width="6" height="3.5" rx="1.75"/><path d="M9.2 13.2l2 2 3.8-4.3"/></svg></div><span>Seguimiento Operativo</span></button>
         <button class="mant-subcard hue-green" data-mantopen="requisiciones" title="Formato institucional de solicitud de pedidos a Compras, editable en línea."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4.5 4.5V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor" fill-opacity=".16"/><path d="M14 3v4.5h4.5M9 12.5h6M9 16.5h4"/></svg></div><span>Requisición de Materiales</span></button>
-        <button class="mant-subcard hue-red frozen" disabled title="Daños de mobiliario, fallas de aires acondicionados y reportes de seguridad, con fotos."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.8l9 15.7H3z" fill="currentColor" fill-opacity=".16"/><path d="M12 10v4M12 17.1v.01"/></svg></div><span>Reportes del Personal</span><em>Próximamente disponible</em></button>
-      </div></div>
-      <div class="mant-group"><div class="mant-group-label"><b>Personal</b><span>1 módulo</span></div><div class="mant-group-grid">
         <button class="mant-subcard hue-purple" data-mantopen="horasextra" title="Horas extras con límites y liquidación, y horario mensual de turnos del personal."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity=".16"/><path d="M12 7v5.2l3.2 2"/></svg></div><span>Horarios y Horas Extras</span></button>
-      </div></div>
     </div>
   </div>
 
@@ -1290,6 +1296,7 @@
   <!-- ===================== SUB-MÓDULO: REPORTES DEL PERSONAL ===================== -->
   <div id="mantSubReportes" style="display:none;">
     <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+    <div class="pronto"><div class="pronto-ic">🚧</div><h2>Reportes del personal</h2><p>Próximamente disponible. Aquí el personal enviará sus reportes (daños, fallas y seguridad).</p></div>
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
         <h2 style="margin:0;">Reportes del personal</h2>
@@ -9625,7 +9632,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2144';
+const APP_VERSION = '2026-11-18-2147';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11742,7 +11749,6 @@ function openMantSub(name){
   document.getElementById('mantSubHorarios').style.display = name==='horarios' ? 'block' : 'none';
   if(name==='horarios'){ renderHorarios(); }
   if(name==='requisiciones'){ showReqLista(); }
-  if(name==='reportes'){ cargarReportesRecibidos(); }
   if(name==='mapas'){ renderMarcadoresExtintores(); renderMarcadoresTrampas(); renderMarcadoresEncuentro(); renderFlechasEvacuacion(); }
   if(name==='horasextra'){ renderHorasExtra(); }
   if(name==='recibidos'){ renderRecibidos(); }
@@ -11756,9 +11762,9 @@ document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEac
   });
 });
 (function(){
-  const OP = [['actividades','Tareas de mantenimiento'],['aires','Aires acondicionados'],['recibidos','Recibidos a satisfacción'],['mapas','Seguridad y emergencias'],['espacios','Espacios']];
+  const OP = [['actividades','Tareas de mantenimiento'],['aires','Aires acondicionados'],['recibidos','Recibidos a satisfacción'],['mapas','Seguridad y emergencias'],['espacios','Espacios'],['reportes','Reportes <small class="pronto-tag">Próximamente</small>']];
   const barra = k => '<div class="mod-tabs">'+OP.map(t=>`<button data-modtab="${t[0]}"${t[0]===k?' class="active"':''}>${t[1]}</button>`).join('')+'</div>';
-  [['mantSubActividades','actividades'],['mantSubAires','aires'],['mantSubRecibidos','recibidos'],['mantSubMapas','mapas']].forEach(([id,k])=>{
+  [['mantSubActividades','actividades'],['mantSubAires','aires'],['mantSubRecibidos','recibidos'],['mantSubMapas','mapas'],['mantSubReportes','reportes']].forEach(([id,k])=>{
     const b = document.querySelector('#'+id+' > .module-back, #'+id+' .module-back'); if(b) b.insertAdjacentHTML('afterend', barra(k));
   });
   document.getElementById('btnEspBackMant').insertAdjacentHTML('afterend', barra('espacios'));
