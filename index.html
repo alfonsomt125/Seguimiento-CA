@@ -1829,6 +1829,7 @@
           <div class="field" style="margin:0;"><label>Período</label><select id="heLogLiqPeriodo"></select></div>
           <label style="font-size:13px;"><input type="checkbox" id="heLogLiqExt" checked> Horas extras</label>
           <label style="font-size:13px;"><input type="checkbox" id="heLogLiqRec" checked> Recargos</label>
+          <label style="font-size:13px;" title="Si los recargos (nocturno, dominical) ya se pagaron sobre esas mismas horas, a la hora extra solo se le cobra la diferencia: nocturna 175%−35%=140%, dominical 205%−80%=125%."><input type="checkbox" id="heLogLiqDesc" checked> Descontar recargos ya pagados en las horas extra</label>
         </div>
         <details style="margin-top:12px;"><summary style="cursor:pointer;font-size:13px;color:var(--gray);">Cómo se liquida</summary><p class="hint" style="margin:8px 0 0;">Todo el año partido en el 15-jul-2026 (jornada 44 h → 42 h, divisor 220 → 210, dominical 80% → 90% desde el 1-jul). Incluye recargos nocturnos y dominicales/festivos de las horas ordinarias y las horas extras, como si nada se hubiera pagado. Cada mes se liquida de las 12:00 a.m. del día 1 a las 12:00 a.m. del mes siguiente (las horas pasada la medianoche cuentan en el mes en que caen) y se aplican los festivos de 2026.</p></details>
       </div>
@@ -1860,6 +1861,7 @@
             <div class="field" style="margin:0;"><label>Mes</label><select id="heLogMesMes"></select></div>
             <label style="font-size:13px;"><input type="checkbox" id="heLogMesExt" checked> Horas extras</label>
             <label style="font-size:13px;"><input type="checkbox" id="heLogMesRec" checked> Recargos</label>
+            <label style="font-size:13px;" title="Si los recargos (nocturno, dominical) ya se pagaron sobre esas mismas horas, a la hora extra solo se le cobra la diferencia: nocturna 175%−35%=140%, dominical 205%−80%=125%."><input type="checkbox" id="heLogMesDesc" checked> Descontar recargos ya pagados en las horas extra</label>
           </div>
           <button class="ghost" id="btnLogMesPdf">⬇ PDF</button>
         </div>
@@ -9075,7 +9077,7 @@ function logCalcularSemanas(personaId, mesISO){
         const fo = {ordinaria:0, nocturna:0.35, dominical:dr, nocturnaDominical:0.35+dr};
         const valorHora = salarioBase / (dia >= '2026-07-15' ? 210 : 220);
         let vt = 0; const vo = {}, ve = {};
-        Object.keys(ext).forEach(k=>{ ve[k] = dd.ext[k]*fe[k]*valorHora; vo[k] = dd.ord[k]*fo[k]*valorHora; vt += ve[k] + vo[k]; });
+        Object.keys(ext).forEach(k=>{ ve[k] = dd.ext[k]*(fe[k]-(logDescRec?fo[k]:0))*valorHora; vo[k] = dd.ord[k]*fo[k]*valorHora; vt += ve[k] + vo[k]; });
         valor += vt;
         const neto = Object.keys(ext).reduce((a,k)=>a+dd.ord[k]+dd.ext[k],0);
         detalle.push({fecha:dia, neto, ord:dd.ord, ext:dd.ext, valor:vt, vo, ve, valorHora});
@@ -9093,14 +9095,15 @@ function logTextoCats(o, omitirOrd){
 }
 /* Liquidación por empleado (salario mínimo 2026 o el salario de la persona), partida en el 15-jul-2026:
    antes: jornada 44 h/sem, divisor 220, dominical 80% · desde: 42 h/sem, divisor 210, dominical 90% (desde 1-jul). */
+let logDescRec = true;
 const LOG_CONCEPTOS = [
   ['o','nocturna','Recargo nocturno (hora ordinaria)', f=>35],
   ['o','dominical','Recargo dominical/festivo diurno (hora ordinaria)', f=>f<'2026-07-01'?80:90],
   ['o','nocturnaDominical','Recargo nocturno dominical (hora ordinaria)', f=>35+(f<'2026-07-01'?80:90)],
   ['e','ordinaria','Hora extra diurna', f=>125],
-  ['e','nocturna','Hora extra nocturna', f=>175],
-  ['e','dominical','Hora extra diurna dominical/festiva', f=>125+(f<'2026-07-01'?80:90)],
-  ['e','nocturnaDominical','Hora extra nocturna dominical/festiva', f=>175+(f<'2026-07-01'?80:90)]
+  ['e','nocturna','Hora extra nocturna', f=>175-(logDescRec?35:0)],
+  ['e','dominical','Hora extra diurna dominical/festiva', f=>125+(logDescRec?0:(f<'2026-07-01'?80:90))],
+  ['e','nocturnaDominical','Hora extra nocturna dominical/festiva', f=>175-(logDescRec?35:0)+(logDescRec?0:(f<'2026-07-01'?80:90))]
 ];
 function logPersonasSel(){ return logData.personal; }
 function logLiqFiltro(){ return {mes:document.getElementById('heLogLiqPeriodo').value, ext:document.getElementById('heLogLiqExt').checked, rec:document.getElementById('heLogLiqRec').checked}; }
@@ -9288,6 +9291,11 @@ function renderLogLiqMensual(){
   sm.value = pm;
   document.getElementById('heLogMesTabla').innerHTML = logLiqMensualHTML(sel.value, LOG_MES_EST);
 }
+['heLogLiqDesc','heLogMesDesc'].forEach(i=>document.getElementById(i).addEventListener('change', e=>{
+  logDescRec = e.target.checked;
+  document.getElementById('heLogLiqDesc').checked = document.getElementById('heLogMesDesc').checked = logDescRec;
+  renderLogisticaHE(); renderLogLiqMensual();
+}));
 ['heLogMesPersona','heLogMesMes','heLogMesExt','heLogMesRec'].forEach(i=>document.getElementById(i).addEventListener('change', renderLogLiqMensual));
 document.getElementById('btnLogMesPdf').addEventListener('click', ()=>{
   const id = document.getElementById('heLogMesPersona').value; if(!id) return;
@@ -9770,7 +9778,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-19-0819';
+const APP_VERSION = '2026-11-19-0835';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
