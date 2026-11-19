@@ -9736,7 +9736,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2242';
+const APP_VERSION = '2026-11-18-2244';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11535,27 +11535,27 @@ function construirCotizacionHTML(r, firmaImg){
   const row = (k,v)=>`<tr><td class="k">${k}</td><td>${v}</td></tr>`;
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Cotización ${esc(r.cotNumero||'')}</title><style>
   @page{size:letter;margin:0}
-  body{font-family:Calibri,Arial,sans-serif;font-size:12px;color:#000;margin:0;padding:9mm 16mm;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .wrap{height:258mm;display:flex;flex-direction:column;}
+  body{font-family:Calibri,Arial,sans-serif;font-size:12.5px;color:#000;margin:0;padding:9mm 16mm;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .wrap{height:258mm;display:flex;flex-direction:column;justify-content:space-between;}
   .cab{text-align:center;border-bottom:1.5px solid #03459B;padding-bottom:6px;}
   .cab img{height:62px;display:block;margin:0 auto 3px;}
   .cab .t1{font-weight:700;font-size:12px;color:#03459B;}.cab .t2{font-size:10.5px;}
   h1{text-align:center;font-size:19px;margin:10px 0 2px;color:#011632;letter-spacing:1px;}
   .sub{text-align:center;font-weight:700;font-size:13px;}.fec{text-align:center;font-weight:700;margin:3px 0 10px;}
-  table{width:100%;border-collapse:collapse;}td{padding:4px 4px;vertical-align:top;text-align:justify;}td.k{width:36%;font-weight:700;}
-  .tot td{padding-top:7px;}
-  .nota{font-size:10.5px;text-align:justify;margin:7px 0;}
-  .firma{margin-top:12px;} .firma img{height:50px;display:block;margin-bottom:2px;}
-  .pie{margin-top:auto;text-align:center;border-top:1.5px solid #03459B;padding-top:6px;font-size:10px;color:#03459B;}
+  table{width:100%;border-collapse:collapse;}td{padding:6px 4px;vertical-align:top;text-align:justify;}td.k{width:36%;font-weight:700;}
+  .tot td{padding-top:9px;}
+  .nota{font-size:11px;text-align:justify;margin:0;}
+  .firma{margin:0;} .firma img{height:50px;display:block;margin-bottom:2px;}
+  .pie{margin:0;text-align:center;border-top:1.5px solid #03459B;padding-top:6px;font-size:10px;color:#03459B;}
   .pie{position:relative;min-height:56px;}.pie img{height:46px;position:absolute;right:0;bottom:0;}
   .btn-volver-noprint{position:fixed;top:14px;left:14px;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
   @media print{.btn-volver-noprint{display:none !important;}}
   </style></head><body><div class="wrap">
   <div class="cab"><img src="${logoCab}"><div class="t1">INSTITUCIÓN DE LA IGLESIA PRESBITERIANA DE COLOMBIA</div>
     <div class="t2">Aprobado por el Ministerio de Educación Nacional · Licencia de Funcionamiento No 03185 del 18 de Mayo del 2012<br>Secretaría de Educación Distrital para todas las secciones · NIT: 890.111.655-1</div></div>
-  <h1>COTIZACIÓN</h1>
+  <div><h1>COTIZACIÓN</h1>
   <div class="sub">${esc(r.espacio)}</div>
-  <div class="fec">Fecha: ${fechaLarga(r.cotFecha||todayISO())}${r.cotNumero?' &nbsp;·&nbsp; No. '+esc(r.cotNumero):''}</div>
+  <div class="fec">Fecha: ${fechaAct}</div></div>
   <table>
     ${row('SOLICITANTE:',esc(r.solicitante))}
     ${row('FECHA DE LA ACTIVIDAD:',fechaAct)}
