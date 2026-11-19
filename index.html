@@ -2562,6 +2562,7 @@
           <label>Buscar trabajador</label>
           <input type="text" id="trabSearch" placeholder="Nombre del trabajador...">
         </div>
+        <button class="ghost" id="btnUnificarTrab" style="white-space:nowrap;" title="Une a las personas repetidas (mismo nombre con o sin tilde) en una sola, conservando todo su historial">🔗 Unificar duplicados</button>
         <button class="primary" id="btnNewTrabajador" style="white-space:nowrap;">+ Nuevo trabajador</button>
       </div>
       <p class="hint" style="margin:0 0 14px;">Toca un trabajador para iniciar su entrega.</p>
@@ -9480,7 +9481,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2055';
+const APP_VERSION = '2026-11-18-2110';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -13194,6 +13195,49 @@ function renderTrabajadorTiles(){
 }
 document.getElementById('trabSearch').addEventListener('input', renderTrabajadorTiles);
 
+/* Unifica trabajadores repetidos (mismo nombre sin importar tildes/mayúsculas): todo su historial pasa a la persona que queda. */
+const trabSinTilde = x => (x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const trabUsos = id => entregas.filter(e=>e.trabajadorId===id).length + horasExtras.filter(h=>h.trabajadorId===id).length;
+document.getElementById('btnUnificarTrab').addEventListener('click', async ()=>{
+  const grupos = {};
+  trabajadores.forEach(t=>{ (grupos[trabSinTilde(t.nombre)] = grupos[trabSinTilde(t.nombre)] || []).push(t); });
+  const dups = Object.values(grupos).filter(g=>g.length>1);
+  if(!dups.length){ showToast('No hay personas repetidas.'); return; }
+  document.getElementById('confirmModalMsg').style.whiteSpace = 'pre-line';
+  let unidos = 0;
+  for(const g of dups){
+    g.sort((a,b)=>((b.nombre!==trabSinTilde(b.nombre)&&b.nombre!==b.nombre.toLowerCase()?1:0) - (a.nombre!==trabSinTilde(a.nombre)&&a.nombre!==a.nombre.toLowerCase()?1:0)) || trabUsos(b.id)-trabUsos(a.id));
+    const hasTilde = x => x.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'')!==x.nombre;
+    g.sort((a,b)=>(hasTilde(b)-hasTilde(a)) || trabUsos(b.id)-trabUsos(a.id));
+    const keep = g[0], otros = g.slice(1);
+    const resumen = x=>`${x.nombre}: ${entregas.filter(e=>e.trabajadorId===x.id).length} entrega(s), ${horasExtras.filter(h=>h.trabajadorId===x.id).length} registro(s) de horas extras`;
+    if(!await customConfirm('Se unirán en "'+keep.nombre+'":\n• '+g.map(resumen).join('\n• ')+'\n\nNo se pierde ninguna entrega ni registro; todo queda a nombre de "'+keep.nombre+'".', 'Unificar personas')) continue;
+    const ids = new Set(otros.map(o=>o.id));
+    entregas.forEach(e=>{ if(ids.has(e.trabajadorId)){ e.trabajadorId = keep.id; e.trabajadorNombre = keep.nombre; } });
+    horasExtras.forEach(h=>{ if(ids.has(h.trabajadorId)){ h.trabajadorId = keep.id; h.trabajadorNombre = keep.nombre; } });
+    heCompensaciones.forEach(c=>{ if(ids.has(c.trabajadorId)) c.trabajadorId = keep.id; });
+    heCompensaciones = heCompensaciones.filter((c,i,a)=>a.findIndex(x=>x.trabajadorId===c.trabajadorId && x.desde===c.desde && x.hasta===c.hasta)===i);
+    Object.keys(heNotas).forEach(k=>{ const [id, ...r] = k.split('|'); if(ids.has(id)){ const nk = keep.id+'|'+r.join('|'); heNotas[nk] = heNotas[nk] ? heNotas[nk]+'\n'+heNotas[k] : heNotas[k]; delete heNotas[k]; } });
+    if(heAutorizados) heAutorizados = [...new Set(heAutorizados.map(i=>ids.has(i)?keep.id:i))];
+    otros.forEach(o=>{ if(!keep.cargo && o.cargo) keep.cargo = o.cargo; if(!keep.area && o.area) keep.area = o.area; });
+    horMant.personal.forEach(p=>{ if(ids.has(p.trabajadorId)) p.trabajadorId = keep.id; });
+    const pers = horMant.personal.filter(p=>p.trabajadorId===keep.id);
+    pers.slice(1).forEach(x=>{
+      pers[0].grupo = pers[0].grupo || x.grupo;
+      horMant.turnos.forEach(t=>{ if(t.personaId===x.id && !horMant.turnos.some(y=>y.personaId===pers[0].id && y.fecha===t.fecha)) t.personaId = pers[0].id; });
+      horMant.turnos = horMant.turnos.filter(t=>t.personaId!==x.id);
+      horMant.personal = horMant.personal.filter(p=>p.id!==x.id);
+    });
+    if(pers[0]) pers[0].nombre = keep.nombre;
+    trabajadores = trabajadores.filter(t=>!ids.has(t.id));
+    otros.forEach(o=>{ const n = normName(o.nombre); if(n!==normName(keep.nombre) && !deletedTrabajadorNames.includes(n)) deletedTrabajadorNames.push(n); });
+    unidos++;
+  }
+  if(!unidos) return;
+  await saveTrabajadores(); await saveEntregas(); await saveHorasExtras(); await saveHeCompensaciones(); await saveDeletedTrabajadorNames();
+  try{ await storageAPI.set('heNotas', JSON.stringify(heNotas)); if(heAutorizados) await storageAPI.set('heAutorizados', JSON.stringify(heAutorizados)); await storageAPI.set('horarioMantenimiento', JSON.stringify(horMant)); }catch(e){ showToast('No se pudo guardar todo. Intenta de nuevo.'); return; }
+  renderTrabajadorTiles(); showToast(unidos+' persona(s) unificada(s).');
+});
 document.getElementById('btnNewTrabajador').addEventListener('click', ()=>{
   document.getElementById('tNombre').value = '';
   document.getElementById('tCargo').value = '';
