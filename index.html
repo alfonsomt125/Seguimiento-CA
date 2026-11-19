@@ -8664,29 +8664,13 @@ function renderHorasExtra(){
 
   resumenWrap.innerHTML = aMostrar.length ? aMostrar.map(f=>`
     <div class="he-bar-row" data-vertrabajadorhe="${f.t.id}">
-      <span class="name" style="width:150px;flex-shrink:0;font-weight:600;display:flex;align-items:center;gap:4px;" title="${esc(f.t.nombre)}">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(f.t.nombre)}</span>
-        <span data-horariohe="${f.t.id}" title="Horario habitual" style="cursor:pointer;flex-shrink:0;">⏰</span>${heAreaActual==='mantenimiento'?`<span data-editarhe="${f.t.id}" title="Editar nombre y grupo (es la misma lista del horario)" style="cursor:pointer;flex-shrink:0;">✎</span>`:''}
-      </span>
+      <span class="name" style="width:190px;flex-shrink:0;font-weight:600;" title="${esc(f.t.nombre)}">${esc(f.t.nombre)}</span>
       <div class="he-bar-track">
         <div class="he-bar-fill" style="width:${Math.max(f.pct,f.total>0?6:0)}%;background:${f.color};"></div>
         ${f.pct>=18 ? `<span class="he-bar-pct">${Math.round(f.pctReal)}%</span>` : ''}
       </div>
       <span class="count" style="width:auto;min-width:96px;text-align:right;font-weight:700;color:${f.color};">${f.total}h / ${limitesHorasExtras.mensual}h${f.excedido?` <span style="font-weight:700;">(+${f.pctExceso}%)</span>`:''}</span>
     </div>`).join('') : `<p class="empty">${heAreaActual==='logistica'?'Aún no hay horas extras de Logística. Usa + Agregar y elige al trabajador.':'Aún no hay trabajadores registrados (se agregan desde Salida de Insumos).'}</p>`;
-  resumenWrap.querySelectorAll('[data-horariohe]').forEach(el=>{
-    el.addEventListener('click', (e)=>{ e.stopPropagation(); abrirHeHorarioModal(el.dataset.horariohe); });
-  });
-  resumenWrap.querySelectorAll('[data-editarhe]').forEach(el=>{
-    el.addEventListener('click', async (e)=>{
-      e.stopPropagation();
-      const t = trabajadores.find(x=>x.id===el.dataset.editarhe); if(!t) return;
-      horArea = 'mantenimiento';
-      let p = horMant.personal.find(x=>x.trabajadorId===t.id);
-      if(!p){ p = {id:uid(), nombre:t.nombre, trabajadorId:t.id}; horMant.personal.push(p); await horGuardar(); }
-      horPersonaAbrir(p.id);
-    });
-  });
   resumenWrap.querySelectorAll('[data-vertrabajadorhe]').forEach(el=>{
     el.addEventListener('click', ()=>abrirDetalleHE(el.dataset.vertrabajadorhe));
   });
@@ -9521,7 +9505,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2145';
+const APP_VERSION = '2026-11-18-2155';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
