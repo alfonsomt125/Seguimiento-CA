@@ -661,11 +661,20 @@
   td.stock-low::before{background:#D45453;}
   table tbody tr:hover{background:var(--primary-soft);}
   table th{font-weight:500;letter-spacing:.04em;color:var(--gray);}
+
+  /* ===== Barra de pestañas unificada ===== */
+  .top-tabs{position:sticky;top:0;z-index:60;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:26px;align-items:flex-end;padding:0 max(24px,calc((100% - 1180px)/2));overflow-x:auto;white-space:nowrap;scrollbar-width:none;}
+  .top-tabs::-webkit-scrollbar{display:none;}
+  .top-tabs button{background:none;border:none;border-bottom:3px solid transparent;border-radius:0;box-shadow:none;color:var(--gray);font-weight:500;font-size:14px;padding:17px 2px 13px;cursor:pointer;font-family:inherit;}
+  .top-tabs button:hover{color:var(--navy);background:none;}
+  .top-tabs button.active{color:var(--navy);font-weight:600;border-bottom-color:#E89A40;}
+  .top-tabs i{align-self:center;width:1px;height:20px;background:var(--line);}
 </style></head><body>
 
 <div class="loading-screen" id="loadingScreen">Cargando bitácora…</div>
 
 <div id="app">
+<nav class="top-tabs" id="topTabs" style="display:none;"></nav>
 
 <!-- ===================== SELECTOR DE MÓDULOS ===================== -->
 <div class="selector-wrap" id="view-selector">
@@ -9603,7 +9612,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2120';
+const APP_VERSION = '2026-11-18-2127';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11807,7 +11816,8 @@ document.getElementById('pinKeypadGrid').addEventListener('click', async (e)=>{
     pinVerificando = false;
     if(esCorrecto){
       closePinModal();
-      if(target && target.startsWith('mantsub:')){ openMantSub(target.slice(8)); }
+      modsOk.add(modulo);
+      if(target && target.startsWith('mantsub:')){ if(target==='mantsub:espacios'){ openMantSub('espacios'); } else { openModule('mantenimiento'); openMantSub(target.slice(8)); } }
       else{ openModule(target); }
     }else{
       document.getElementById('pinError').style.display = 'block';
@@ -11818,6 +11828,32 @@ document.getElementById('pinKeypadGrid').addEventListener('click', async (e)=>{
 });
 document.getElementById('btnCancelPin').addEventListener('click', closePinModal);
 
+
+/* ===== Pestañas unificadas entre módulos relacionados ===== */
+const TOP_TABS = [['inicio','Inicio'],['inventario','Inventario'],'|',['horasextra','Horas extras'],['horarios','Horarios de trabajo'],'|',['actividades','Actividades'],['requisiciones','Requisiciones'],['reportes','Reportes'],['recibidos','Recibidos'],['aires','Aires'],['mapas','Mapas'],['activos','Activos fijos'],['espacios','Espacios']];
+const modsOk = new Set();
+function topTabActual(){
+  if(document.getElementById('view-selector').style.display!=='none') return null;
+  if(document.getElementById('module-inventario').style.display==='block') return 'inventario';
+  if(document.getElementById('module-espacios').style.display==='block') return 'espacios';
+  const m = {actividades:'mantSubActividades',aires:'mantSubAires',requisiciones:'mantSubRequisiciones',reportes:'mantSubReportes',mapas:'mantSubMapas',horasextra:'mantSubHorasExtra',activos:'mantSubActivos',recibidos:'mantSubRecibidos',horarios:'mantSubHorarios'};
+  return Object.keys(m).find(k=>document.getElementById(m[k]).style.display==='block') || '';
+}
+function actualizarTopTabs(){
+  const nav = document.getElementById('topTabs'), act = topTabActual();
+  nav.style.display = act===null ? 'none' : 'flex';
+  if(act===null) return;
+  nav.innerHTML = TOP_TABS.map(t=>t==='|' ? '<i></i>' : `<button data-toptab="${t[0]}" class="${t[0]===act?'active':''}">${t[1]}</button>`).join('');
+  nav.querySelectorAll('[data-toptab]').forEach(b=>b.addEventListener('click', ()=>irTopTab(b.dataset.toptab)));
+}
+function irTopTab(k){
+  if(k==='inicio'){ showSelector(); return; }
+  if(k==='inventario'){ if(!modsOk.has('inventario')){ openPinModal('inventario'); return; } openModule('inventario'); return; }
+  if(!modsOk.has('mantenimiento')){ openPinModal(k==='espacios' ? 'mantsub:espacios' : 'mantsub:'+k); return; }
+  if(k==='espacios'){ openMantSub('espacios'); return; }
+  openModule('mantenimiento'); openMantSub(k);
+}
+['showSelector','openModule','openMantSub','showMantSelector'].forEach(n=>{ const f = window[n]; window[n] = function(){ const r = f.apply(this, arguments); actualizarTopTabs(); return r; }; });
 document.querySelectorAll('.module-card').forEach(card=>{
   card.addEventListener('click', ()=> openPinModal(card.dataset.open));
 });
