@@ -9736,7 +9736,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2237';
+const APP_VERSION = '2026-11-18-2241';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11574,10 +11574,36 @@ function construirCotizacionHTML(r, firmaImg){
   <div class="pie">Dirección: Carrera 38 No 74-179 – PBX: 3610431 · Fax Rectoría: 3684072<br>E-mail: colegioamericano@colegioamericano.edu.co · www.colegioamericano.edu.co<img src="${logoEfqm}"></div>
   </div></body></html>`;
 }
+let cotActual = null;
+function cargarScript(src){
+  return new Promise((ok,ko)=>{ const t=document.createElement('script'); t.src=src; t.onload=ok; t.onerror=()=>ko(new Error(src)); document.head.appendChild(t); });
+}
+/* PDF directo (sin diálogo de impresión): evita encabezados del navegador y recortes en Safari */
+async function descargarCotizacionPDF(){
+  if(!cotActual) return;
+  showToast('Generando PDF…');
+  try{
+    if(!window.html2canvas) await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if(!(window.jspdf && window.jspdf.jsPDF)) await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const fr = document.createElement('iframe');
+    fr.style.cssText = 'position:fixed;left:-10000px;top:0;width:816px;height:1056px;border:0;';
+    document.body.appendChild(fr);
+    await new Promise(res=>{ fr.onload = res; fr.srcdoc = construirCotizacionHTML(cotActual.r, cotActual.firmaImg); });
+    await new Promise(r=>setTimeout(r,400));
+    const d = fr.contentDocument;
+    d.querySelectorAll('.btn-volver-noprint').forEach(e=>e.remove());
+    const canvas = await html2canvas(d.body, {scale:2.5, width:816, height:1056, windowWidth:816, windowHeight:1056, backgroundColor:'#ffffff'});
+    fr.remove();
+    const pdf = new window.jspdf.jsPDF({unit:'pt', format:'letter'});
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.95), 'JPEG', 0, 0, 612, 792);
+    pdf.save(`Cotización ${cotActual.r.cotNumero||''} ${cotActual.r.solicitante||''}.pdf`.replace(/\s+/g,' ').trim());
+  }catch(e){ showToast('No se pudo generar el PDF directo (¿sin internet?). Usa Imprimir del navegador.'); console.error(e); }
+}
 async function cotizacionPDF(r){
   let firmaImg = '';
   if(firmaRecibidos && await pedirPinRS()) firmaImg = await firmaRecortadaRS();
   document.getElementById('rsPreviewTitulo').textContent = 'Previsualización de la cotización';
+  cotActual = {r, firmaImg};
   document.getElementById('rsPreviewFrame').srcdoc = construirCotizacionHTML(r, firmaImg);
   document.getElementById('rsPreviewModalBg').classList.add('active');
 }
@@ -12034,6 +12060,7 @@ async function pdfRS(a){
 }
 document.getElementById('btnCerrarPreviewRS').addEventListener('click', ()=>document.getElementById('rsPreviewModalBg').classList.remove('active'));
 document.getElementById('btnImprimirPreviewRS').addEventListener('click', ()=>{
+  if(/cotización/i.test(document.getElementById('rsPreviewTitulo').textContent)){ descargarCotizacionPDF(); return; }
   const f = document.getElementById('rsPreviewFrame').contentWindow; f.focus(); f.print();
 });
 
