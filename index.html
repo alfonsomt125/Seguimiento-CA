@@ -703,7 +703,8 @@
   .lg-card input{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-family:inherit;}
   .lg-card input:focus{outline:2px solid var(--primary);border-color:transparent;}
   .lg-pass{position:relative;}
-  .lg-pass button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:16px;cursor:pointer;padding:6px 8px;}
+  .lg-pass button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#9AA0B1;cursor:pointer;padding:6px 8px;display:flex;box-shadow:none;}
+  .lg-pass button:hover{color:var(--navy);background:none;}
   .lg-btn{width:100%;margin-top:18px;padding:13px;border:none;border-radius:12px;background:#E89A40;color:#fff;font-weight:600;font-size:15px;cursor:pointer;font-family:inherit;}
   .lg-btn:disabled{opacity:.6;cursor:wait;}
   .lg-link{display:block;text-align:center;margin-top:14px;font-size:13px;color:var(--primary);text-decoration:none;}
@@ -724,7 +725,7 @@
       <label>Cédula</label>
       <input id="lgCedula" type="text" inputmode="numeric" autocomplete="username" placeholder="Tu número de cédula">
       <label>Contraseña</label>
-      <div class="lg-pass"><input id="lgPass" type="password" autocomplete="current-password"><button type="button" id="lgOjo" aria-label="Mostrar contraseña">👁</button></div>
+      <div class="lg-pass"><input id="lgPass" type="password" autocomplete="current-password"><button type="button" id="lgOjo" aria-label="Mostrar contraseña"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/><path id="lgTacha" d="M4 4l16 16" style="display:none"/></svg></button></div>
       <button class="lg-btn" id="lgEntrar" type="submit">Ingresar</button>
       <a href="#" class="lg-link" id="lgOlvide">¿Olvidaste tu contraseña?</a>
     </form>
@@ -9688,7 +9689,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2200';
+const APP_VERSION = '2026-11-18-2201';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14278,7 +14279,7 @@ async function arrancar(){
   if(!configurada){ iniciarApp(); return; }
   lgMostrar('Login');
 }
-document.getElementById('lgOjo').addEventListener('click', ()=>{ const i = document.getElementById('lgPass'); i.type = i.type==='password' ? 'text' : 'password'; });
+document.getElementById('lgOjo').addEventListener('click', ()=>{ const i = document.getElementById('lgPass'); i.type = i.type==='password' ? 'text' : 'password'; document.getElementById('lgTacha').style.display = i.type==='text' ? '' : 'none'; });
 document.getElementById('lgOlvide').addEventListener('click', e=>{ e.preventDefault(); document.getElementById('lgCedula2').value = document.getElementById('lgCedula').value; lgPanel('Olvide'); });
 document.getElementById('lgVolver').addEventListener('click', e=>{ e.preventDefault(); lgPanel('Login'); });
 document.getElementById('lgFormLogin').addEventListener('submit', async e=>{
