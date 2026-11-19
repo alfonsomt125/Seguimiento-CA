@@ -759,7 +759,7 @@
   <div id="mantSelector" class="mant-selector-wrap">
     <div class="mant-groups">
       <div class="mant-group"><div class="mant-group-label"><b>Operación diaria</b><span>3 módulos</span></div><div class="mant-group-grid">
-        <button class="mant-subcard hue-blue" data-mantopen="actividades" title="Actividades, aires acondicionados, recibidos a satisfacción, mapa de planta física y espacios."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="3.2" fill="currentColor" fill-opacity=".16"/><rect x="9" y="2.5" width="6" height="3.5" rx="1.75"/><path d="M9.2 13.2l2 2 3.8-4.3"/></svg></div><span>Seguimiento Operativo</span></button>
+        <button class="mant-subcard hue-blue" data-mantopen="actividades" title="Actividades, aires acondicionados, recibidos a satisfacción, mapas de seguridad y emergencias (SST) y espacios."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="3.2" fill="currentColor" fill-opacity=".16"/><rect x="9" y="2.5" width="6" height="3.5" rx="1.75"/><path d="M9.2 13.2l2 2 3.8-4.3"/></svg></div><span>Seguimiento Operativo</span></button>
         <button class="mant-subcard hue-green" data-mantopen="requisiciones" title="Formato institucional de solicitud de pedidos a Compras, editable en línea."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4.5 4.5V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor" fill-opacity=".16"/><path d="M14 3v4.5h4.5M9 12.5h6M9 16.5h4"/></svg></div><span>Requisición de Materiales</span></button>
         <button class="mant-subcard hue-red frozen" disabled title="Daños de mobiliario, fallas de aires acondicionados y reportes de seguridad, con fotos."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.8l9 15.7H3z" fill="currentColor" fill-opacity=".16"/><path d="M12 10v4M12 17.1v.01"/></svg></div><span>Reportes del Personal</span><em>Próximamente disponible</em></button>
       </div></div>
@@ -9625,7 +9625,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2143';
+const APP_VERSION = '2026-11-18-2144';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11756,7 +11756,7 @@ document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEac
   });
 });
 (function(){
-  const OP = [['actividades','Tareas de mantenimiento'],['aires','Aires acondicionados'],['recibidos','Recibidos a satisfacción'],['mapas','Mapa de planta física'],['espacios','Espacios']];
+  const OP = [['actividades','Tareas de mantenimiento'],['aires','Aires acondicionados'],['recibidos','Recibidos a satisfacción'],['mapas','Seguridad y emergencias'],['espacios','Espacios']];
   const barra = k => '<div class="mod-tabs">'+OP.map(t=>`<button data-modtab="${t[0]}"${t[0]===k?' class="active"':''}>${t[1]}</button>`).join('')+'</div>';
   [['mantSubActividades','actividades'],['mantSubAires','aires'],['mantSubRecibidos','recibidos'],['mantSubMapas','mapas']].forEach(([id,k])=>{
     const b = document.querySelector('#'+id+' > .module-back, #'+id+' .module-back'); if(b) b.insertAdjacentHTML('afterend', barra(k));
