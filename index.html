@@ -9369,10 +9369,22 @@ function horCoincide(a, b){   // todas las palabras del nombre más corto están
 }
 document.getElementById('btnHorCruzar').addEventListener('click', async ()=>{
   if(horArea!=='mantenimiento'){ showToast('El cruce de nombres aplica al horario de Mantenimiento.'); return; }
+  await unificarTrabajadores(true);
+  // personas repetidas dentro del horario (mismo nombre sin tilde o mismo trabajador): se unen en una sola
+  const gp = {};
+  horMant.personal.forEach(p=>{ const k = p.trabajadorId || trabSinTilde(p.nombre); (gp[k] = gp[k] || []).push(p); });
+  horMant.personal.forEach(p=>{ const k = trabSinTilde(p.nombre); if(gp[k] && gp[k].length && !gp[k].includes(p)){ gp[k].push(p); } });
+  const dupPers = [];
+  const vistos = new Set();
+  Object.values(gp).forEach(g=>{ const u = [...new Set(g)]; if(u.length>1 && !u.every(x=>vistos.has(x))){ u.forEach(x=>vistos.add(x)); dupPers.push(u); } });
+  const hasTil = x => x.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'')!==x.nombre;
+  const nTur = x => horMant.turnos.filter(t=>t.personaId===x.id).length;
+  const removidos = new Set();
+  dupPers.forEach(g=>{ g.sort((a,b)=>(hasTil(b)-hasTil(a)) || nTur(b)-nTur(a)); g.slice(1).forEach(x=>removidos.add(x)); });
   const refIds = new Set(horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId));
   const ref = trabajadores.filter(t=>refIds.has(t.id)), todos = trabajadores;
   const plan = [], sin = [], usados = new Set();
-  horMant.personal.forEach(p=>{
+  horMant.personal.filter(p=>!removidos.has(p)).forEach(p=>{
     let t = trabajadores.find(x=>x.id===p.trabajadorId);
     if(!t){
       const buscar = lista => { const c = lista.filter(x=>!usados.has(x.id) && horCoincide(p.nombre, x.nombre)); return c.length===1 ? c[0] : (c.length>1 ? 'amb' : null); };
@@ -9385,19 +9397,30 @@ document.getElementById('btnHorCruzar').addEventListener('click', async ()=>{
   const enHorario = new Set(plan.map(x=>x.t.id));
   const sinHorario = ref.filter(t=>heAutoriza(t.id) && !enHorario.has(t.id)).map(t=>t.nombre);
   const regDesalineados = horasExtras.filter(h=>{ const t = trabajadores.find(x=>x.id===h.trabajadorId); return t && h.trabajadorNombre!==t.nombre; });
-  if(!cambios.length && !regDesalineados.length && !sin.length && !sinHorario.length){ showToast('Todos los nombres ya coinciden y están vinculados.'); return; }
+  if(!dupPers.length && !cambios.length && !regDesalineados.length && !sin.length && !sinHorario.length){ showToast('Todos los nombres ya coinciden y están vinculados.'); return; }
   let msg = '';
+  if(dupPers.length) msg += 'Se unirán en el horario (conservan todos sus turnos):\n' + dupPers.map(g=>'• '+g.map(x=>x.nombre).join(' + ')).join('\n') + '\n\n';
   if(cambios.length) msg += 'Se vincularán / igualarán:\n' + cambios.map(({p,t})=>'• '+p.nombre+(p.nombre!==t.nombre?' → '+t.nombre:'')).join('\n') + '\n\n';
   if(regDesalineados.length) msg += regDesalineados.length+' registro(s) de horas extras tomarán el nombre oficial del trabajador.\n\n';
   if(sin.length) msg += 'Sin pareja en Horas extras (revísalos con ✎):\n' + sin.map(n=>'• '+n).join('\n') + '\n\n';
   if(sinHorario.length) msg += 'Con horas extras pero sin horario:\n' + sinHorario.map(n=>'• '+n).join('\n') + '\n\n';
   document.getElementById('confirmModalMsg').style.whiteSpace = 'pre-line';
-  if(!cambios.length && !regDesalineados.length){ await customConfirm(msg.trim(), 'Cruce de nombres'); return; }
+  if(!dupPers.length && !cambios.length && !regDesalineados.length){ await customConfirm(msg.trim(), 'Cruce de nombres'); return; }
   if(!await customConfirm(msg.trim(), 'Cruzar nombres')) return;
+  dupPers.forEach(g=>{
+    const k = g[0];
+    g.slice(1).forEach(x=>{
+      if(!k.trabajadorId && x.trabajadorId) k.trabajadorId = x.trabajadorId;
+      k.grupo = k.grupo || x.grupo;
+      horMant.turnos.forEach(t=>{ if(t.personaId===x.id && !horMant.turnos.some(y=>y.personaId===k.id && y.fecha===t.fecha)) t.personaId = k.id; });
+      horMant.turnos = horMant.turnos.filter(t=>t.personaId!==x.id);
+      horMant.personal = horMant.personal.filter(p=>p.id!==x.id);
+    });
+  });
   cambios.forEach(({p,t})=>{ p.nombre = t.nombre; p.trabajadorId = t.id; });
   regDesalineados.forEach(h=>{ h.trabajadorNombre = trabajadores.find(x=>x.id===h.trabajadorId).nombre; });
   await horGuardar(); if(regDesalineados.length) await saveHorasExtras();
-  renderHorarios(); showToast('Nombres cruzados: '+cambios.length+' persona(s).');
+  renderHorarios(); showToast('Nombres cruzados y unidos en el horario.');
 });
 document.getElementById('btnHorPCancelar').addEventListener('click', ()=>document.getElementById('horPersonaModalBg').classList.remove('active'));
 document.getElementById('btnHorPGuardar').addEventListener('click', async ()=>{
@@ -9481,7 +9504,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2110';
+const APP_VERSION = '2026-11-18-2130';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -13198,11 +13221,11 @@ document.getElementById('trabSearch').addEventListener('input', renderTrabajador
 /* Unifica trabajadores repetidos (mismo nombre sin importar tildes/mayúsculas): todo su historial pasa a la persona que queda. */
 const trabSinTilde = x => (x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 const trabUsos = id => entregas.filter(e=>e.trabajadorId===id).length + horasExtras.filter(h=>h.trabajadorId===id).length;
-document.getElementById('btnUnificarTrab').addEventListener('click', async ()=>{
+async function unificarTrabajadores(silencioso){
   const grupos = {};
   trabajadores.forEach(t=>{ (grupos[trabSinTilde(t.nombre)] = grupos[trabSinTilde(t.nombre)] || []).push(t); });
   const dups = Object.values(grupos).filter(g=>g.length>1);
-  if(!dups.length){ showToast('No hay personas repetidas.'); return; }
+  if(!dups.length){ if(!silencioso) showToast('No hay personas repetidas.'); return 0; }
   document.getElementById('confirmModalMsg').style.whiteSpace = 'pre-line';
   let unidos = 0;
   for(const g of dups){
@@ -13233,11 +13256,13 @@ document.getElementById('btnUnificarTrab').addEventListener('click', async ()=>{
     otros.forEach(o=>{ const n = normName(o.nombre); if(n!==normName(keep.nombre) && !deletedTrabajadorNames.includes(n)) deletedTrabajadorNames.push(n); });
     unidos++;
   }
-  if(!unidos) return;
+  if(!unidos) return 0;
   await saveTrabajadores(); await saveEntregas(); await saveHorasExtras(); await saveHeCompensaciones(); await saveDeletedTrabajadorNames();
-  try{ await storageAPI.set('heNotas', JSON.stringify(heNotas)); if(heAutorizados) await storageAPI.set('heAutorizados', JSON.stringify(heAutorizados)); await storageAPI.set('horarioMantenimiento', JSON.stringify(horMant)); }catch(e){ showToast('No se pudo guardar todo. Intenta de nuevo.'); return; }
+  try{ await storageAPI.set('heNotas', JSON.stringify(heNotas)); if(heAutorizados) await storageAPI.set('heAutorizados', JSON.stringify(heAutorizados)); await storageAPI.set('horarioMantenimiento', JSON.stringify(horMant)); }catch(e){ showToast('No se pudo guardar todo. Intenta de nuevo.'); return 0; }
   renderTrabajadorTiles(); showToast(unidos+' persona(s) unificada(s).');
-});
+  return unidos;
+}
+document.getElementById('btnUnificarTrab').addEventListener('click', ()=>unificarTrabajadores(false));
 document.getElementById('btnNewTrabajador').addEventListener('click', ()=>{
   document.getElementById('tNombre').value = '';
   document.getElementById('tCargo').value = '';
