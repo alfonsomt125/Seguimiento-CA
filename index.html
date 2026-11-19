@@ -751,6 +751,28 @@
   .mant-flat .mant-icon{width:92px;height:92px;border-radius:26px;}
   .mant-flat .mant-icon svg{width:44px;height:44px;}
   .mant-flat .mant-subcard span{font-size:18px;}
+
+  .esp-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin:6px 0 14px;}
+  .esp-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+  .esp-kpis div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;}
+  .esp-kpis small{display:block;color:var(--gray);font-size:12px;}
+  .esp-kpis b{font-size:22px;color:var(--navy);}
+  .esp-main{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(0,1fr);gap:16px;align-items:start;}
+  @media(max-width:980px){.esp-main{grid-template-columns:1fr;}.esp-kpis{grid-template-columns:1fr;}}
+  .esp-ley{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--gray);}
+  .lg-i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+  .lg-cot{border:1.5px dashed var(--orange);background:#fff;}
+  .cal-evento.cotizada{background:#fff;color:#9E6525;border:1px dashed var(--orange);}
+  .cal-evento.nodisp{background:var(--gray) !important;color:#fff;text-decoration:line-through;opacity:.55;}
+  .esp-it{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px;}
+  .esp-it:last-child{border:none;}
+  .esp-it:hover{background:var(--primary-soft);}
+  .esp-d{min-width:52px;color:var(--gray);font-size:12px;}
+  .esp-n{font-weight:600;color:var(--navy);}
+  .esp-s{color:var(--gray);font-size:12px;}
+  .esp-ch{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;margin-left:6px;font-weight:600;}
+  .esp-ch.c-conf{background:#E1F3EA;color:#0F6E4A;} .esp-ch.c-cot{background:#FDF4E4;color:#9E6525;} .esp-ch.c-pen{background:#EFF4F9;color:#2C6280;} .esp-ch.c-no{background:#EEF1F6;color:#6D7388;}
+  .esp-cr{display:grid;grid-template-columns:1fr 120px 90px 36px;gap:8px;margin-bottom:8px;}.esp-crh small{color:var(--gray);font-size:11px;margin-bottom:-4px;}
 </style></head><body>
 
 <div id="loginScreen" style="display:none;">
@@ -2339,79 +2361,31 @@
     <div class="today-stamp" id="todayStampEsp"></div>
   </header>
 
-  <!-- Sub-selector: Actividades Internas / Actividades Externas -->
-  <div id="espaciosSelector" class="mant-selector-wrap">
-    <p class="hint">Elige qué tipo de actividad quieres gestionar</p>
-    <div class="mant-subcards">
-      <button class="mant-subcard actividades" data-espopen="Interna">
-        <div class="mant-icon">🏫</div>
-        <span>Actividades Internas</span>
-        <p>Reservas de salones y espacios para uso del colegio (reuniones, eventos, clases especiales...).</p>
-      </button>
-      <button class="mant-subcard aires" data-espopen="Externa">
-        <div class="mant-icon">🤝</div>
-        <span>Actividades Externas</span>
-        <p>Alquiler de espacios a personas o entidades externas al colegio.</p>
-      </button>
-    </div>
-  </div>
-
-  <!-- ===================== SUB-MÓDULO: ACTIVIDADES INTERNAS ===================== -->
-  <div id="espSubInterna" style="display:none;">
-    <button class="module-back" data-espback="1">← Gestión de Espacios</button>
-    <div class="panel">
-      <div class="cal-header">
-        <button class="cal-nav-btn" data-calnav="Interna:-1">‹ Mes anterior</button>
-        <h3 id="calInternaLabel">Mes</h3>
-        <button class="cal-nav-btn" data-calnav="Interna:1">Mes siguiente ›</button>
+  <div id="espUnificado">
+    <div class="esp-top">
+      <div class="he-switch" id="espFiltro"><button class="active" data-espf="todo">Todo</button><button data-espf="Interna">Internas</button><button data-espf="Externa">Alquileres y cotizaciones</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="ghost" id="btnEspCatalogo">Espacios y tarifas</button>
+        <button class="ghost" id="btnExportarEspPDF">⬇ PDF del mes</button>
+        <button class="ghost" id="btnNuevaReservaInterna">+ Actividad interna</button>
+        <button class="primary" id="btnNuevaReservaExterna">+ Cotización / alquiler</button>
       </div>
-      <div class="filters" style="margin-bottom:14px;">
-        <div class="field" style="flex:2;min-width:200px;">
-          <label>Buscar espacio</label>
-          <input type="text" id="calInternaSearch" placeholder="Ej: Paraninfo, Salón 2A...">
+    </div>
+    <div class="esp-kpis" id="espKpis"></div>
+    <div class="esp-main">
+      <div class="panel">
+        <div class="cal-header">
+          <button class="cal-nav-btn" data-calnav="x:-1">‹ Mes anterior</button>
+          <h3 id="calEspLabel">Mes</h3>
+          <button class="cal-nav-btn" data-calnav="x:1">Mes siguiente ›</button>
         </div>
-        <button class="ghost" id="btnExportarInternaPDF" style="white-space:nowrap;">⬇ Exportar a PDF</button>
-        <button class="primary" id="btnNuevaReservaInterna" style="white-space:nowrap;">+ Nueva reserva</button>
+        <div class="field" style="max-width:300px;margin-bottom:12px;"><input type="text" id="calEspSearch" placeholder="Buscar espacio…"></div>
+        <div class="cal-grid" id="calEspGrid"></div>
+        <div class="esp-ley"><span><i class="lg-i" style="background:var(--navy-2)"></i>Interna</span><span><i class="lg-i" style="background:var(--orange)"></i>Alquiler confirmado</span><span><i class="lg-i lg-cot"></i>Cotizada (no bloquea)</span><span><i class="lg-i" style="background:var(--gray);opacity:.6"></i>No disponible / vencida</span></div>
       </div>
-      <div class="cal-grid" id="calInternaGrid"></div>
-    </div>
-    <div class="panel">
-      <h2>Próximas reservas — internas</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Fecha</th><th>Hora</th><th>Espacio</th><th>Solicitante</th><th>Motivo</th><th>Estado</th></tr></thead>
-          <tbody id="listaInternaBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================== SUB-MÓDULO: ACTIVIDADES EXTERNAS ===================== -->
-  <div id="espSubExterna" style="display:none;">
-    <button class="module-back" data-espback="1">← Gestión de Espacios</button>
-    <div class="panel">
-      <div class="cal-header">
-        <button class="cal-nav-btn" data-calnav="Externa:-1">‹ Mes anterior</button>
-        <h3 id="calExternaLabel">Mes</h3>
-        <button class="cal-nav-btn" data-calnav="Externa:1">Mes siguiente ›</button>
-      </div>
-      <div class="filters" style="margin-bottom:14px;">
-        <div class="field" style="flex:2;min-width:200px;">
-          <label>Buscar espacio</label>
-          <input type="text" id="calExternaSearch" placeholder="Ej: Paraninfo, Cancha...">
-        </div>
-        <button class="ghost" id="btnExportarExternaPDF" style="white-space:nowrap;">⬇ Exportar a PDF</button>
-        <button class="primary" id="btnNuevaReservaExterna" style="white-space:nowrap;">+ Nueva reserva</button>
-      </div>
-      <div class="cal-grid" id="calExternaGrid"></div>
-    </div>
-    <div class="panel">
-      <h2>Próximos alquileres — externos</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Fecha</th><th>Hora</th><th>Espacio</th><th>Empresa/Persona</th><th>Costo</th><th>Pago</th><th>Estado</th></tr></thead>
-          <tbody id="listaExternaBody"></tbody>
-        </table>
+      <div class="panel">
+        <h3 style="margin:0 0 6px;">Próximas</h3>
+        <div id="espProximas"></div>
       </div>
     </div>
   </div>
@@ -2421,26 +2395,27 @@
 <!-- ===================== /MÓDULO GESTIÓN DE ESPACIOS ===================== -->
 
 <!-- Modal: nueva/editar reserva de espacio -->
+<div class="modal-bg" id="espCatModalBg">
+  <div class="modal" style="max-width:560px;">
+    <h3>Espacios y tarifas</h3>
+    <p class="hint" style="margin:0 0 10px;">Valor por hora de cada espacio. La cotización lo usa como sugerencia y puedes cambiarlo en cada una.</p>
+    <div class="esp-cr esp-crh"><small>Espacio</small><small>$ por hora</small><small>Capacidad</small><span></span></div>
+    <div id="espCatLista"></div>
+    <button class="ghost" id="btnEspCatAgregar" style="margin-top:10px;">+ Agregar espacio</button>
+    <div class="modal-actions"><button class="ghost" id="btnEspCatCancelar">Cancelar</button><button class="primary" id="btnEspCatGuardar">Guardar</button></div>
+  </div>
+</div>
 <div class="modal-bg" id="reservaModalBg">
   <div class="modal">
     <h3 id="reservaModalTitle">Nueva reserva</h3>
     <div class="grid-2">
       <div class="field" style="grid-column:1/-1;">
         <label>Espacio *</label>
-        <select id="resEspacio">
-          <option value="">Selecciona un espacio...</option>
-          <option>Paraninfo</option>
-          <option>Capilla</option>
-          <option>Cancha Baloncesto</option>
-          <option>Patio Central</option>
-          <option>Patio Sur</option>
-          <option>Patio Norte</option>
-          <option>Biblioteca</option>
-        </select>
+        <select id="resEspacio"><option value="">Selecciona un espacio...</option></select>
       </div>
       <div class="field" style="grid-column:1/-1;">
         <label>Estado de la reserva</label>
-        <select id="resEstado"><option>Confirmada</option><option>Pendiente de aprobación</option><option>Cancelada</option></select>
+        <select id="resEstado"></select>
       </div>
 
       <div class="field" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin:2px 0 0;">
@@ -2507,13 +2482,20 @@
         <input type="text" id="resExtContacto">
       </div>
       <div class="field" id="resExtCostoWrap" style="display:none;">
-        <label>Costo del alquiler</label>
+        <label>Valor cotizado / alquiler</label>
         <input type="number" id="resExtCosto" min="0" step="1000">
       </div>
       <div class="field" id="resExtPagoWrap" style="display:none;">
         <label>Estado de pago</label>
         <select id="resExtPago"><option>Pendiente</option><option>Anticipo</option><option>Pagado</option></select>
       </div>
+      <div class="field" id="resClienteWrap" style="display:none;">
+        <label>Tipo de cliente</label>
+        <select id="resCliente"><option>Cliente externo</option><option>Empresa aliada</option></select>
+      </div>
+      <div class="field" id="resTarifaHintWrap" style="display:none;grid-column:1/-1;margin-top:-6px;"><p class="hint" id="resTarifaHint" style="margin:0;"></p></div>
+      <div class="field" id="resDescWrap" style="display:none;grid-column:1/-1;margin-top:-4px;"><label style="display:flex;gap:8px;align-items:center;font-weight:500;"><input type="checkbox" id="resDescuento" style="width:auto;"> Aplicar 10% de descuento (espacios de 3 horas o más)</label></div>
+      <div class="field" id="resCotInfoWrap" style="display:none;grid-column:1/-1;"><p class="hint" id="resCotInfo" style="margin:0;font-weight:600;"></p></div>
 
       <div class="field" style="grid-column:1/-1;border-top:1px solid var(--line);padding-top:12px;margin-top:4px;">
         <label>Logística necesaria</label>
@@ -2552,6 +2534,7 @@
       </div>
     </div>
     <div class="modal-actions" style="flex-wrap:wrap;">
+      <button class="ghost" id="btnResConfirmar" style="display:none;color:var(--green);border-color:var(--green);">Confirmar pago y bloquear</button>
       <button class="ghost" id="btnResComprobante" style="display:none;">⬇ Comprobante PDF</button>
       <button class="ghost danger" id="btnResDelete" style="display:none;">Eliminar</button>
       <button class="ghost" id="btnCancelReserva">Cancelar</button>
@@ -4066,6 +4049,9 @@ let entregas = [];
 let airesAcondicionados = [];
 let aireHistorial = [];
 let reservasEspacios = [];
+let espaciosCatalogo = [];
+const ESP_CAT_DEFAULT = [['Capilla',400000,0],['Paraninfo Manuel C. Escorcia',1400000,814],['Aula de clase',80000,0],['Patio Central',300000,0],['Cancha Baloncesto/Boleibol',120000,0]];
+const ESP_RENOMBRES = {'Paraninfo':'Paraninfo Manuel C. Escorcia','Cancha Baloncesto':'Cancha Baloncesto/Boleibol'};
 let activosFijos = [];
 let recibidosSatisfaccion = [];
 let firmaRecibidos = '';
@@ -4241,7 +4227,7 @@ const CLAVES_A_MIGRAR = [
   'deletedNames','deletedInsumoNames','deletedTrabajadorNames',
   'airesAcondicionados','aireHistorial','reservasEspacios','requisiciones',
   'extintores','trampasRatones','puntosEncuentro','flechasEvacuacion',
-  'horasExtras','limitesHorasExtras','heCompensaciones','solicitantesEspacios','activosFijos','espaciosActivosExtra','recibidosSatisfaccion','firmaRecibidos','syncVersions'
+  'horasExtras','limitesHorasExtras','heCompensaciones','solicitantesEspacios','espaciosCatalogo','activosFijos','espaciosActivosExtra','recibidosSatisfaccion','firmaRecibidos','syncVersions'
 ];
 
 async function migrarLocalASupabase(){
@@ -4350,6 +4336,12 @@ async function loadAll(){
     const re = await storageAPI.get('reservasEspacios');
     reservasEspacios = JSON.parse(re.value);
   }catch(e){ reservasEspacios = []; }
+  try{ espaciosCatalogo = JSON.parse((await storageAPI.get('espaciosCatalogo')).value); if(!Array.isArray(espaciosCatalogo)) throw 0; }
+  catch(e){
+    espaciosCatalogo = ESP_CAT_DEFAULT.map(([nombre,tarifa,capacidad],i)=>({id:'esp'+(i+1), nombre, tarifa, capacidad}));
+    reservasEspacios.forEach(r=>{ if(ESP_RENOMBRES[r.espacio]) r.espacio = ESP_RENOMBRES[r.espacio]; });
+    try{ await saveEspaciosCatalogo(); await saveReservasEspacios(); }catch(_){}
+  }
   try{
     const rq = await storageAPI.get('requisiciones');
     requisiciones = JSON.parse(rq.value);
@@ -4537,6 +4529,10 @@ async function saveAiresAcondicionados(){
 async function saveAireHistorial(){
   try{ await storageAPI.set('aireHistorial', JSON.stringify(aireHistorial)); }
   catch(e){ showToast('No se pudo guardar (historial de mantenimiento). Intenta de nuevo.'); }
+}
+async function saveEspaciosCatalogo(){
+  try{ await storageAPI.set('espaciosCatalogo', JSON.stringify(espaciosCatalogo)); }
+  catch(e){ showToast('No se pudo guardar el catálogo de espacios.'); }
 }
 async function saveReservasEspacios(){
   try{ await storageAPI.set('reservasEspacios', JSON.stringify(reservasEspacios)); }
@@ -6744,17 +6740,9 @@ function openModule(name){
 
 /* Sub-selector dentro de Gestión de Inventario: Actividades Internas / Externas. */
 function showEspaciosSelector(){
-  document.getElementById('espaciosSelector').style.display = 'block';
-  document.getElementById('espSubInterna').style.display = 'none';
-  document.getElementById('espSubExterna').style.display = 'none';
+  renderCalendarioMes(); renderListaReservas();
 }
-function openEspaciosSub(tipo){
-  document.getElementById('espaciosSelector').style.display = 'none';
-  document.getElementById('espSubInterna').style.display = tipo==='Interna' ? 'block' : 'none';
-  document.getElementById('espSubExterna').style.display = tipo==='Externa' ? 'block' : 'none';
-  renderCalendarioMes(tipo);
-  renderListaReservas(tipo);
-}
+function openEspaciosSub(){ showEspaciosSelector(); }
 document.querySelectorAll('[data-espopen]').forEach(card=>{
   card.addEventListener('click', ()=> openEspaciosSub(card.dataset.espopen));
 });
@@ -9739,7 +9727,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2209';
+const APP_VERSION = '2026-11-18-2226';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -9751,7 +9739,7 @@ const APP_VERSION = '2026-11-18-2209';
     try{
       const r = await fetch(location.pathname + '?chk=' + Date.now(), {cache:'no-store'});
       if(!r.ok) return;
-      const m = (await r.text()).match(/const APP_VERSION = '([^']+)'/);
+      const m = (await r.text()).match(/const APP_VERSION = '2026-11-18-2226']+)'/);
       if(m && m[1] !== APP_VERSION){
         avisado = true;
         const b = document.createElement('div');
@@ -10983,97 +10971,99 @@ function getFestivoColombia(iso){
   const anio = iso.slice(0,4);
   return (FESTIVOS_COLOMBIA[anio] || {})[iso] || null;
 }
-let calMesInterna = new Date();
-let calMesExterna = new Date();
+let calMes = new Date();
+let espFiltro = 'todo';
 
-/* Los dos calendarios (Interna/Externa) muestran SIEMPRE las reservas de
-   AMBOS tipos — así quedan sincronizados de verdad: si un espacio ya está
-   ocupado por una actividad externa, se ve también desde el calendario de
-   internas (y viceversa), para nunca cruzar actividades por accidente. */
-function renderCalendarioMes(tipo){
-  const mesDate = tipo==='Interna' ? calMesInterna : calMesExterna;
-  const gridId = tipo==='Interna' ? 'calInternaGrid' : 'calExternaGrid';
-  const labelId = tipo==='Interna' ? 'calInternaLabel' : 'calExternaLabel';
-  const searchId = tipo==='Interna' ? 'calInternaSearch' : 'calExternaSearch';
-  const search = (document.getElementById(searchId).value||'').toLowerCase().trim();
+/* Una reserva BLOQUEA el espacio solo si está confirmada (o interna). Cotizada,
+   vencida, "No disponible" y cancelada no bloquean. */
+function resActiva(r){ return !['Cotizada','Cancelada','No disponible'].includes(r.estado); }
+function resEstadoEf(r){
+  if(r.estado==='Cotizada' && r.cotVence && r.cotVence<todayISO()) return 'Vencida';
+  return r.estado || 'Confirmada';
+}
+function resEsCotAbierta(r){ return resEstadoEf(r)==='Cotizada'; }
+function resChip(r){
+  const e = resEstadoEf(r);
+  const c = e==='Confirmada'?'c-conf':e==='Cotizada'?'c-cot':e==='Pendiente de aprobación'?'c-pen':'c-no';
+  return `<span class="esp-ch ${c}">${esc(e)}</span>`;
+}
+function resVisible(r){ return espFiltro==='todo' || r.tipo===espFiltro; }
 
-  const year = mesDate.getFullYear(), month = mesDate.getMonth();
-  document.getElementById(labelId).textContent = mesDate.toLocaleDateString('es-CO',{month:'long',year:'numeric'});
-
+function renderCalendarioMes(){
+  const search = (document.getElementById('calEspSearch').value||'').toLowerCase().trim();
+  const year = calMes.getFullYear(), month = calMes.getMonth();
+  document.getElementById('calEspLabel').textContent = calMes.toLocaleDateString('es-CO',{month:'long',year:'numeric'});
   const primerDia = new Date(year, month, 1);
   const inicioGrid = new Date(primerDia);
   inicioGrid.setDate(inicioGrid.getDate() - primerDia.getDay());
-
   const hoy = todayISO();
+  const tipoNuevo = espFiltro==='Externa' ? 'Externa' : 'Interna';
   let html = DIAS_SEMANA_CAL.map(d=>`<div class="cal-daylabel">${d}</div>`).join('');
-
   for(let i=0;i<42;i++){
     const d = new Date(inicioGrid);
     d.setDate(d.getDate()+i);
     const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const esOtroMes = d.getMonth()!==month;
-    const esHoy = iso===hoy;
     const festivo = getFestivoColombia(iso);
-    // muestra reservas de AMBOS tipos que caigan en este día (soporta multi-día: fecha..fechaFin)
-    let eventos = reservasEspacios.filter(r=>iso>=r.fecha && iso<=(r.fechaFin||r.fecha));
+    let eventos = reservasEspacios.filter(r=>resVisible(r) && iso>=r.fecha && iso<=(r.fechaFin||r.fecha));
     if(search) eventos = eventos.filter(r=>r.espacio.toLowerCase().includes(search));
     eventos = eventos.sort((a,b)=>(a.horaInicio||'').localeCompare(b.horaInicio||''));
-    html += `<div class="cal-day ${esOtroMes?'cal-otro-mes':''} ${esHoy?'cal-hoy':''} ${festivo?'cal-festivo':''}" data-caldia="${iso}" data-caltipo="${tipo}"${festivo?` title="Festivo: ${esc(festivo)}"`:''}>
-      <span class="cal-day-add" data-caladd="${iso}" data-caltipo="${tipo}" title="Nueva reserva">+</span>
+    html += `<div class="cal-day ${esOtroMes?'cal-otro-mes':''} ${iso===hoy?'cal-hoy':''} ${festivo?'cal-festivo':''}" data-caldia="${iso}"${festivo?` title="Festivo: ${esc(festivo)}"`:''}>
+      <span class="cal-day-add" data-caladd="${iso}" title="Nueva reserva">+</span>
       <div class="cal-day-num">${d.getDate()}</div>
       ${festivo?`<div class="cal-festivo-label">🇨🇴 ${esc(festivo)}</div>`:''}
-      ${eventos.map(ev=>`<div class="cal-evento ${ev.tipo==='Externa'?'externa':''} ${ev.estado==='Cancelada'?'cal-evento-cancelada':''}" data-calevento="${ev.id}" title="${ev.tipo}: ${esc(ev.espacio)}${ev.motivo?' — '+esc(ev.motivo):''}${ev.solicitante?' ('+esc(ev.solicitante)+')':''}${ev.estado&&ev.estado!=='Confirmada'?' ['+ev.estado+']':''}">${ev.estado==='Pendiente de aprobación'?'⏳ ':''}${ev.horaInicio?ev.horaInicio+' ':''}${esc(ev.espacio)}</div>`).join('')}
+      ${eventos.map(ev=>{
+        const ef = resEstadoEf(ev);
+        const cls = ef==='Cotizada' ? 'externa cotizada' : (ef==='Vencida'||ef==='No disponible') ? 'externa nodisp' : ev.estado==='Cancelada' ? 'externa cal-evento-cancelada' : ev.tipo==='Externa' ? 'externa' : '';
+        return `<div class="cal-evento ${cls}" data-calevento="${ev.id}" title="${ev.tipo}: ${esc(ev.espacio)}${ev.motivo?' — '+esc(ev.motivo):''}${ev.solicitante?' ('+esc(ev.solicitante)+')':''} [${esc(ef)}]">${ev.estado==='Pendiente de aprobación'?'⏳ ':''}${ev.horaInicio?ev.horaInicio+' ':''}${esc(ev.espacio)}</div>`;
+      }).join('')}
     </div>`;
   }
-  const grid = document.getElementById(gridId);
+  const grid = document.getElementById('calEspGrid');
   grid.innerHTML = html;
-
   grid.querySelectorAll('[data-caladd]').forEach(el=>{
-    el.addEventListener('click', (e)=>{ e.stopPropagation(); openReservaModal(tipo, el.dataset.caladd); });
+    el.addEventListener('click', (e)=>{ e.stopPropagation(); openReservaModal(tipoNuevo, el.dataset.caladd); });
   });
   grid.querySelectorAll('[data-calevento]').forEach(el=>{
     el.addEventListener('click', (e)=>{
       e.stopPropagation();
       const ev = reservasEspacios.find(x=>x.id===el.dataset.calevento);
-      openReservaModal(ev ? ev.tipo : tipo, null, el.dataset.calevento);
+      openReservaModal(ev ? ev.tipo : tipoNuevo, null, el.dataset.calevento);
     });
   });
   grid.querySelectorAll('.cal-day').forEach(el=>{
-    el.addEventListener('click', ()=> openReservaModal(tipo, el.dataset.caldia));
+    el.addEventListener('click', ()=> openReservaModal(tipoNuevo, el.dataset.caldia));
   });
+  renderEspKpis();
 }
 
-function renderListaReservas(tipo){
-  const bodyId = tipo==='Interna' ? 'listaInternaBody' : 'listaExternaBody';
+function renderEspKpis(){
+  const year = calMes.getFullYear(), month = calMes.getMonth();
+  const ini = `${year}-${String(month+1).padStart(2,'0')}-01`;
+  const fin = new Date(year, month+1, 0);
+  const finIso = `${fin.getFullYear()}-${String(fin.getMonth()+1).padStart(2,'0')}-${String(fin.getDate()).padStart(2,'0')}`;
+  const delMes = reservasEspacios.filter(r=>resActiva(r) && r.fecha<=finIso && (r.fechaFin||r.fecha)>=ini);
+  const abiertas = reservasEspacios.filter(resEsCotAbierta);
+  const porCobrar = abiertas.reduce((t,r)=>t+(Number(r.extCosto)||0),0);
+  document.getElementById('espKpis').innerHTML =
+    `<div><small>Reservas confirmadas del mes</small><b>${delMes.length}</b></div>`+
+    `<div><small>Cotizaciones abiertas (no bloquean)</small><b>${abiertas.length}</b></div>`+
+    `<div><small>Valor cotizado por cobrar</small><b>${fmtMoney(porCobrar)}</b></div>`;
+}
+
+function renderListaReservas(){
   const hoy = todayISO();
-  const proximas = reservasEspacios.filter(r=>r.tipo===tipo && (r.fechaFin||r.fecha)>=hoy)
+  const prox = reservasEspacios.filter(r=>resVisible(r) && (r.fechaFin||r.fecha)>=hoy && !['Vencida','No disponible','Cancelada'].includes(resEstadoEf(r)))
     .sort((a,b)=>(a.fecha+((a.horaInicio)||'')).localeCompare(b.fecha+((b.horaInicio)||'')))
-    .slice(0,30);
-  const tbody = document.getElementById(bodyId);
-  const rangoFechas = r => (r.fechaFin && r.fechaFin!==r.fecha) ? `${fmtDate(r.fecha)} — ${fmtDate(r.fechaFin)}` : fmtDate(r.fecha);
-  if(tipo==='Interna'){
-    tbody.innerHTML = proximas.length ? proximas.map(r=>`
-      <tr data-verreserva="${r.id}" style="cursor:pointer;">
-        <td>${rangoFechas(r)}</td>
-        <td>${r.horaInicio?esc(r.horaInicio)+(r.horaFin?' - '+esc(r.horaFin):''):'—'}</td>
-        <td><strong>${esc(r.espacio)}</strong></td>
-        <td>${esc(r.solicitante)||'—'}</td>
-        <td>${esc(r.motivo)||'—'}</td>
-        <td><span class="pill pill-${r.estado==='Cancelada'?'Cancelado':r.estado==='Pendiente de aprobación'?'Pendiente':'Finalizado'}">${esc(r.estado)||'Confirmada'}</span></td>
-      </tr>`).join('') : `<tr><td colspan="6" class="empty">No hay próximas reservas internas.</td></tr>`;
-  }else{
-    tbody.innerHTML = proximas.length ? proximas.map(r=>`
-      <tr data-verreserva="${r.id}" style="cursor:pointer;">
-        <td>${rangoFechas(r)}</td>
-        <td>${r.horaInicio?esc(r.horaInicio)+(r.horaFin?' - '+esc(r.horaFin):''):'—'}</td>
-        <td><strong>${esc(r.espacio)}</strong></td>
-        <td>${esc(r.solicitante)||'—'}</td>
-        <td>${r.extCosto?fmtMoney(r.extCosto):'—'}</td>
-        <td><span class="pill pill-${r.extPago==='Pagado'?'Finalizado':r.extPago==='Anticipo'?'En_proceso':'Pendiente'}">${esc(r.extPago)||'Pendiente'}</span></td>
-        <td><span class="pill pill-${r.estado==='Cancelada'?'Cancelado':r.estado==='Pendiente de aprobación'?'Pendiente':'Finalizado'}">${esc(r.estado)||'Confirmada'}</span></td>
-      </tr>`).join('') : `<tr><td colspan="7" class="empty">No hay próximos alquileres externos.</td></tr>`;
-  }
-  tbody.querySelectorAll('[data-verreserva]').forEach(el=>{
+    .slice(0,15);
+  const box = document.getElementById('espProximas');
+  box.innerHTML = prox.length ? prox.map(r=>`
+    <div class="esp-it" data-verreserva="${r.id}">
+      <div class="esp-d">${fmtDate(r.fecha).slice(0,5)}${r.fechaFin&&r.fechaFin!==r.fecha?'<br>→ '+fmtDate(r.fechaFin).slice(0,5):''}</div>
+      <div><div class="esp-n">${esc(r.espacio)}${resChip(r)}</div>
+      <div class="esp-s">${r.horaInicio?esc(r.horaInicio)+(r.horaFin?' - '+esc(r.horaFin):'')+' · ':''}${esc(r.solicitante)||'—'}${r.extCosto?' · '+fmtMoney(r.extCosto):''}</div></div>
+    </div>`).join('') : '<p class="hint">No hay reservas próximas.</p>';
+  box.querySelectorAll('[data-verreserva]').forEach(el=>{
     const r = reservasEspacios.find(x=>x.id===el.dataset.verreserva);
     if(r) el.addEventListener('click', ()=>openReservaModal(r.tipo, null, r.id));
   });
@@ -11081,16 +11071,61 @@ function renderListaReservas(tipo){
 
 document.querySelectorAll('[data-calnav]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    const [tipo, delta] = btn.dataset.calnav.split(':');
-    if(tipo==='Interna'){ calMesInterna.setMonth(calMesInterna.getMonth()+Number(delta)); }
-    else{ calMesExterna.setMonth(calMesExterna.getMonth()+Number(delta)); }
-    renderCalendarioMes(tipo);
+    calMes.setMonth(calMes.getMonth()+Number(btn.dataset.calnav.split(':')[1]));
+    renderCalendarioMes();
+  });
+});
+document.querySelectorAll('[data-espf]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    espFiltro = b.dataset.espf;
+    document.querySelectorAll('[data-espf]').forEach(x=>x.classList.toggle('active', x===b));
+    renderCalendarioMes(); renderListaReservas();
   });
 });
 document.getElementById('btnNuevaReservaInterna').addEventListener('click', ()=>openReservaModal('Interna', todayISO()));
 document.getElementById('btnNuevaReservaExterna').addEventListener('click', ()=>openReservaModal('Externa', todayISO()));
-document.getElementById('calInternaSearch').addEventListener('input', ()=>renderCalendarioMes('Interna'));
-document.getElementById('calExternaSearch').addEventListener('input', ()=>renderCalendarioMes('Externa'));
+document.getElementById('calEspSearch').addEventListener('input', ()=>renderCalendarioMes());
+document.getElementById('btnExportarEspPDF').addEventListener('click', ()=>exportarListadoReservasPDF());
+
+/* --- Catálogo de espacios y tarifas --- */
+function tarifaEspacio(nombre){
+  const e = espaciosCatalogo.find(x=>x.nombre.toLowerCase()===(nombre||'').toLowerCase());
+  return e ? (Number(e.tarifa)||0) : 0;
+}
+function poblarEspaciosSelect(actual){
+  const nombres = espaciosCatalogo.map(e=>e.nombre);
+  reservasEspacios.forEach(r=>{ if(r.espacio && !nombres.includes(r.espacio)) nombres.push(r.espacio); });
+  if(actual && !nombres.includes(actual)) nombres.push(actual);
+  const sel = document.getElementById('resEspacio');
+  sel.innerHTML = '<option value="">Selecciona un espacio...</option>' + nombres.map(n=>`<option>${esc(n)}</option>`).join('');
+}
+function pintarCatFilas(lista){
+  document.getElementById('espCatLista').innerHTML = lista.map((e,i)=>`
+    <div class="esp-cr"><input type="text" value="${esc(e.nombre)}" data-catn="${i}" placeholder="Nombre del espacio"><input type="number" min="0" step="1000" value="${Number(e.tarifa)||0}" data-catt="${i}" placeholder="$ por hora"><input type="number" min="0" value="${Number(e.capacidad)||''}" data-catc="${i}" placeholder="Personas"><button class="ghost danger" data-catx="${i}" title="Quitar">✕</button></div>`).join('');
+  document.querySelectorAll('[data-catx]').forEach(b=>b.addEventListener('click', ()=>{
+    const l = leerCatFilas(); l.splice(Number(b.dataset.catx),1); pintarCatFilas(l);
+  }));
+}
+function leerCatFilas(){
+  return [...document.querySelectorAll('[data-catn]')].map(inp=>{
+    const i = inp.dataset.catn;
+    return {id: (espaciosCatalogo[i]&&espaciosCatalogo[i].id)||('esp'+uid()), nombre: inp.value.trim(), tarifa: Number(document.querySelector(`[data-catt="${i}"]`).value)||0, capacidad: Number(document.querySelector(`[data-catc="${i}"]`).value)||0};
+  });
+}
+document.getElementById('btnEspCatalogo').addEventListener('click', ()=>{
+  pintarCatFilas(espaciosCatalogo.map(e=>({...e})));
+  document.getElementById('espCatModalBg').classList.add('active');
+});
+document.getElementById('btnEspCatAgregar').addEventListener('click', ()=>{
+  const l = leerCatFilas(); l.push({id:'esp'+uid(), nombre:'', tarifa:0}); pintarCatFilas(l);
+});
+document.getElementById('btnEspCatCancelar').addEventListener('click', ()=>document.getElementById('espCatModalBg').classList.remove('active'));
+document.getElementById('btnEspCatGuardar').addEventListener('click', async ()=>{
+  espaciosCatalogo = leerCatFilas().filter(e=>e.nombre);
+  await saveEspaciosCatalogo();
+  document.getElementById('espCatModalBg').classList.remove('active');
+  showToast('Espacios y tarifas guardados.');
+});
 
 /* --- Modal de reserva (crear/editar), compartido entre Interna y Externa --- */
 let editingReservaId = null;
@@ -11134,14 +11169,42 @@ function actualizarAvisoFestivo(){
   document.getElementById(id).addEventListener('change', actualizarAvisoFestivo);
 });
 
+let espUltimaSug = null;
+function actualizarSugerenciaTarifa(autollenar){
+  const esp = document.getElementById('resEspacio').value;
+  const t = tarifaEspacio(esp);
+  const hi = document.getElementById('resHoraInicio').value, hf = document.getElementById('resHoraFin').value;
+  const unDia = document.getElementById('resUnDia').checked;
+  const f1 = unDia ? document.getElementById('resFecha').value : document.getElementById('resFechaInicio').value;
+  const f2 = unDia ? f1 : document.getElementById('resFechaFin').value;
+  const hint = document.getElementById('resTarifaHint');
+  if(!t || !hi || !hf || hf<=hi || !f1){ hint.textContent = t ? `Tarifa: ${fmtMoney(t)} por hora. Indica hora de inicio y fin para sugerir el valor.` : ''; return; }
+  const horas = ((Number(hf.slice(0,2))*60+Number(hf.slice(3,5)))-(Number(hi.slice(0,2))*60+Number(hi.slice(3,5))))/60;
+  const dias = Math.max(1, Math.round((new Date(f2+'T00:00:00')-new Date(f1+'T00:00:00'))/86400000)+1);
+  const desc = document.getElementById('resDescuento').checked && horas*dias>=3;
+  const sug = Math.round(t*horas*dias*(desc?0.9:1));
+  hint.textContent = `Sugerido: ${fmtMoney(sug)} (${horas} h × ${dias} día(s) × ${fmtMoney(t)}${desc?', −10%':''}). Puedes escribir otro valor.`;
+  const campo = document.getElementById('resExtCosto');
+  if(autollenar && (!campo.value || Number(campo.value)===espUltimaSug)){ campo.value = sug; }
+  espUltimaSug = sug;
+}
+['resEspacio','resHoraInicio','resHoraFin','resFecha','resFechaInicio','resFechaFin','resUnDia','resDescuento'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', ()=>{ if(reservaTipoActual==='Externa') actualizarSugerenciaTarifa(true); });
+});
 function openReservaModal(tipo, fechaPreset, reservaId){
   const r = reservaId ? reservasEspacios.find(x=>x.id===reservaId) : null;
   reservaTipoActual = r ? r.tipo : tipo;
   editingReservaId = reservaId || null;
 
-  document.getElementById('reservaModalTitle').textContent = r ? 'Editar reserva' : `Nueva reserva — Actividad ${reservaTipoActual}`;
+  const esExt0 = reservaTipoActual==='Externa';
+  document.getElementById('reservaModalTitle').textContent = r ? (esExt0?'Editar cotización / alquiler':'Editar reserva') : (esExt0?'Nueva cotización / alquiler':'Nueva actividad interna');
+  poblarEspaciosSelect(r?.espacio);
   document.getElementById('resEspacio').value = r?.espacio || '';
-  document.getElementById('resEstado').value = r?.estado || 'Confirmada';
+  const estOpts = esExt0 ? ['Cotizada','Confirmada','Cancelada','No disponible'] : ['Confirmada','Pendiente de aprobación','Cancelada'];
+  document.getElementById('resEstado').innerHTML = estOpts.map(o=>`<option>${o}</option>`).join('');
+  document.getElementById('resEstado').value = r?.estado || (esExt0 ? 'Cotizada' : 'Confirmada');
+  document.getElementById('resCliente').value = r?.cliente || 'Cliente externo';
+  document.getElementById('resDescuento').checked = !!r?.descuento;
 
   const esMultiDia = !!(r && r.fechaFin && r.fechaFin!==r.fecha);
   document.getElementById('resUnDia').checked = !esMultiDia;
@@ -11180,8 +11243,16 @@ function openReservaModal(tipo, fechaPreset, reservaId){
   ['resExtContactoWrap','resExtCostoWrap','resExtPagoWrap'].forEach(id=>{
     document.getElementById(id).style.display = esExterna ? 'block' : 'none';
   });
+  ['resClienteWrap','resTarifaHintWrap','resDescWrap'].forEach(id=>{ document.getElementById(id).style.display = esExterna ? 'block' : 'none'; });
+  const ci = document.getElementById('resCotInfoWrap');
+  if(r && r.cotNumero){ document.getElementById('resCotInfo').textContent = `${r.cotNumero} · emitida ${fmtDate(r.cotFecha)} · vigente hasta ${fmtDate(r.cotVence)}${resEstadoEf(r)==='Vencida'?' (VENCIDA)':''}`; ci.style.display='block'; }
+  else ci.style.display='none';
+  document.getElementById('btnResConfirmar').style.display = (r && esExterna && r.estado==='Cotizada') ? 'inline-block' : 'none';
+  espUltimaSug = null; actualizarSugerenciaTarifa(!r);
   document.getElementById('btnResDelete').style.display = r ? 'inline-block' : 'none';
   document.getElementById('btnResComprobante').style.display = r ? 'inline-block' : 'none';
+  document.getElementById('btnResComprobante').textContent = esExterna ? '⬇ Cotización PDF' : '⬇ Comprobante PDF';
+  document.getElementById('resDescWrap').style.display = esExterna ? 'block' : 'none';
   document.getElementById('reservaModalBg').classList.add('active');
 }
 function closeReservaModal(){
@@ -11198,19 +11269,17 @@ document.getElementById('resEsRecurrente').addEventListener('change', (e)=>{
    contra las reservas ya existentes MÁS las que se van creando en el mismo
    lote (para series recurrentes) — ignora las reservas Canceladas, que ya
    no deben bloquear el espacio. */
+function reservaSolapa(r, espacio, fecha, fechaFin, horaInicio, horaFin){
+  if(r.espacio.toLowerCase()!==espacio.toLowerCase()) return false;
+  if(!(fecha <= (r.fechaFin||r.fecha) && fechaFin >= r.fecha)) return false;
+  const multi = fecha!==fechaFin || (r.fechaFin && r.fechaFin!==r.fecha);
+  if(multi) return true;
+  if(!horaInicio || !horaFin || !r.horaInicio || !r.horaFin) return true;
+  return horaInicio < r.horaFin && horaFin > r.horaInicio;
+}
 function hayConflictoEspacio(espacio, fecha, fechaFin, horaInicio, horaFin, excluirId, extra){
   const todas = extra ? [...reservasEspacios, ...extra] : reservasEspacios;
-  const hayCruceFechas = (r) => fecha <= (r.fechaFin||r.fecha) && fechaFin >= r.fecha;
-  return todas.find(r=>{
-    if(r.id===excluirId) return false;
-    if(r.estado==='Cancelada') return false;
-    if(r.espacio.toLowerCase()!==espacio.toLowerCase()) return false;
-    if(!hayCruceFechas(r)) return false;
-    const esteEsMultiDia = fecha!==fechaFin || (r.fechaFin && r.fechaFin!==r.fecha);
-    if(esteEsMultiDia) return true;
-    if(!horaInicio || !horaFin || !r.horaInicio || !r.horaFin) return true;
-    return horaInicio < r.horaFin && horaFin > r.horaInicio;
-  });
+  return todas.find(r=> r.id!==excluirId && resActiva(r) && reservaSolapa(r, espacio, fecha, fechaFin, horaInicio, horaFin));
 }
 
 document.getElementById('btnSaveReserva').addEventListener('click', async ()=>{
@@ -11238,6 +11307,8 @@ document.getElementById('btnSaveReserva').addEventListener('click', async ()=>{
   const datosBase = {
     tipo: reservaTipoActual, espacio, horaInicio, horaFin, solicitante,
     estado: document.getElementById('resEstado').value,
+    cliente: esExterna ? document.getElementById('resCliente').value : undefined,
+    descuento: esExterna ? document.getElementById('resDescuento').checked : undefined,
     motivo: document.getElementById('resMotivo').value.trim(),
     extContacto: document.getElementById('resExtContacto').value.trim(),
     extCosto: Number(document.getElementById('resExtCosto').value)||0,
@@ -11288,25 +11359,49 @@ document.getElementById('btnSaveReserva').addEventListener('click', async ()=>{
   // BLOQUEO real (no solo aviso) de choques de horario en el mismo espacio,
   // revisando TODAS las reservas activas (internas y externas juntas, sin
   // contar las canceladas) — así los dos calendarios quedan sincronizados.
-  const conflicto = hayConflictoEspacio(espacio, fecha, fechaFin, horaInicio, horaFin, editingReservaId);
+  const conflicto = (datosBase.estado==='Cotizada'||datosBase.estado==='Cancelada'||datosBase.estado==='No disponible') && !(datosBase.estado==='Cotizada')
+    ? null : hayConflictoEspacio(espacio, fecha, fechaFin, horaInicio, horaFin, editingReservaId);
   if(conflicto){
     showToast(`❌ "${espacio}" ya está ocupado por una actividad ${conflicto.tipo.toLowerCase()} (${conflicto.solicitante}) en esas fechas/horario. Elige otro espacio, fecha u hora.`);
     return;
   }
 
   const data = {...datosBase, fecha, fechaFin};
+  let guardada;
   if(editingReservaId){
     const idx = reservasEspacios.findIndex(x=>x.id===editingReservaId);
     reservasEspacios[idx] = {...reservasEspacios[idx], ...data};
+    guardada = reservasEspacios[idx];
   }else{
-    reservasEspacios.push({id: uid(), ...data, createdAt: new Date().toISOString()});
+    guardada = {id: uid(), ...data, createdAt: new Date().toISOString()};
+    reservasEspacios.push(guardada);
+  }
+  if(esExterna && !guardada.cotNumero){
+    const anio = new Date().getFullYear();
+    const n = reservasEspacios.filter(x=>x.cotNumero && x.cotNumero.startsWith('COT-'+anio)).length + 1;
+    guardada.cotNumero = `COT-${anio}-${String(n).padStart(3,'0')}`;
+    guardada.cotFecha = todayISO();
+    const v = new Date(); v.setDate(v.getDate()+8);
+    guardada.cotVence = `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;
+  }
+  // al quedar activa (confirmada), las cotizaciones abiertas que se cruzan pasan a "No disponible"
+  let desplazadas = 0;
+  if(resActiva(guardada)){
+    reservasEspacios.forEach(x=>{
+      if(x.id!==guardada.id && x.estado==='Cotizada' && reservaSolapa(x, guardada.espacio, guardada.fecha, guardada.fechaFin||guardada.fecha, guardada.horaInicio, guardada.horaFin)){ x.estado='No disponible'; desplazadas++; }
+    });
   }
   await saveReservasEspacios();
   closeReservaModal();
   renderCalendarioMes(reservaTipoActual);
   renderListaReservas('Interna');
   renderListaReservas('Externa');
-  showToast('Reserva guardada.');
+  showToast(desplazadas ? `Reserva guardada. ${desplazadas} cotización(es) que se cruzaban quedaron como No disponible.` : 'Reserva guardada.');
+});
+document.getElementById('btnResConfirmar').addEventListener('click', ()=>{
+  document.getElementById('resEstado').value = 'Confirmada';
+  document.getElementById('resExtPago').value = 'Pagado';
+  document.getElementById('btnSaveReserva').click();
 });
 document.getElementById('btnResDelete').addEventListener('click', async ()=>{
   if(!editingReservaId) return;
@@ -11323,12 +11418,13 @@ document.getElementById('btnResDelete').addEventListener('click', async ()=>{
 
 /* --- Exportar a PDF: listado del mes visible (mismo mecanismo de pestaña
    nueva, sin depender de librerías externas) --- */
-function construirListadoReservasHTML(tipo){
-  const mesDate = tipo==='Interna' ? calMesInterna : calMesExterna;
+function construirListadoReservasHTML(){
+  const tipo = {todo:'internas y externas',Interna:'internas',Externa:'externas'}[espFiltro];
+  const mesDate = calMes;
   const year = mesDate.getFullYear(), month = mesDate.getMonth();
   const inicioMes = `${year}-${String(month+1).padStart(2,'0')}-01`;
   const finMes = new Date(year, month+1, 0).toISOString().slice(0,10);
-  const reservas = reservasEspacios.filter(r=>r.tipo===tipo && r.fecha<=finMes && (r.fechaFin||r.fecha)>=inicioMes)
+  const reservas = reservasEspacios.filter(r=>resVisible(r) && r.fecha<=finMes && (r.fechaFin||r.fecha)>=inicioMes)
     .sort((a,b)=>(a.fecha+((a.horaInicio)||'')).localeCompare(b.fecha+((b.horaInicio)||'')));
   const fechaStr = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
   const mesLabel = mesDate.toLocaleDateString('es-CO',{month:'long',year:'numeric'});
@@ -11342,7 +11438,7 @@ function construirListadoReservasHTML(tipo){
       <td style="padding:6px 8px;border:1px solid #D6E5E0;font-weight:600;">${esc(r.espacio)}</td>
       <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(r.solicitante)}</td>
       <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(r.motivo)||'—'}</td>
-      <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(r.estado)||'Confirmada'}</td>
+      <td style="padding:6px 8px;border:1px solid #D6E5E0;">${esc(resEstadoEf(r))}</td>
     </tr>`;
   }).join('');
 
@@ -11377,16 +11473,105 @@ function construirListadoReservasHTML(tipo){
   <\/script>
 </body></html>`;
 }
-function exportarListadoReservasPDF(tipo){
+function exportarListadoReservasPDF(){
   const win = window.open('', '_blank');
   if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
   win.document.open();
-  win.document.write(construirListadoReservasHTML(tipo));
+  win.document.write(construirListadoReservasHTML());
   win.document.close();
   showToast('Se abrió una pestaña nueva con el listado del mes. Ahí elige "Guardar como PDF".');
 }
-document.getElementById('btnExportarInternaPDF').addEventListener('click', ()=>exportarListadoReservasPDF('Interna'));
-document.getElementById('btnExportarExternaPDF').addEventListener('click', ()=>exportarListadoReservasPDF('Externa'));
+
+
+/* --- Cotización formal de alquiler (formato institucional) --- */
+function numeroALetras(n){
+  n = Math.round(Number(n)||0);
+  if(n===0) return 'cero';
+  const U=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'];
+  const D=['','','','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+  const C=['','ciento','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+  const menos1000 = x=>{
+    if(x===100) return 'cien';
+    let t=''; const c=Math.floor(x/100), r=x%100;
+    if(c) t+=C[c]+' ';
+    if(r<30) t+=U[r]; else { t+=D[Math.floor(r/10)]; if(r%10) t+=' y '+U[r%10]; }
+    return t.trim();
+  };
+  const miles = x=>{ const m=Math.floor(x/1000), r=x%1000; let t=''; if(m) t+=(m===1?'mil':menos1000(m).replace(/uno$/,'un')+' mil')+' '; if(r) t+=menos1000(r); return t.trim(); };
+  const mill=Math.floor(n/1000000), resto=n%1000000;
+  let t=''; if(mill) t+=(mill===1?'un millón':miles(mill).replace(/uno$/,'un')+' millones')+' ';
+  if(resto) t+=miles(resto);
+  return t.trim();
+}
+function pesosLetras(n){ const t=numeroALetras(n); return t.charAt(0).toUpperCase()+t.slice(1)+' pesos m/l'; }
+function hora12(h){ if(!h) return '—'; let [a,b]=h.split(':').map(Number); const ap=a>=12?'PM':'AM'; a=a%12||12; return `${a}:${String(b).padStart(2,'0')} ${ap}`; }
+function fechaLarga(iso){ return new Date(iso+'T00:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}); }
+
+function construirCotizacionHTML(r, firmaImg){
+  const tarifa = tarifaEspacio(r.espacio);
+  const cat = espaciosCatalogo.find(x=>x.nombre.toLowerCase()===r.espacio.toLowerCase());
+  const capacidad = cat && cat.capacidad ? cat.capacidad : 0;
+  let horas = 0;
+  if(r.horaInicio && r.horaFin){ horas = ((Number(r.horaFin.slice(0,2))*60+Number(r.horaFin.slice(3,5)))-(Number(r.horaInicio.slice(0,2))*60+Number(r.horaInicio.slice(3,5))))/60; }
+  const dias = Math.max(1, Math.round((new Date((r.fechaFin||r.fecha)+'T00:00:00')-new Date(r.fecha+'T00:00:00'))/86400000)+1);
+  const hTot = horas*dias;
+  const base = Math.round(tarifa*hTot);
+  const total = Number(r.extCosto)||base;
+  const desc = r.descuento && hTot>=3 ? Math.round(base*0.1) : 0;
+  const fechaAct = (r.fechaFin && r.fechaFin!==r.fecha) ? `${fechaLarga(r.fecha)} al ${fechaLarga(r.fechaFin)}` : fechaLarga(r.fecha);
+  const fmtH = x=>Number.isInteger(x)?x:x.toFixed(1).replace('.',',');
+  const lineaServ = (tarifa && hTot) ? `${fmtH(hTot)} hora${hTot===1?'':'s'} x ${fmtMoney(tarifa)} = ${fmtMoney(base)}` : fmtMoney(total);
+  const logoCab = (document.querySelector('.lg-cab')||{}).src || '';
+  const logoEfqm = (document.querySelector('.lg-efqm')||{}).src || '';
+  const row = (k,v)=>`<tr><td class="k">${k}</td><td>${v}</td></tr>`;
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Cotización ${esc(r.cotNumero||'')}</title><style>
+  @page{size:letter;margin:12mm 16mm}
+  body{font-family:Calibri,Arial,sans-serif;font-size:13px;color:#000;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .wrap{min-height:255mm;display:flex;flex-direction:column;}
+  .cab{text-align:center;border-bottom:1.5px solid #03459B;padding-bottom:6px;}
+  .cab img{height:72px;display:block;margin:0 auto 4px;}
+  .cab .t1{font-weight:700;font-size:12px;color:#03459B;}.cab .t2{font-size:10.5px;}
+  h1{text-align:center;font-size:20px;margin:14px 0 2px;color:#011632;letter-spacing:1px;}
+  .sub{text-align:center;font-weight:700;font-size:13px;}.fec{text-align:center;font-weight:700;margin:4px 0 16px;}
+  table{width:100%;border-collapse:collapse;}td{padding:6px 4px;vertical-align:top;}td.k{width:36%;font-weight:700;}
+  .tot td{padding-top:10px;}
+  .nota{font-size:11px;text-align:justify;margin:10px 0;}
+  .firma{margin-top:22px;} .firma img{height:60px;display:block;margin-bottom:2px;}
+  .pie{margin-top:auto;text-align:center;border-top:1.5px solid #03459B;padding-top:6px;font-size:10px;color:#03459B;}
+  .pie img{height:46px;display:block;margin:6px auto 0;}
+  .btn-volver-noprint{position:fixed;top:14px;left:14px;background:#011632;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;}
+  @media print{.btn-volver-noprint{display:none !important;}}
+  </style></head><body><div class="wrap">
+  <div class="cab"><img src="${logoCab}"><div class="t1">INSTITUCIÓN DE LA IGLESIA PRESBITERIANA DE COLOMBIA</div>
+    <div class="t2">Aprobado por el Ministerio de Educación Nacional · Licencia de Funcionamiento No 03185 del 18 de Mayo del 2012<br>Secretaría de Educación Distrital para todas las secciones · NIT: 890.111.655-1</div></div>
+  <h1>COTIZACIÓN</h1>
+  <div class="sub">${esc(r.espacio)}</div>
+  <div class="fec">Fecha: ${fechaLarga(r.cotFecha||todayISO())}${r.cotNumero?' &nbsp;·&nbsp; No. '+esc(r.cotNumero):''}</div>
+  <table>
+    ${row('SOLICITANTE:',esc(r.solicitante))}
+    ${row('FECHA DE LA ACTIVIDAD:',fechaAct)}
+    ${row('HORARIO DE LA ACTIVIDAD:',`${hora12(r.horaInicio)} A ${hora12(r.horaFin)}`)}
+    ${capacidad?row('CAPACIDAD DEL ESPACIO:',`${capacidad} PERSONAS`):''}
+    ${tarifa?row('VALOR POR HORA:',fmtMoney(tarifa)):''}
+    ${row('VALOR DEL SERVICIO:',`${lineaServ}${desc?`<br>Descuento 10% (3 horas o más): −${fmtMoney(desc)}`:''}`)}
+    <tr class="tot"><td class="k">TOTAL A PAGAR:</td><td><b>Son ${fmtMoney(total)}</b> (${pesosLetras(total)})</td></tr>
+    <tr class="tot"><td class="k">FORMA DE PAGO:</td><td>Consignación en cuenta del colegio, a través de una Factura emitida por el Colegio Americano. Traer obligatoriamente Rut. Presentar volante de consignación una vez hecho el pago a la <b>Cuenta de ahorros No. 40437173378</b> del banco <b>Bancolombia</b> a nombre de <b>ASOCIACION PRESBITERIO DE LA COSTA NIT 8901116551</b>, en el Dpto. Dir. Administrativa y Financiera. En la fecha del evento, debe haberse realizado el pago total.</td></tr>
+  </table>
+  <p class="nota"><b>NOTA:</b> EL ARRENDATARIO SE COMPROMETE A DARLE EL USO AL RECINTO PARA EL CUAL DECLARA HABERLO CONTRATADO, Y SE COMPROMETE A PAGAR AL COLEGIO AMERICANO LOS DAÑOS QUE SE GENEREN POR MAL USO DE LOS ASISTENTES AL EVENTO.</p>
+  <p class="nota">ESTE DOCUMENTO NO APLICA PARA RESERVAR EL ESPACIO, ESTÁ SUJETO A DISPONIBILIDAD UNA VEZ SE CONFIRME LA ACTIVIDAD Y EL RESPECTIVO PAGO.${r.cotVence?` Vigencia de la cotización: hasta el ${fechaLarga(r.cotVence)}.`:''}</p>
+  <p class="nota">El Colegio Americano es una Institución de la Iglesia Presbiteriana de Colombia, entidad sin ánimo de lucro, por lo tanto, favor abstenerse de practicar retención en la fuente.</p>
+  <p class="nota"><b>Para más información favor llamar al teléfono: 3512200 ext. 170 EMAIL:</b> Alfonso Monserrat Tejada logisticayseguridad@colegio-americano.edu.co.</p>
+  <div class="firma">${firmaImg?`<img src="${firmaImg}">`:'<div style="height:60px;"></div>'}<b>Alfonso Monserrat Tejada</b><br>L. Servicios Generales</div>
+  <div class="pie">Dirección: Carrera 38 No 74-179 – PBX: 3610431 · Fax Rectoría: 3684072<br>E-mail: colegioamericano@colegioamericano.edu.co · www.colegioamericano.edu.co<img src="${logoEfqm}"></div>
+  </div></body></html>`;
+}
+async function cotizacionPDF(r){
+  let firmaImg = '';
+  if(firmaRecibidos && await pedirPinRS()) firmaImg = await firmaRecortadaRS();
+  document.getElementById('rsPreviewTitulo').textContent = 'Previsualización de la cotización';
+  document.getElementById('rsPreviewFrame').srcdoc = construirCotizacionHTML(r, firmaImg);
+  document.getElementById('rsPreviewModalBg').classList.add('active');
+}
 
 /* --- Exportar a PDF: comprobante individual de una reserva --- */
 function construirComprobanteHTML(reserva){
@@ -11447,6 +11632,7 @@ document.getElementById('btnResComprobante').addEventListener('click', ()=>{
   if(!editingReservaId) return;
   const r = reservasEspacios.find(x=>x.id===editingReservaId);
   if(!r) return;
+  if(r.tipo==='Externa'){ cotizacionPDF(r); return; }
   const win = window.open('', '_blank');
   if(!win){ showToast('El navegador bloqueó la pestaña nueva. Permite ventanas emergentes e inténtalo de nuevo.'); return; }
   win.document.open();
