@@ -1463,8 +1463,9 @@
     <div class="modal-actions"><button class="ghost" id="btnHorCancelar">Cancelar</button><button class="primary" id="btnHorGuardar">Guardar</button></div>
   </div></div>
   <div class="modal-bg" id="horPersonaModalBg"><div class="modal" style="max-width:380px;">
-    <h2>Agregar persona</h2>
+    <h2 id="horPTitulo">Agregar persona</h2>
     <div class="field"><label>Nombre</label><input type="text" id="horPNombre" list="horPLista"><datalist id="horPLista"></datalist></div>
+    <div class="field" id="horPGrupoWrap"><label>Grupo</label><select id="horPGrupo"><option value="normal">Lunes a viernes (L1 / L2)</option><option value="sabado">Grupo sábado (G1 / G2 / SA)</option></select></div>
     <div class="modal-actions"><button class="ghost" id="btnHorPCancelar">Cancelar</button><button class="primary" id="btnHorPGuardar">Agregar</button></div>
   </div></div>
   <div class="modal-bg" id="horCatModalBg"><div class="modal" style="max-width:720px;">
@@ -9229,6 +9230,7 @@ const HOR_BASE_TURNOS = {
   G2:['G2','06:00','12:18',5.8,'Viernes grupo sábado (desde 15-jul)',0,'#00B050'],
   SA:['SA','07:00','12:00',5,'Sábado',0,'#FFC000']
 };
+function horGrupoDe(p){ return p.grupo || (horEsGrupoSabado(p.nombre) ? 'sabado' : 'normal'); }
 function horEsGrupoSabado(nombre){
   const n = nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   return ['audio','samith','jesus','leonardo'].some(k=>n.includes(k));
@@ -9243,7 +9245,7 @@ async function horAplicarBaseMant(){
   }
   let n = 0;
   horMant.personal.forEach(p=>{
-    const sab = horEsGrupoSabado(p.nombre);
+    const sab = horGrupoDe(p)==='sabado';
     for(let f='2026-01-01'; f<='2026-12-31'; f=sumaDias(f,1)){
       if(horMant.turnos.some(t=>t.personaId===p.id && t.fecha===f)) continue;
       const dow = new Date(f+'T00:00:00').getDay(), post = f>='2026-07-15';
@@ -9283,12 +9285,13 @@ async function renderHorarios(){
   const mes = inp.value, st = horStore();
   document.querySelectorAll('#horAreaTabs [data-horarea]').forEach(b=>b.classList.toggle('active', b.dataset.horarea===horArea));
   document.getElementById('horTitulo').textContent = 'Horario ' + (horArea==='logistica'?'de Logística':'de Mantenimiento');
-  document.getElementById('horPersonal').innerHTML = st.personal.map(p=>`<span class="pill" style="padding:4px 10px;">${esc(p.nombre)} <button class="ghost" data-hordelpersona="${p.id}" style="padding:0 6px;border:none;" title="Quitar">✕</button></span>`).join('') || '<span class="hint">Aún no hay personal. Usa + Persona.</span>';
+  document.getElementById('horPersonal').innerHTML = st.personal.map(p=>`<span class="pill" style="padding:4px 10px;">${esc(p.nombre)}${horArea==='mantenimiento'?` <span class="hint" style="margin:0;">· ${horGrupoDe(p)==='sabado'?'Grupo sábado':'L-V'}</span>`:''} <button class="ghost" data-horeditpersona="${p.id}" style="padding:0 6px;border:none;" title="Editar">✎</button><button class="ghost" data-hordelpersona="${p.id}" style="padding:0 6px;border:none;" title="Quitar">✕</button></span>`).join('') || '<span class="hint">Aún no hay personal. Usa + Persona.</span>';
   document.getElementById('horGrid').innerHTML = horGridHTML(mes);
   document.getElementById('horLeyenda').innerHTML = horLeyendaHTML(mes) + (horCatalogo(mes).length ? '' : '<span class="hint">Este mes no tiene turnos definidos: usa "⚙ Turnos del mes".</span>');
   document.querySelectorAll('[data-horcelda]').forEach(td=>td.addEventListener('click', ()=>{
     const [pid, f] = td.dataset.horcelda.split('|'); horAbrirAsignar(pid, f);
   }));
+  document.querySelectorAll('[data-horeditpersona]').forEach(b=>b.addEventListener('click', ()=>horPersonaAbrir(b.dataset.horeditpersona)));
   document.querySelectorAll('[data-hordelpersona]').forEach(b=>b.addEventListener('click', async ()=>{
     const p = st.personal.find(x=>x.id===b.dataset.hordelpersona);
     if(!p || !await customConfirm(`¿Quitar a ${p.nombre} del horario? También se borrarán sus turnos.`)) return;
@@ -9343,18 +9346,42 @@ document.getElementById('btnHorGuardar').addEventListener('click', async ()=>{
   renderHorarios();
   showToast(n ? `${n} día(s) actualizado(s).` : 'Ningún día coincide con los días elegidos.');
 });
-document.getElementById('btnHorPersona').addEventListener('click', ()=>{
-  document.getElementById('horPNombre').value = '';
+let horPEditId = null;
+function horPersonaAbrir(id){
+  horPEditId = id || null;
+  const p = id ? horStore().personal.find(x=>x.id===id) : null;
+  document.getElementById('horPTitulo').textContent = p ? 'Editar persona' : 'Agregar persona';
+  document.getElementById('btnHorPGuardar').textContent = p ? 'Guardar' : 'Agregar';
+  document.getElementById('horPGrupoWrap').style.display = horArea==='mantenimiento' ? '' : 'none';
+  document.getElementById('horPGrupo').value = p ? horGrupoDe(p) : 'normal';
+  document.getElementById('horPNombre').value = p ? p.nombre : '';
   document.getElementById('horPLista').innerHTML = (horArea==='logistica' ? [] : trabajadores).map(t=>`<option value="${esc(t.nombre)}">`).join('');
   document.getElementById('horPersonaModalBg').classList.add('active');
-});
+}
+document.getElementById('btnHorPersona').addEventListener('click', ()=>horPersonaAbrir(null));
 document.getElementById('btnHorPCancelar').addEventListener('click', ()=>document.getElementById('horPersonaModalBg').classList.remove('active'));
 document.getElementById('btnHorPGuardar').addEventListener('click', async ()=>{
   const nombre = document.getElementById('horPNombre').value.trim(), st = horStore();
   if(!nombre){ showToast('Escribe el nombre.'); return; }
-  if(st.personal.some(p=>p.nombre.toLowerCase()===nombre.toLowerCase())){ showToast('Esa persona ya está en el horario.'); return; }
+  if(st.personal.some(p=>p.id!==horPEditId && p.nombre.toLowerCase()===nombre.toLowerCase())){ showToast('Esa persona ya está en el horario.'); return; }
+  const grupo = document.getElementById('horPGrupo').value;
+  if(horPEditId){
+    const p = st.personal.find(x=>x.id===horPEditId); if(!p) return;
+    const cambioGrupo = horArea==='mantenimiento' && grupo!==horGrupoDe(p);
+    p.nombre = nombre;
+    if(horArea==='mantenimiento'){
+      p.grupo = grupo;
+      const tr = trabajadores.find(t=>t.nombre.trim().toLowerCase()===nombre.toLowerCase()); if(tr) p.trabajadorId = tr.id;
+    }
+    document.getElementById('horPersonaModalBg').classList.remove('active');
+    if(cambioGrupo && await customConfirm(`¿Rehacer el horario base 2026 de ${nombre} según su nuevo grupo? Se reemplazan sus turnos L1, L2, G1, G2 y SA; las marcas (vacaciones, incapacidad, permisos, festivos) y turnos personalizados no se tocan.`, 'Cambio de grupo')){
+      st.turnos = st.turnos.filter(t=>!(t.personaId===p.id && HOR_BASE_TURNOS[t.codigo]));
+      await horAplicarBaseMant();
+    }
+    await horGuardar(); renderHorarios(); showToast('Persona actualizada.'); return;
+  }
   const tr = horArea==='logistica' ? null : trabajadores.find(t=>t.nombre.trim().toLowerCase()===nombre.toLowerCase());
-  st.personal.push(horArea==='logistica' ? {id:uid(), nombre, salario:0} : {id:uid(), nombre, trabajadorId: tr ? tr.id : ''});
+  st.personal.push(horArea==='logistica' ? {id:uid(), nombre, salario:0} : {id:uid(), nombre, trabajadorId: tr ? tr.id : '', grupo});
   await horGuardar();
   document.getElementById('horPersonaModalBg').classList.remove('active');
   renderHorarios();
@@ -9414,7 +9441,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2025';
+const APP_VERSION = '2026-11-18-2040';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
