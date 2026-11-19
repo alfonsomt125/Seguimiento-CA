@@ -8666,7 +8666,7 @@ function renderHorasExtra(){
     <div class="he-bar-row" data-vertrabajadorhe="${f.t.id}">
       <span class="name" style="width:150px;flex-shrink:0;font-weight:600;display:flex;align-items:center;gap:4px;" title="${esc(f.t.nombre)}">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(f.t.nombre)}</span>
-        <span data-horariohe="${f.t.id}" title="Horario habitual" style="cursor:pointer;flex-shrink:0;">⏰</span>
+        <span data-horariohe="${f.t.id}" title="Horario habitual" style="cursor:pointer;flex-shrink:0;">⏰</span>${heAreaActual==='mantenimiento'?`<span data-editarhe="${f.t.id}" title="Editar nombre y grupo (es la misma lista del horario)" style="cursor:pointer;flex-shrink:0;">✎</span>`:''}
       </span>
       <div class="he-bar-track">
         <div class="he-bar-fill" style="width:${Math.max(f.pct,f.total>0?6:0)}%;background:${f.color};"></div>
@@ -8676,6 +8676,16 @@ function renderHorasExtra(){
     </div>`).join('') : `<p class="empty">${heAreaActual==='logistica'?'Aún no hay horas extras de Logística. Usa + Agregar y elige al trabajador.':'Aún no hay trabajadores registrados (se agregan desde Salida de Insumos).'}</p>`;
   resumenWrap.querySelectorAll('[data-horariohe]').forEach(el=>{
     el.addEventListener('click', (e)=>{ e.stopPropagation(); abrirHeHorarioModal(el.dataset.horariohe); });
+  });
+  resumenWrap.querySelectorAll('[data-editarhe]').forEach(el=>{
+    el.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const t = trabajadores.find(x=>x.id===el.dataset.editarhe); if(!t) return;
+      horArea = 'mantenimiento';
+      let p = horMant.personal.find(x=>x.trabajadorId===t.id);
+      if(!p){ p = {id:uid(), nombre:t.nombre, trabajadorId:t.id}; horMant.personal.push(p); await horGuardar(); }
+      horPersonaAbrir(p.id);
+    });
   });
   resumenWrap.querySelectorAll('[data-vertrabajadorhe]').forEach(el=>{
     el.addEventListener('click', ()=>abrirDetalleHE(el.dataset.vertrabajadorhe));
@@ -9434,14 +9444,21 @@ document.getElementById('btnHorPGuardar').addEventListener('click', async ()=>{
     p.nombre = nombre;
     if(horArea==='mantenimiento'){
       p.grupo = grupo;
-      const tr = trabajadores.find(t=>t.nombre.trim().toLowerCase()===nombre.toLowerCase()); if(tr) p.trabajadorId = tr.id;
+      const tr = trabajadores.find(t=>t.nombre.trim().toLowerCase()===nombre.toLowerCase());
+      const propio = trabajadores.find(t=>t.id===p.trabajadorId);
+      if(tr) p.trabajadorId = tr.id;
+      else if(propio){   // misma persona con otro nombre: se renombra en toda la app (horario, horas extras, listado de entrega)
+        propio.nombre = nombre;
+        horasExtras.forEach(h=>{ if(h.trabajadorId===propio.id) h.trabajadorNombre = nombre; });
+        await saveTrabajadores(); await saveHorasExtras();
+      }
     }
     document.getElementById('horPersonaModalBg').classList.remove('active');
     if(cambioGrupo && await customConfirm(`¿Rehacer el horario base 2026 de ${nombre} según su nuevo grupo? Se reemplazan sus turnos L1, L2, G1, G2 y SA; las marcas (vacaciones, incapacidad, permisos, festivos) y turnos personalizados no se tocan.`, 'Cambio de grupo')){
       st.turnos = st.turnos.filter(t=>!(t.personaId===p.id && HOR_BASE_TURNOS[t.codigo]));
       await horAplicarBaseMant();
     }
-    await horGuardar(); renderHorarios(); showToast('Persona actualizada.'); return;
+    await horGuardar(); renderHorarios(); if(typeof renderHorasExtra==='function') renderHorasExtra(); showToast('Persona actualizada.'); return;
   }
   const tr = horArea==='logistica' ? null : trabajadores.find(t=>t.nombre.trim().toLowerCase()===nombre.toLowerCase());
   st.personal.push(horArea==='logistica' ? {id:uid(), nombre, salario:0} : {id:uid(), nombre, trabajadorId: tr ? tr.id : '', grupo});
@@ -9504,7 +9521,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2130';
+const APP_VERSION = '2026-11-18-2145';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
