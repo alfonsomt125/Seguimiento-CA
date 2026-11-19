@@ -1760,7 +1760,7 @@
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
       <h2 style="margin:0;">Registros de horas extras</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="ghost" id="btnHeRecogerTodo">▸ Recoger todo</button>
+        <button class="ghost" id="btnHeRecogerTodo">▴ Recoger todo</button>
         <button class="ghost" id="btnHeExpandirTodo">▾ Expandir todo</button>
         <button class="ghost" id="btnHeRapido">⚡ Registro rápido del mes</button>
         <button class="primary" id="btnNuevaHoraExtra">+ Agregar</button>
@@ -8705,7 +8705,7 @@ function renderHorasExtra(){
         <button class="ghost danger" data-eliminarhe="${h.id}">Eliminar</button>
       </div></td>
     </tr>`).join('');
-    return `<tr style="background:var(--paper-2,#f4f5f8);"><td colspan="4" style="font-weight:700;color:var(--navy);cursor:pointer;" data-hegtoggle="${esc(nombre)}"><span class="he-flecha">${abierto?'▾':'▸'}</span> ${esc(nombre)} — ${totalPersona}h <span class="hint" style="margin:0 0 0 6px;font-weight:400;">(${filas.length} registro${filas.length>1?'s':''})</span>${heNotaDe(filas[0].trabajadorId)?`<div class="hint" style="margin:2px 0 0 18px;font-weight:400;white-space:pre-wrap;">📝 ${esc(heNotaDe(filas[0].trabajadorId))}</div>`:''}</td><td style="text-align:right;white-space:nowrap;"><button class="ghost" data-notahe="${filas[0].trabajadorId}">📝 ${heNotaDe(filas[0].trabajadorId)?'Ver nota':'Nota'}</button> <button class="ghost" data-agregarhe="${filas[0].trabajadorId}">+ Agregar</button> <button class="ghost" data-raprapido="${filas[0].trabajadorId}">⚡ Mes</button></td></tr>${filasHtml}`;
+    return `<tr style="background:var(--paper-2,#f4f5f8);"><td colspan="4" style="font-weight:700;color:var(--navy);cursor:pointer;" data-hegtoggle="${esc(nombre)}"><span class="he-flecha" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-right:8px;border:1px solid var(--line,#5a6070);border-radius:50%;font-size:15px;line-height:1;vertical-align:middle;">${abierto?'▾':'▸'}</span>${esc(nombre)} — ${totalPersona}h <span class="hint" style="margin:0 0 0 6px;font-weight:400;">(${filas.length} registro${filas.length>1?'s':''})</span>${heNotaDe(filas[0].trabajadorId)?`<div class="hint" style="margin:2px 0 0 18px;font-weight:400;white-space:pre-wrap;">📝 ${esc(heNotaDe(filas[0].trabajadorId))}</div>`:''}</td><td style="text-align:right;white-space:nowrap;"><button class="ghost" data-hegtoggle="${esc(nombre)}" style="min-width:150px;">${abierto?'▴ Ocultar registros':'▾ Ver registros'}</button> <button class="ghost" data-notahe="${filas[0].trabajadorId}">📝 ${heNotaDe(filas[0].trabajadorId)?'Ver nota':'Nota'}</button> <button class="ghost" data-agregarhe="${filas[0].trabajadorId}">+ Agregar</button> <button class="ghost" data-raprapido="${filas[0].trabajadorId}">⚡ Mes</button></td></tr>${filasHtml}`;
   }).join('') : `<tr><td colspan="5" class="empty">${busqueda ? 'Nada coincide con la búsqueda.' : 'No hay horas extras registradas en este período.'}</td></tr>`;
 
   tbody.querySelectorAll('[data-hegtoggle]').forEach(c=>c.addEventListener('click', ()=>{
@@ -9505,7 +9505,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2155';
+const APP_VERSION = '2026-11-18-2205';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
