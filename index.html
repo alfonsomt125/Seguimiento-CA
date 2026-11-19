@@ -1436,6 +1436,7 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="ghost" id="btnHorBase" title="Llena los días vacíos de todo 2026 con el horario base (44 h hasta el 14-jul, 42 h desde el 15-jul)">⚡ Horario base 2026</button>
           <button class="ghost" id="btnHorPersona">+ Persona</button>
+          <button class="ghost" id="btnHorCruzar" title="Iguala los nombres del horario con los de Horas extras y los vincula">🔗 Cruzar nombres</button>
           <button class="ghost" id="btnHorTurnos">⚙ Turnos del mes</button>
           <button class="ghost" id="btnHorPdf">⬇ Exportar a PDF</button>
         </div>
@@ -9359,6 +9360,44 @@ function horPersonaAbrir(id){
   document.getElementById('horPersonaModalBg').classList.add('active');
 }
 document.getElementById('btnHorPersona').addEventListener('click', ()=>horPersonaAbrir(null));
+const horNorm = x => (x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(Boolean);
+function horCoincide(a, b){   // todas las palabras del nombre más corto están en el otro (la inicial cuenta si es de 1 letra)
+  const A = horNorm(a), B = horNorm(b); if(!A.length || !B.length) return false;
+  const [c, l] = A.length<=B.length ? [A,B] : [B,A];
+  return c.every(w=>l.some(x=>x===w || (w.length===1 && x[0]===w)));
+}
+document.getElementById('btnHorCruzar').addEventListener('click', async ()=>{
+  if(horArea!=='mantenimiento'){ showToast('El cruce de nombres aplica al horario de Mantenimiento.'); return; }
+  const refIds = new Set(horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId));
+  const ref = trabajadores.filter(t=>refIds.has(t.id)), todos = trabajadores;
+  const plan = [], sin = [], usados = new Set();
+  horMant.personal.forEach(p=>{
+    let t = trabajadores.find(x=>x.id===p.trabajadorId);
+    if(!t){
+      const buscar = lista => { const c = lista.filter(x=>!usados.has(x.id) && horCoincide(p.nombre, x.nombre)); return c.length===1 ? c[0] : (c.length>1 ? 'amb' : null); };
+      t = buscar(ref); if(!t) t = buscar(todos);
+    }
+    if(!t || t==='amb'){ sin.push(p.nombre + (t==='amb' ? ' (varios nombres parecidos)' : '')); return; }
+    usados.add(t.id); plan.push({p, t});
+  });
+  const cambios = plan.filter(({p,t})=>p.nombre!==t.nombre || p.trabajadorId!==t.id);
+  const enHorario = new Set(plan.map(x=>x.t.id));
+  const sinHorario = ref.filter(t=>heAutoriza(t.id) && !enHorario.has(t.id)).map(t=>t.nombre);
+  const regDesalineados = horasExtras.filter(h=>{ const t = trabajadores.find(x=>x.id===h.trabajadorId); return t && h.trabajadorNombre!==t.nombre; });
+  if(!cambios.length && !regDesalineados.length && !sin.length && !sinHorario.length){ showToast('Todos los nombres ya coinciden y están vinculados.'); return; }
+  let msg = '';
+  if(cambios.length) msg += 'Se vincularán / igualarán:\n' + cambios.map(({p,t})=>'• '+p.nombre+(p.nombre!==t.nombre?' → '+t.nombre:'')).join('\n') + '\n\n';
+  if(regDesalineados.length) msg += regDesalineados.length+' registro(s) de horas extras tomarán el nombre oficial del trabajador.\n\n';
+  if(sin.length) msg += 'Sin pareja en Horas extras (revísalos con ✎):\n' + sin.map(n=>'• '+n).join('\n') + '\n\n';
+  if(sinHorario.length) msg += 'Con horas extras pero sin horario:\n' + sinHorario.map(n=>'• '+n).join('\n') + '\n\n';
+  document.getElementById('confirmModalMsg').style.whiteSpace = 'pre-line';
+  if(!cambios.length && !regDesalineados.length){ await customConfirm(msg.trim(), 'Cruce de nombres'); return; }
+  if(!await customConfirm(msg.trim(), 'Cruzar nombres')) return;
+  cambios.forEach(({p,t})=>{ p.nombre = t.nombre; p.trabajadorId = t.id; });
+  regDesalineados.forEach(h=>{ h.trabajadorNombre = trabajadores.find(x=>x.id===h.trabajadorId).nombre; });
+  await horGuardar(); if(regDesalineados.length) await saveHorasExtras();
+  renderHorarios(); showToast('Nombres cruzados: '+cambios.length+' persona(s).');
+});
 document.getElementById('btnHorPCancelar').addEventListener('click', ()=>document.getElementById('horPersonaModalBg').classList.remove('active'));
 document.getElementById('btnHorPGuardar').addEventListener('click', async ()=>{
   const nombre = document.getElementById('horPNombre').value.trim(), st = horStore();
@@ -9441,7 +9480,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2040';
+const APP_VERSION = '2026-11-18-2055';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
