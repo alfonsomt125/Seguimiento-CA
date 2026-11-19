@@ -669,12 +669,16 @@
   .top-tabs button:hover{color:var(--navy);background:none;}
   .top-tabs button.active{color:var(--navy);font-weight:600;border-bottom-color:#E89A40;}
   .top-tabs i{align-self:center;width:1px;height:20px;background:var(--line);}
+
+  .mod-tabs{display:flex;gap:28px;border-bottom:1px solid var(--line);margin:6px 0 16px;}
+  .mod-tabs button{background:none;border:none;border-bottom:3px solid transparent;border-radius:0;box-shadow:none;color:var(--gray);font-weight:500;font-size:15px;padding:12px 2px 11px;cursor:pointer;font-family:inherit;margin-bottom:-1px;}
+  .mod-tabs button:hover{background:none;color:var(--navy);}
+  .mod-tabs button.active{color:var(--navy);font-weight:600;border-bottom-color:#E89A40;}
 </style></head><body>
 
 <div class="loading-screen" id="loadingScreen">Cargando bitácora…</div>
 
 <div id="app">
-<nav class="top-tabs" id="topTabs" style="display:none;"></nav>
 
 <!-- ===================== SELECTOR DE MÓDULOS ===================== -->
 <div class="selector-wrap" id="view-selector">
@@ -754,9 +758,8 @@
         <button class="mant-subcard hue-red" data-mantopen="reportes" title="Daños de mobiliario, fallas de aires acondicionados y reportes de seguridad, con fotos."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.8l9 15.7H3z" fill="currentColor" fill-opacity=".16"/><path d="M12 10v4M12 17.1v.01"/></svg></div><span>Reportes del Personal</span></button>
         <button class="mant-subcard hue-green" data-mantopen="recibidos" title="Actas de entrega y recibo a satisfacción de convenios y contratos, con firma y código único."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9.8" r="6.8" fill="currentColor" fill-opacity=".16"/><path d="M8.7 15.8L7.5 21l4.5-2.3 4.5 2.3-1.2-5.2M9.2 10l2 2 3.6-4"/></svg></div><span>Recibidos a Satisfacción</span></button>
       </div></div>
-      <div class="mant-group"><div class="mant-group-label"><b>Personal</b><span>2 módulos</span></div><div class="mant-group-grid">
-        <button class="mant-subcard hue-purple" data-mantopen="horasextra" title="Registro por trabajador, con control automático de los límites diario y mensual."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity=".16"/><path d="M12 7v5.2l3.2 2"/></svg></div><span>Horas Extras del Personal</span></button>
-        <button class="mant-subcard hue-blue" data-mantopen="horarios" title="Elabora el horario mensual de Mantenimiento y Logística con turnos de colores."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="3.5" fill="currentColor" fill-opacity=".16"/><path d="M4 10h16M8.2 3v4M15.8 3v4M8.5 14.5h.01M12 14.5h.01M15.5 14.5h.01M8.5 17.8h.01M12 17.8h.01"/></svg></div><span>Horarios del Personal</span></button>
+      <div class="mant-group"><div class="mant-group-label"><b>Personal</b><span>1 módulo</span></div><div class="mant-group-grid">
+        <button class="mant-subcard hue-purple" data-mantopen="horasextra" title="Horas extras con límites y liquidación, y horario mensual de turnos del personal."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity=".16"/><path d="M12 7v5.2l3.2 2"/></svg></div><span>Horarios y Horas Extras</span></button>
       </div></div>
       <div class="mant-group"><div class="mant-group-label"><b>Planta física y activos</b><span>4 módulos</span></div><div class="mant-group-grid">
         <button class="mant-subcard hue-orange" data-mantopen="aires" title="Inventario de equipos, hoja de vida y mantenimientos por unidad."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2.4" fill="currentColor" fill-opacity=".16"/><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.6 4.7L12 6.6l2.4-1.9M9.6 19.3L12 17.4l2.4 1.9"/></svg></div><span>Seguimiento de Aires Acondicionados</span></button>
@@ -1529,6 +1532,7 @@
   <!-- ===================== SUB-MÓDULO: INVENTARIO DE ACTIVOS FIJOS ===================== -->
   <div id="mantSubHorarios" style="display:none;">
     <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+  <div class="mod-tabs"><button data-modtab="horasextra">Horas extras</button><button data-modtab="horarios" class="active">Horarios de trabajo</button></div>
     <div class="year-pills" id="horAreaTabs" style="margin:10px 0 14px;">
       <button class="year-pill active" data-horarea="mantenimiento">🔧 Mantenimiento</button>
       <button class="year-pill" data-horarea="logistica">🚚 Logística</button>
@@ -1609,6 +1613,7 @@
   <!-- ===================== SUB-MÓDULO: HORAS EXTRAS DEL PERSONAL ===================== -->
   <div id="mantSubHorasExtra" style="display:none;">
   <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
+  <div class="mod-tabs"><button data-modtab="horasextra" class="active">Horas extras</button><button data-modtab="horarios">Horarios de trabajo</button></div>
   <div class="year-pills" id="heAreaTabs" style="margin:10px 0 14px;">
     <button class="year-pill active" data-hearea="mantenimiento">🔧 Mantenimiento</button>
     <button class="year-pill" data-hearea="logistica">🚚 Logística</button>
@@ -9612,7 +9617,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2127';
+const APP_VERSION = '2026-11-18-2131';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11744,6 +11749,7 @@ document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEac
     document.getElementById('view-mapa-'+btn.dataset.mapaview).classList.add('active');
   });
 });
+document.querySelectorAll('[data-modtab]').forEach(b=>b.addEventListener('click', ()=>openMantSub(b.dataset.modtab)));
 document.querySelectorAll('[data-mantopen]').forEach(card=>{
   card.addEventListener('click', ()=> openMantSub(card.dataset.mantopen));
 });
@@ -11816,8 +11822,7 @@ document.getElementById('pinKeypadGrid').addEventListener('click', async (e)=>{
     pinVerificando = false;
     if(esCorrecto){
       closePinModal();
-      modsOk.add(modulo);
-      if(target && target.startsWith('mantsub:')){ if(target==='mantsub:espacios'){ openMantSub('espacios'); } else { openModule('mantenimiento'); openMantSub(target.slice(8)); } }
+      if(target && target.startsWith('mantsub:')){ openMantSub(target.slice(8)); }
       else{ openModule(target); }
     }else{
       document.getElementById('pinError').style.display = 'block';
@@ -11829,31 +11834,6 @@ document.getElementById('pinKeypadGrid').addEventListener('click', async (e)=>{
 document.getElementById('btnCancelPin').addEventListener('click', closePinModal);
 
 
-/* ===== Pestañas unificadas entre módulos relacionados ===== */
-const TOP_TABS = [['inicio','Inicio'],['inventario','Inventario'],'|',['horasextra','Horas extras'],['horarios','Horarios de trabajo'],'|',['actividades','Actividades'],['requisiciones','Requisiciones'],['reportes','Reportes'],['recibidos','Recibidos'],['aires','Aires'],['mapas','Mapas'],['activos','Activos fijos'],['espacios','Espacios']];
-const modsOk = new Set();
-function topTabActual(){
-  if(document.getElementById('view-selector').style.display!=='none') return null;
-  if(document.getElementById('module-inventario').style.display==='block') return 'inventario';
-  if(document.getElementById('module-espacios').style.display==='block') return 'espacios';
-  const m = {actividades:'mantSubActividades',aires:'mantSubAires',requisiciones:'mantSubRequisiciones',reportes:'mantSubReportes',mapas:'mantSubMapas',horasextra:'mantSubHorasExtra',activos:'mantSubActivos',recibidos:'mantSubRecibidos',horarios:'mantSubHorarios'};
-  return Object.keys(m).find(k=>document.getElementById(m[k]).style.display==='block') || '';
-}
-function actualizarTopTabs(){
-  const nav = document.getElementById('topTabs'), act = topTabActual();
-  nav.style.display = act===null ? 'none' : 'flex';
-  if(act===null) return;
-  nav.innerHTML = TOP_TABS.map(t=>t==='|' ? '<i></i>' : `<button data-toptab="${t[0]}" class="${t[0]===act?'active':''}">${t[1]}</button>`).join('');
-  nav.querySelectorAll('[data-toptab]').forEach(b=>b.addEventListener('click', ()=>irTopTab(b.dataset.toptab)));
-}
-function irTopTab(k){
-  if(k==='inicio'){ showSelector(); return; }
-  if(k==='inventario'){ if(!modsOk.has('inventario')){ openPinModal('inventario'); return; } openModule('inventario'); return; }
-  if(!modsOk.has('mantenimiento')){ openPinModal(k==='espacios' ? 'mantsub:espacios' : 'mantsub:'+k); return; }
-  if(k==='espacios'){ openMantSub('espacios'); return; }
-  openModule('mantenimiento'); openMantSub(k);
-}
-['showSelector','openModule','openMantSub','showMantSelector'].forEach(n=>{ const f = window[n]; window[n] = function(){ const r = f.apply(this, arguments); actualizarTopTabs(); return r; }; });
 document.querySelectorAll('.module-card').forEach(card=>{
   card.addEventListener('click', ()=> openPinModal(card.dataset.open));
 });
