@@ -253,6 +253,7 @@
   nav.tabs button[data-invview="movimientos"]::before{content:"📥";}
   nav.tabs button[data-invview="entrega"]::before{content:"📤";}
   nav.tabs button[data-invview="movtab"]::before{content:"🔁";}
+  nav.tabs button[data-invview="activos"]::before{content:"🏷️";}
   nav.tabs button[data-aireview="equipos"]::before{content:"❄️";}
   nav.tabs button[data-aireview="reportes"]::before{content:"🗂️";}
   nav.tabs button:hover{background:var(--paper-2);color:var(--navy);}
@@ -757,16 +758,12 @@
   <div id="mantSelector" class="mant-selector-wrap">
     <div class="mant-groups">
       <div class="mant-group"><div class="mant-group-label"><b>Operación diaria</b><span>3 módulos</span></div><div class="mant-group-grid">
-        <button class="mant-subcard hue-blue" data-mantopen="actividades" title="Actividades, aires acondicionados, recibidos a satisfacción y espacios."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="3.2" fill="currentColor" fill-opacity=".16"/><rect x="9" y="2.5" width="6" height="3.5" rx="1.75"/><path d="M9.2 13.2l2 2 3.8-4.3"/></svg></div><span>Seguimiento Operativo</span></button>
+        <button class="mant-subcard hue-blue" data-mantopen="actividades" title="Actividades, aires acondicionados, recibidos a satisfacción, mapa de planta física y espacios."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4.5" width="14" height="16.5" rx="3.2" fill="currentColor" fill-opacity=".16"/><rect x="9" y="2.5" width="6" height="3.5" rx="1.75"/><path d="M9.2 13.2l2 2 3.8-4.3"/></svg></div><span>Seguimiento Operativo</span></button>
         <button class="mant-subcard hue-green" data-mantopen="requisiciones" title="Formato institucional de solicitud de pedidos a Compras, editable en línea."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l4.5 4.5V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor" fill-opacity=".16"/><path d="M14 3v4.5h4.5M9 12.5h6M9 16.5h4"/></svg></div><span>Requisición de Materiales</span></button>
         <button class="mant-subcard hue-red frozen" disabled title="Daños de mobiliario, fallas de aires acondicionados y reportes de seguridad, con fotos."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.8l9 15.7H3z" fill="currentColor" fill-opacity=".16"/><path d="M12 10v4M12 17.1v.01"/></svg></div><span>Reportes del Personal</span><em>Próximamente disponible</em></button>
       </div></div>
       <div class="mant-group"><div class="mant-group-label"><b>Personal</b><span>1 módulo</span></div><div class="mant-group-grid">
         <button class="mant-subcard hue-purple" data-mantopen="horasextra" title="Horas extras con límites y liquidación, y horario mensual de turnos del personal."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="currentColor" fill-opacity=".16"/><path d="M12 7v5.2l3.2 2"/></svg></div><span>Horarios y Horas Extras</span></button>
-      </div></div>
-      <div class="mant-group"><div class="mant-group-label"><b>Planta física y activos</b><span>2 módulos</span></div><div class="mant-group-grid">
-        <button class="mant-subcard hue-teal" data-mantopen="mapas" title="Ubica extintores por tipo y trampas de ratones sobre el plano del colegio."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.2s7-6 7-11.7a7 7 0 0 0-14 0c0 5.7 7 11.7 7 11.7z" fill="currentColor" fill-opacity=".16"/><circle cx="12" cy="9.5" r="2.6"/></svg></div><span>Mapas de Planta Física</span></button>
-        <button class="mant-subcard hue-teal" data-mantopen="activos" title="Mobiliario y equipos por aula, espacio o laboratorio, incluyendo los aires acondicionados."><div class="mant-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5-8 4.5-8-4.5z" fill="currentColor" fill-opacity=".16"/><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5M12 12v9"/></svg></div><span>Inventario de Activos Fijos</span></button>
       </div></div>
     </div>
   </div>
@@ -1589,26 +1586,6 @@
     <div style="display:flex;gap:8px;margin-top:10px;"><button class="ghost" id="btnHorCatAgregar">+ Turno</button><button class="ghost" id="btnHorCatCopiar">Copiar del mes anterior</button></div>
     <div class="modal-actions"><button class="ghost" id="btnHorCatCancelar">Cancelar</button><button class="primary" id="btnHorCatGuardar">Guardar</button></div>
   </div></div>
-  <div id="mantSubActivos" style="display:none;">
-  <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
-  <div class="panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
-      <h2 style="margin:0;">Inventario de activos fijos por espacio</h2>
-      <button class="ghost" id="btnNuevoEspacioAF">+ Nuevo espacio</button>
-    </div>
-    <div class="filters" style="margin-bottom:14px;">
-      <div class="field" style="flex:2;min-width:200px;"><label>Buscar espacio o activo</label><input type="text" id="afBuscar" placeholder="Ej: 2A, laboratorio, escritorio..."></div>
-      <div class="field"><label>Bloque</label><select id="afBloqueFiltro"><option value="">Todos</option></select></div>
-    </div>
-    <div class="kpis" id="afKpis"></div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Espacio</th><th>Bloque</th><th>Aires</th><th>Otros activos</th><th></th></tr></thead>
-        <tbody id="afEspaciosBody"></tbody>
-      </table>
-    </div>
-  </div>
-  </div>
   <!-- ===================== /SUB-MÓDULO ACTIVOS FIJOS ===================== -->
 
   <!-- ===================== SUB-MÓDULO: HORAS EXTRAS DEL PERSONAL ===================== -->
@@ -2489,6 +2466,7 @@
     <button data-invview="movimientos">Entrada de Insumos</button>
     <button data-invview="entrega">Salida de Insumos</button>
     <button data-invview="movtab">Movimientos</button>
+    <button data-invview="activos">Activos fijos</button>
   </nav>
 
   <!-- INV. DISPONIBLE (dashboard + listado unificado de insumos) -->
@@ -2744,6 +2722,25 @@
         <tbody id="movAllBody"></tbody>
       </table>
     </div>
+  </section>
+  <section class="view" id="view-inv-activos">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+      <h2 style="margin:0;">Inventario de activos fijos por espacio</h2>
+      <button class="ghost" id="btnNuevoEspacioAF">+ Nuevo espacio</button>
+    </div>
+    <div class="filters" style="margin-bottom:14px;">
+      <div class="field" style="flex:2;min-width:200px;"><label>Buscar espacio o activo</label><input type="text" id="afBuscar" placeholder="Ej: 2A, laboratorio, escritorio..."></div>
+      <div class="field"><label>Bloque</label><select id="afBloqueFiltro"><option value="">Todos</option></select></div>
+    </div>
+    <div class="kpis" id="afKpis"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Espacio</th><th>Bloque</th><th>Aires</th><th>Otros activos</th><th></th></tr></thead>
+        <tbody id="afEspaciosBody"></tbody>
+      </table>
+    </div>
+  </div>
   </section>
 
 </div>
@@ -5492,6 +5489,7 @@ document.querySelectorAll('#module-inventario nav.tabs button[data-invview]').fo
     document.querySelectorAll('#module-inventario .view').forEach(v=>v.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('view-inv-'+btn.dataset.invview).classList.add('active');
+    if(btn.dataset.invview==='activos') renderActivosFijos();
   });
 });
 
@@ -9619,7 +9617,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2138';
+const APP_VERSION = '2026-11-18-2139';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -11345,7 +11343,6 @@ function showMantSelector(){
   document.getElementById('mantSubReportes').style.display = 'none';
   document.getElementById('mantSubMapas').style.display = 'none';
   document.getElementById('mantSubHorasExtra').style.display = 'none';
-  document.getElementById('mantSubActivos').style.display = 'none';
   document.getElementById('mantSubRecibidos').style.display = 'none';
   document.getElementById('mantSubHorarios').style.display = 'none';
 }
@@ -11733,7 +11730,6 @@ function openMantSub(name){
   document.getElementById('mantSubReportes').style.display = name==='reportes' ? 'block' : 'none';
   document.getElementById('mantSubMapas').style.display = name==='mapas' ? 'block' : 'none';
   document.getElementById('mantSubHorasExtra').style.display = name==='horasextra' ? 'block' : 'none';
-  document.getElementById('mantSubActivos').style.display = name==='activos' ? 'block' : 'none';
   document.getElementById('mantSubRecibidos').style.display = name==='recibidos' ? 'block' : 'none';
   document.getElementById('mantSubHorarios').style.display = name==='horarios' ? 'block' : 'none';
   if(name==='horarios'){ renderHorarios(); }
@@ -11741,7 +11737,6 @@ function openMantSub(name){
   if(name==='reportes'){ cargarReportesRecibidos(); }
   if(name==='mapas'){ renderMarcadoresExtintores(); renderMarcadoresTrampas(); renderMarcadoresEncuentro(); renderFlechasEvacuacion(); }
   if(name==='horasextra'){ renderHorasExtra(); }
-  if(name==='activos'){ renderActivosFijos(); }
   if(name==='recibidos'){ renderRecibidos(); }
 }
 document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEach(btn=>{
@@ -11753,9 +11748,9 @@ document.querySelectorAll('#mantSubMapas nav.tabs button[data-mapaview]').forEac
   });
 });
 (function(){
-  const OP = [['actividades','Actividades'],['aires','Aires acondicionados'],['recibidos','Recibidos a satisfacción'],['espacios','Espacios']];
+  const OP = [['actividades','Actividades'],['aires','Aires acondicionados'],['recibidos','Recibidos a satisfacción'],['mapas','Mapa de planta física'],['espacios','Espacios']];
   const barra = k => '<div class="mod-tabs">'+OP.map(t=>`<button data-modtab="${t[0]}"${t[0]===k?' class="active"':''}>${t[1]}</button>`).join('')+'</div>';
-  [['mantSubActividades','actividades'],['mantSubAires','aires'],['mantSubRecibidos','recibidos']].forEach(([id,k])=>{
+  [['mantSubActividades','actividades'],['mantSubAires','aires'],['mantSubRecibidos','recibidos'],['mantSubMapas','mapas']].forEach(([id,k])=>{
     const b = document.querySelector('#'+id+' > .module-back, #'+id+' .module-back'); if(b) b.insertAdjacentHTML('afterend', barra(k));
   });
   document.getElementById('btnEspBackMant').insertAdjacentHTML('afterend', barra('espacios'));
