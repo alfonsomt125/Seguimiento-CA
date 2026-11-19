@@ -203,6 +203,12 @@
   .year-pills-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
   .year-pills-label{font-size:11.5px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;}
   .year-pills{display:flex;gap:6px;flex-wrap:wrap;}
+  .cfg-menu{position:relative;}
+  .cfg-menu>summary{list-style:none;cursor:pointer;padding:8px 14px;border:1px solid var(--line,#c9ced8);border-radius:10px;font-size:14px;user-select:none;}
+  .cfg-menu>summary::-webkit-details-marker{display:none;}
+  .cfg-menu .cfg-items{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:220px;display:flex;flex-direction:column;padding:6px;background:var(--panel,#fff);border:1px solid var(--line,#c9ced8);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+  .cfg-menu .cfg-items button{background:none;border:none;text-align:left;padding:9px 12px;border-radius:8px;font-size:14px;cursor:pointer;color:inherit;width:100%;}
+  .cfg-menu .cfg-items button:hover{background:var(--paper-2,#eef0f5);}
   .year-pill{
     border:1px solid var(--line);background:#fff;color:var(--ink);
     font-size:12.5px;font-weight:600;padding:6px 14px;border-radius:20px;cursor:pointer;
@@ -1694,28 +1700,33 @@
   <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
       <h2 style="margin:0;" id="heTituloResumen">Horas extras — resumen del período</h2>
-      <button class="ghost" id="btnExportarResumenHE">⬇ Exportar a PDF</button>
-      <button class="ghost" id="btnConfigLimitesHE">⚙ Configurar límites</button>
-      <button class="ghost" id="btnAutorizadosHE">👥 Personal autorizado</button>
-      <button class="ghost" id="btnVerificarHE">🔎 Verificar con horarios</button>
-      <button class="ghost" id="btnFormulasHE">📐 Fórmulas</button>
-    </div>
-    <p class="hint" style="margin:0 0 14px;" id="heLimitesTexto"></p>
-    <p class="hint" style="margin:0 0 6px;">Período de corte a revisar (por defecto del 15 al 15, pero lo puedes ajustar cualquier mes que el corte sea distinto — ej. del 20 al 15):</p>
-    <div class="year-pills" id="heCortesRapidos" style="margin-bottom:12px;">
-      <button class="year-pill" data-corte="2026-08-20|2026-09-15">20 ago – 15 sep</button>
-      <button class="year-pill" data-corte="2026-09-16|2026-10-15">16 sep – 15 oct</button>
-      <button class="year-pill" data-corte="2026-10-16|2026-11-15">16 oct – 15 nov</button>
-      <button class="year-pill" data-corte="2026-11-16|2026-12-15">16 nov – 15 dic</button>
-    </div>
-    <div class="grid-2" style="max-width:420px;margin-bottom:14px;">
-      <div class="field">
-        <label>Desde</label>
-        <input type="date" id="heDesdePeriodo">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="ghost" id="btnExportarResumenHE">⬇ PDF</button>
+        <details class="cfg-menu" id="heCfgMenu">
+          <summary class="ghost">⚙ Configuración</summary>
+          <div class="cfg-items">
+            <button id="btnConfigLimitesHE">Límites de horas</button>
+            <button id="btnAutorizadosHE">Personal autorizado</button>
+            <button id="btnVerificarHE">Verificar con horarios</button>
+            <button id="btnFormulasHE">Fórmulas</button>
+          </div>
+        </details>
       </div>
-      <div class="field">
-        <label>Hasta</label>
-        <input type="date" id="heHastaPeriodo">
+    </div>
+    <p class="hint" style="margin:0 0 12px;" id="heLimitesTexto"></p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;margin-bottom:14px;">
+      <div>
+        <div class="hint" style="margin:0 0 6px;" title="Por defecto del 15 al 15; puedes ajustar las fechas si el corte es distinto (ej. del 20 al 15)">Período de corte</div>
+        <div class="year-pills" id="heCortesRapidos" style="margin:0;">
+          <button class="year-pill" data-corte="2026-08-20|2026-09-15">20 ago – 15 sep</button>
+          <button class="year-pill" data-corte="2026-09-16|2026-10-15">16 sep – 15 oct</button>
+          <button class="year-pill" data-corte="2026-10-16|2026-11-15">16 oct – 15 nov</button>
+          <button class="year-pill" data-corte="2026-11-16|2026-12-15">16 nov – 15 dic</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <div class="field" style="margin:0;"><label>Desde</label><input type="date" id="heDesdePeriodo"></div>
+        <div class="field" style="margin:0;"><label>Hasta</label><input type="date" id="heHastaPeriodo"></div>
       </div>
     </div>
     <div id="heResumenPorTrabajador"></div>
@@ -9505,7 +9516,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-18-2205';
+const APP_VERSION = '2026-11-18-2225';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -12254,6 +12265,8 @@ function heAutAbrir(){
   document.getElementById('heAutModalBg').classList.add('active');
 }
 document.getElementById('btnAutorizadosHE').addEventListener('click', heAutAbrir);
+document.getElementById('heCfgMenu').addEventListener('click', e=>{ if(e.target.closest('.cfg-items button')) e.currentTarget.removeAttribute('open'); });
+document.addEventListener('click', e=>{ const m = document.getElementById('heCfgMenu'); if(m && m.open && !m.contains(e.target)) m.removeAttribute('open'); });
 document.getElementById('btnHeAutTodos').addEventListener('click', ()=>document.querySelectorAll('#heAutLista input').forEach(i=>i.checked=true));
 document.getElementById('btnHeAutNinguno').addEventListener('click', ()=>document.querySelectorAll('#heAutLista input').forEach(i=>i.checked=false));
 document.getElementById('btnHeAutCerrar').addEventListener('click', ()=>document.getElementById('heAutModalBg').classList.remove('active'));
