@@ -823,6 +823,8 @@
   .req-ayuda{margin:2px 0 14px;font-size:12.5px;color:var(--gray);}
   .req-ayuda summary{cursor:pointer;display:inline-block;color:var(--gray);font-weight:500;}
   #reqListaWrap > .panel{padding-top:18px;padding-bottom:18px;}
+  .sol-grupo td{background:var(--primary-soft);cursor:pointer;font-size:13px;color:var(--navy);padding:10px 14px;}
+  .sol-conv:not(.sol-grupo){opacity:.75;}
 </style></head><body>
 
 <div id="loginScreen" style="display:none;">
@@ -6850,7 +6852,7 @@ function showReqLista(){
   Object.keys(nombres).forEach(k=>{
     const tb = mapa[k] && mapa[k].querySelector('tbody'); if(!tb) return;
     const chip = sw.querySelector(`[data-reqn="${k}"]`);
-    const cuenta = ()=>{ const n = [...tb.rows].filter(r=>!r.querySelector('.empty')).length; chip.textContent = n || ''; };
+    const cuenta = ()=>{ const n = [...tb.rows].filter(r=>!r.querySelector('.empty') && !r.classList.contains('sol-conv')).length; chip.textContent = n || ''; };
     new MutationObserver(cuenta).observe(tb, {childList:true}); cuenta();
   });
   pinta();
@@ -6884,16 +6886,17 @@ async function cargarSolicitudesRecibidas(){
 let solicitudesSeleccionadas = new Set();
 let solicitudesAUnificarIds = [];
 
+let solConvAbierto = false;
 function renderSolicitudesRecibidas(){
   const tbody = document.getElementById('solicitudesBody');
   const pendientes = solicitudesRecibidas.filter(s=>s.estado!=='Descartada');
   // limpiar de la seleccion cualquier id que ya no este visible (fue descartada, etc.)
   solicitudesSeleccionadas.forEach(id=>{ if(!pendientes.find(s=>s.id===id)) solicitudesSeleccionadas.delete(id); });
 
-  tbody.innerHTML = pendientes.length ? pendientes.map(s=>{
+  const fila = (s, conv)=>{
     const fechaRecibida = s.created_at ? new Date(s.created_at).toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
     const nItems = Array.isArray(s.items) ? s.items.length : 0;
-    return `<tr>
+    return `<tr class="${conv?'sol-conv':''}"${conv&&!solConvAbierto?' style="display:none;"':''}>
       <td><input type="checkbox" data-checksol="${s.id}" ${solicitudesSeleccionadas.has(s.id)?'checked':''}></td>
       <td>${fechaRecibida}</td>
       <td><strong>${esc(s.area_seccion)||'—'}</strong></td>
@@ -6906,7 +6909,14 @@ function renderSolicitudesRecibidas(){
         <button class="ghost danger" data-descartar="${s.id}">Descartar</button>
       </div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="7" class="empty">No has recibido solicitudes del personal todavía.</td></tr>`;
+  };
+  const porTramitar = pendientes.filter(s=>s.estado!=='Convertida'), convertidas = pendientes.filter(s=>s.estado==='Convertida');
+  tbody.innerHTML = pendientes.length
+    ? porTramitar.map(s=>fila(s,false)).join('')
+      + (convertidas.length ? `<tr class="sol-conv sol-grupo" data-grupoconv><td colspan="7"><b>${solConvAbierto?'▾':'▸'} Convertidas a requisición (${convertidas.length})</b></td></tr>` + convertidas.map(s=>fila(s,true)).join('') : '')
+    : `<tr><td colspan="7" class="empty">No has recibido solicitudes del personal todavía.</td></tr>`;
+  const gr = tbody.querySelector('[data-grupoconv]');
+  if(gr) gr.addEventListener('click', ()=>{ solConvAbierto = !solConvAbierto; renderSolicitudesRecibidas(); });
 
   tbody.querySelectorAll('[data-checksol]').forEach(cb=>{
     cb.addEventListener('change', ()=>{
@@ -9825,7 +9835,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-19-1922';
+const APP_VERSION = '2026-11-19-1937';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
