@@ -816,12 +816,10 @@
     .mod-tabs button{font-size:14px;}
   }
 
-  .colap-h{cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;}
-  .colap-chev{font-size:14px;color:var(--gray);width:14px;}
-  .colap-n{font-size:12px;font-weight:600;background:var(--primary-soft,#E8EEF7);color:var(--navy);border-radius:999px;padding:1px 9px;}
+  .colap-n{font-size:11px;font-weight:600;background:#fff;color:var(--navy);border-radius:999px;padding:1px 8px;margin-left:4px;box-shadow:0 0 0 1px var(--line);}
   .colap-n:empty{display:none;}
-  .colap-cerrado .colap-body{display:none;}
-  .colap-cerrado > div:first-child{margin-bottom:0 !important;}
+  .req-pap-oculta{display:none !important;}
+  @media(max-width:600px){#reqSwitch{display:flex;overflow-x:auto;}#reqSwitch button{white-space:nowrap;padding:8px 12px;font-size:13px;}}
   .req-ayuda{margin:2px 0 14px;font-size:12.5px;color:var(--gray);}
   .req-ayuda summary{cursor:pointer;display:inline-block;color:var(--gray);font-weight:500;}
   #reqListaWrap > .panel{padding-top:18px;padding-bottom:18px;}
@@ -6815,39 +6813,47 @@ function showReqLista(){
   renderReqLista();
   cargarSolicitudesRecibidas();
 }
-/* Listados plegables del módulo de requisiciones: se recogen con un clic en el título y recuerdan su estado */
+/* Requisiciones: un listado a la vez con selector de vistas (mismo concepto que Horas extras) */
 (function(){
   const wrap = document.getElementById('reqListaWrap'); if(!wrap) return;
-  const guardado = (()=>{ try{ return JSON.parse(localStorage.getItem('reqColap')||'{}'); }catch(e){ return {}; } })();
-  wrap.querySelectorAll(':scope > .panel').forEach(pn=>{
-    const head = pn.firstElementChild, h2 = head && head.querySelector('h2'); if(!h2) return;
-    const key = h2.textContent.trim();
-    const body = document.createElement('div'); body.className = 'colap-body';
-    while(head.nextSibling) body.appendChild(head.nextSibling);
-    pn.appendChild(body);
+  const paneles = [...wrap.querySelectorAll(':scope > .panel')];
+  const def = [['Solicitudes','Solicitudes recibidas'],['Requisiciones','Requisiciones de Materiales'],['Pendientes','Pendientes de Compras']];
+  const mapa = {};
+  paneles.forEach(pn=>{
+    const h2 = pn.querySelector('h2'); if(!h2) return;
+    const t = h2.textContent;
+    const d = def.find(x=>t.includes(x[1].split(' ')[0]) && (x[0]!=='Requisiciones' || t.includes('Requisiciones de Materiales')) && !t.includes('Papelera'));
+    if(pn.id==='reqPapeleraWrap'){ mapa.papelera = pn; return; }
+    const k = t.includes('Solicitudes') ? 'Solicitudes' : t.includes('Pendientes') ? 'Pendientes' : 'Requisiciones';
+    mapa[k] = pn;
     // ayudas largas → un solo "Cómo funciona" desplegable
-    const primeras = []; for(const e of body.children){ if(e.tagName==='P' && e.classList.contains('hint') && !e.id) primeras.push(e); else break; }
-    if(primeras.length){
-      const d = document.createElement('details'); d.className = 'req-ayuda';
-      d.innerHTML = '<summary>ⓘ Cómo funciona</summary>';
-      body.insertBefore(d, primeras[0]);
-      primeras.forEach(e=>{ e.style.margin = '6px 0 0'; d.appendChild(e); });
-    }
-    const chev = document.createElement('span'); chev.className = 'colap-chev';
-    const chip = document.createElement('span'); chip.className = 'colap-n';
-    h2.prepend(chev); h2.appendChild(chip); h2.classList.add('colap-h');
-    const pon = c=>{ pn.classList.toggle('colap-cerrado', c); chev.textContent = c ? '▸' : '▾'; };
-    pon(!!guardado[key]);
-    h2.addEventListener('click', ()=>{
-      const c = !pn.classList.contains('colap-cerrado'); pon(c);
-      if(pn.id!=='reqPapeleraWrap'){ guardado[key] = c; try{ localStorage.setItem('reqColap', JSON.stringify(guardado)); }catch(e){} }
-    });
-    const tb = pn.querySelector('tbody');
-    if(tb){
-      const cuenta = ()=>{ const n = [...tb.rows].filter(r=>!r.querySelector('.empty')).length; chip.textContent = n ? n : ''; };
-      new MutationObserver(cuenta).observe(tb, {childList:true}); cuenta();
+    const prim = []; const hijos = [...pn.children].slice(1);
+    for(const e of hijos){ if(e.tagName==='P' && e.classList.contains('hint') && !e.id) prim.push(e); else break; }
+    if(prim.length){
+      const dt = document.createElement('details'); dt.className = 'req-ayuda';
+      dt.innerHTML = '<summary>ⓘ Cómo funciona</summary>';
+      pn.insertBefore(dt, prim[0]);
+      prim.forEach(e=>{ e.style.margin = '6px 0 0'; dt.appendChild(e); });
     }
   });
+  const sw = document.createElement('div'); sw.className = 'he-switch'; sw.id = 'reqSwitch';
+  const nombres = {Solicitudes:'Solicitudes del personal', Requisiciones:'Requisiciones', Pendientes:'Pendientes de Compras'};
+  sw.innerHTML = Object.keys(nombres).map(k=>`<button data-reqvista="${k}">${nombres[k]} <span class="colap-n" data-reqn="${k}"></span></button>`).join('');
+  wrap.insertBefore(sw, wrap.firstChild);
+  let vista = 'Requisiciones';
+  const pinta = ()=>{
+    Object.keys(nombres).forEach(k=>{ if(mapa[k]) mapa[k].style.display = k===vista ? '' : 'none'; });
+    sw.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.reqvista===vista));
+    if(mapa.papelera) mapa.papelera.classList.toggle('req-pap-oculta', vista!=='Requisiciones');
+  };
+  sw.addEventListener('click', e=>{ const b = e.target.closest('button'); if(!b) return; vista = b.dataset.reqvista; pinta(); });
+  Object.keys(nombres).forEach(k=>{
+    const tb = mapa[k] && mapa[k].querySelector('tbody'); if(!tb) return;
+    const chip = sw.querySelector(`[data-reqn="${k}"]`);
+    const cuenta = ()=>{ const n = [...tb.rows].filter(r=>!r.querySelector('.empty')).length; chip.textContent = n || ''; };
+    new MutationObserver(cuenta).observe(tb, {childList:true}); cuenta();
+  });
+  pinta();
 })();
 document.getElementById('btnNuevaRequisicion').addEventListener('click', ()=>openReqEditor(null));
 
@@ -9819,7 +9825,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-19-1920';
+const APP_VERSION = '2026-11-19-1922';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
