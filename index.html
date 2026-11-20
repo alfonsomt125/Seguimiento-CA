@@ -9835,7 +9835,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-19-1937';
+const APP_VERSION = '2026-11-19-1939';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -10290,6 +10290,7 @@ function listaPendientesCompras(){
   });
   return filas.sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
 }
+const pendGruposAbiertos = new Set();
 function renderPendientesCompras(){
   const filas = listaPendientesCompras();
   const totalUnidadesPendientes = filas.reduce((s,f)=>s+f.pendiente,0);
@@ -10305,9 +10306,9 @@ function renderPendientesCompras(){
   `;
 
   const tbody = document.getElementById('pendientesComprasBody');
-  tbody.innerHTML = filas.length ? filas.map(f=>{
+  const fp = (f, oculta)=>{
     const pillClase = f.estadoTexto==='Parcial' ? 'pill-En_proceso' : 'pill-Pendiente';
-    return `<tr>
+    return `<tr${oculta?' style="display:none;" data-pcdet="'+f.reqId+'"':''}>
       <td><button class="ghost" data-irareq="${f.reqId}" style="font-size:12px;padding:5px 9px;white-space:nowrap;">${esc(f.codigo)}</button></td>
       <td><strong>${esc(f.insumo)}</strong>${f.especificaciones?`<br><span class="hint" style="margin:0;">${esc(f.especificaciones)}</span>`:''}</td>
       <td>${esc(f.solicitante)}</td>
@@ -10319,7 +10320,17 @@ function renderPendientesCompras(){
       <td style="text-align:center;font-weight:700;">${f.pendiente}</td>
       <td><span class="pill ${pillClase}">${f.estadoTexto}</span></td>
     </tr>`;
+  };
+  const grupos = [];
+  filas.forEach(f=>{ let g = grupos.find(x=>x.reqId===f.reqId); if(!g){ g = {reqId:f.reqId, f:[]}; grupos.push(g); } g.f.push(f); });
+  tbody.innerHTML = filas.length ? grupos.map(g=>{
+    const a = g.f[0], abierto = pendGruposAbiertos.has(g.reqId), und = g.f.reduce((t,x)=>t+x.pendiente,0);
+    return `<tr class="sol-conv sol-grupo" data-pcgrupo="${g.reqId}"><td colspan="10"><b>${abierto?'▾':'▸'} ${esc(a.codigo)}</b> · ${esc(a.solicitante)||'—'} · ${esc(a.area)||'—'} · ${g.f.length} material(es) · ${und} und. por recibir</td></tr>`
+      + g.f.map(f=>fp(f, !abierto)).join('');
   }).join('') : `<tr><td colspan="10" class="empty">No hay materiales pendientes por recibir. 🎉</td></tr>`;
+  tbody.querySelectorAll('[data-pcgrupo]').forEach(tr=>tr.addEventListener('click', ()=>{
+    const id = tr.dataset.pcgrupo; pendGruposAbiertos.has(id) ? pendGruposAbiertos.delete(id) : pendGruposAbiertos.add(id); renderPendientesCompras();
+  }));
   tbody.querySelectorAll('[data-irareq]').forEach(btn=>{
     btn.addEventListener('click', ()=>openReqEditor(btn.dataset.irareq));
   });
@@ -10389,6 +10400,7 @@ document.getElementById('btnExportarPendientesCompras').addEventListener('click'
   showToast('Se abrió una pestaña nueva con el resumen. Ahí eliges "Guardar como PDF".');
 });
 
+let reqEntAbierto = false;
 function renderReqLista(){
   renderPendientesCompras();
   const tbody = document.getElementById('reqListaBody');
@@ -10401,7 +10413,9 @@ function renderReqLista(){
   filas = sortReqRows(filas);
   updateReqSortHeaders();
 
-  tbody.innerHTML = filas.length ? filas.map(r=>{
+  const agrupar = filtroEstadoReqActual==='';
+  const entregadas = agrupar ? filas.filter(r=>(r.estadoCompras||'Pendiente')==='Entregado') : [];
+  const filaReq = (r, conv)=>{
     const estado = r.estadoCompras || 'Pendiente';
     const pillClase = estado==='Entregado' ? 'pill-Finalizado' : estado==='Solicitado' ? 'pill-En_proceso' : 'pill-Pendiente';
     const itemsConDatos = (r.items||[]).filter(it=>it.descripcion);
@@ -10413,7 +10427,7 @@ function renderReqLista(){
     const insigniaCompraDirecta = r.esCompraDirecta
       ? `<br><span class="pill" style="background:${r.legalizada?'var(--green-bg)':'#FDF0DC'};color:${r.legalizada?'var(--green)':'#B45309'};margin-top:4px;">🧾 ${r.legalizada?'Legalizada':'Por legalizar'}</span>`
       : '';
-    return `<tr data-verreq="${r.id}" style="cursor:pointer;">
+    return `<tr data-verreq="${r.id}" class="${conv?'sol-conv':''}" style="cursor:pointer;${conv&&!reqEntAbierto?'display:none;':''}">
       <td><strong style="color:var(--navy);">${esc(r.codigo)||'—'}</strong></td>
       <td>${r.fechaSolicitud?fmtDate(r.fechaSolicitud):'—'}</td>
       <td><strong>${esc(r.areaSeccion)||'—'}</strong></td>
@@ -10427,7 +10441,13 @@ function renderReqLista(){
         <button class="ghost danger" data-delreq="${r.id}">Eliminar</button>
       </div></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="7" class="empty">${filtroEstadoReqActual ? 'No hay requisiciones que coincidan con este filtro.' : 'Aún no has creado ninguna requisición.'}</td></tr>`;
+  };
+  tbody.innerHTML = filas.length
+    ? filas.filter(r=>!entregadas.includes(r)).map(r=>filaReq(r,false)).join('')
+      + (entregadas.length ? `<tr class="sol-conv sol-grupo" data-grupoent><td colspan="7"><b>${reqEntAbierto?'▾':'▸'} Entregadas (${entregadas.length})</b></td></tr>` + entregadas.map(r=>filaReq(r,true)).join('') : '')
+    : `<tr><td colspan="7" class="empty">${filtroEstadoReqActual ? 'No hay requisiciones que coincidan con este filtro.' : 'Aún no has creado ninguna requisición.'}</td></tr>`;
+  const ge = tbody.querySelector('[data-grupoent]');
+  if(ge) ge.addEventListener('click', ()=>{ reqEntAbierto = !reqEntAbierto; renderReqLista(); });
 
   document.getElementById('reqPapeleraCount').textContent = requisiciones.filter(r=>r.eliminada).length;
 
