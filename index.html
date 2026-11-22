@@ -1196,7 +1196,7 @@
 
   <!-- ===================== CRONOGRAMA (GANTT) ===================== -->
   <section class="view" id="view-cronograma">
-    <div class="he-switch" id="cronSwitch"><button class="active" data-cron="gantt">Proyectos</button><button data-cron="plan">Plan anual</button></div>
+    <div class="he-switch" id="cronSwitch"><button class="active" data-cron="gantt">Actividades</button><button data-cron="plan">Plan anual</button></div>
     <div id="planWrap" style="display:none;">
       <div class="pa-top">
         <div class="year-pills" id="paAnos"></div>
@@ -1214,7 +1214,7 @@
       <div class="filters">
         <div class="field">
           <label>Buscar</label>
-          <input type="text" id="ganttSearch" placeholder="Nombre del proyecto...">
+          <input type="text" id="ganttSearch" placeholder="Nombre de la actividad...">
         </div>
         <div class="field">
           <label>Área</label>
@@ -5590,11 +5590,11 @@ function renderGantt(){
   if(!D){ document.getElementById('ganttChart').innerHTML = '<div class="gantt-empty">Aún no hay actividades con fecha.</div>'; info.textContent = ''; return; }
   info.textContent = D.st.sinFecha ? `${D.st.sinFecha} actividad(es) sin fecha no se muestran. Las fechas se completan al editar una actividad.` : '';
   const {st} = D;
-  const side = `<div class="ps-side"><div><div class="ps-kick">Cronograma de proyectos</div><div class="ps-sem">${D.tit}</div></div>
+  const side = `<div class="ps-side"><div><div class="ps-kick">Cronograma de actividades</div><div class="ps-sem">${D.tit}</div></div>
     <div class="ps-mid"><div class="ps-big">${st.avance===null?'—':st.avance+'%'}</div><div><div class="ps-bl">Avance promedio</div>
-    <div class="ps-bs"><b>${st.n}</b> proyectos · <b>${st.fin}</b> finalizados · <b>${st.curso}</b> en curso${st.venc?` · <b>${st.venc}</b> vencidos`:''}</div></div></div>
+    <div class="ps-bs"><b>${st.n}</b> actividades · <b>${st.fin}</b> finalizados · <b>${st.curso}</b> en curso${st.venc?` · <b>${st.venc}</b> vencidos`:''}</div></div></div>
     <div class="ps-leg"><div><i class="dt ok"></i>Cumplido</div><div><i class="dt fu"></i>Fin en curso</div><div><i class="dt ov"></i>Fin vencido</div><div><i class="dt" style="background:#F29622;width:3px;border-radius:0"></i>Hoy</div></div></div>`;
-  const main = `<div class="ps-main" id="ggMain"><div class="gg-hd"><span class="gg-hn">Proyecto</span><div class="gg-rul">${D.meses.map(m=>`<span>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>${st.n?ggFilas(D,true):'<p class="ps-tip">Ningún proyecto con fecha en este periodo.</p>'}<p class="ps-tip">Toca un proyecto para editarlo.</p></div>`;
+  const main = `<div class="ps-main" id="ggMain"><div class="gg-hd"><span class="gg-hn">Actividad</span><div class="gg-rul">${D.meses.map(m=>`<span>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>${st.n?ggFilas(D,true):'<p class="ps-tip">Ninguna actividad con fecha en este periodo.</p>'}<p class="ps-tip">Toca una actividad para editarla.</p></div>`;
   document.getElementById('ganttChart').innerHTML = `<div class="ps-wrap gg">${side}${main}</div>`;
 }
 document.getElementById('ganttChart').addEventListener('click', e=>{ const r = e.target.closest('[data-ggid]'); if(r) openModal(r.dataset.ggid); });
@@ -5610,19 +5610,19 @@ function ggConstruirPDF(){
   const logoCab = (document.querySelector('.lg-cab')||{}).src || '';
   const hoyStr = new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
   const panel = `<div class="side"><div class="lgo"><img src="${logoCab}"></div>
-    <div class="kick">Servicios Generales · Mantenimiento</div><h1>Cronograma de proyectos</h1><div class="sem">${D.tit}</div>
+    <div class="kick">Servicios Generales · Mantenimiento</div><h1>Cronograma de actividades</h1><div class="sem">${D.tit}</div>
     <div class="rule"></div>
-    <div class="big">${st.avance===null?'—':st.avance+'%'}</div><div class="bl">Avance promedio</div><div class="bs">${st.n} proyectos · ${st.fin} finalizados · ${st.curso} en curso${st.venc?` · ${st.venc} vencidos`:''}</div>
+    <div class="big">${st.avance===null?'—':st.avance+'%'}</div><div class="bl">Avance promedio</div><div class="bs">${st.n} actividades · ${st.fin} finalizados · ${st.curso} en curso${st.venc?` · ${st.venc} vencidos`:''}</div>
     <div class="leg"><div><i class="gg-dt" style="position:static;margin:0;display:inline-block"></i>Inicio / fin cumplido</div><div><i class="gg-dt pe" style="position:static;margin:0;display:inline-block"></i>Fin en curso</div><div><i class="gg-dt ov" style="position:static;margin:0;display:inline-block"></i>Fin vencido</div><div><i style="display:inline-block;width:3px;height:12px;background:#F29622"></i>Hoy</div></div>
     <div class="foot"><div class="el"><b>Elaboró</b><br>Alfonso Monserrat Tejada<br>Líder de Servicios Generales<br><span>Emitido el ${hoyStr}</span></div><div class="pn"></div></div></div>`;
-  const hd = `<div class="gg-hd"><span class="gg-hn">Proyecto</span><div class="gg-rul">${D.meses.map(m=>`<span>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>`;
+  const hd = `<div class="gg-hd"><span class="gg-hn">Actividad</span><div class="gg-rul">${D.meses.map(m=>`<span>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>`;
   const css = paPdfCss() + GG_CSS + `.blk{margin:0}.gg-row{padding:6px 0}.gg-n,.gg-hn{width:200px}.gg-trk{height:24px}.gg-n b{font-size:10.5px}.gg-n small{font-size:8.5px}.gg-gh{padding:10px 0 3px;font-size:9.5px}.gg-hd{margin-bottom:2px}.pn{margin-top:10px;font-size:9px;color:#8fa3c4}#src{width:716px}`;
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>
   <div id="src">${ggFilas(D,false,true)}</div><div id="panel" style="display:none">${panel}</div><div id="hd" style="display:none">${hd}</div><div id="out"></div></body></html>`;
 }
 async function ggExportarPDF(){
   const btn = document.getElementById('ggPDF');
-  if(!ggData() || !ggData().st.n){ showToast('No hay proyectos con fecha en este periodo.'); return; }
+  if(!ggData() || !ggData().st.n){ showToast('No hay actividades con fecha en este periodo.'); return; }
   btn.disabled = true; showToast('Generando PDF…');
   try{
     if(!window.html2canvas) await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
@@ -5636,10 +5636,10 @@ async function ggExportarPDF(){
     await new Promise(r=>setTimeout(r,300));
     const out = d.getElementById('out'), H = 816, AV = H - 34 - 24 - 40 - 22;
     const mk = titulo => { const p = d.createElement('div'); p.className = 'pg'; p.appendChild(d.getElementById('panel').firstElementChild.cloneNode(true)); const m = d.createElement('div'); m.className = 'main'; m.innerHTML = `<div class="tt">${titulo}</div>` + d.getElementById('hd').innerHTML; p.appendChild(m); out.appendChild(p); return m; };
-    let main = mk('Proyectos por fecha de inicio'), used = 0;
+    let main = mk('Actividades por fecha de inicio'), used = 0;
     [...d.querySelectorAll('#src .blk')].forEach(b=>{
       const h = b.offsetHeight;
-      if(used && used + h > AV){ main = mk('Proyectos por fecha de inicio · continuación'); used = 0; }
+      if(used && used + h > AV){ main = mk('Actividades por fecha de inicio · continuación'); used = 0; }
       main.appendChild(b); used += h;
     });
     const pages = [...out.children];
@@ -5653,7 +5653,7 @@ async function ggExportarPDF(){
       pdf.addImage(cv.toDataURL('image/jpeg',0.95), 'JPEG', 0, 0, 792, 612);
     }
     fr.remove();
-    pdf.save(`Cronograma de proyectos ${D_tit()}.pdf`);
+    pdf.save(`Cronograma de actividades ${D_tit()}.pdf`);
   }catch(e){ showToast('No se pudo generar el PDF (¿sin internet?).'); console.error(e); }
   btn.disabled = false;
 }
@@ -9992,7 +9992,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1640';
+const APP_VERSION = '2026-11-22-1641';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
