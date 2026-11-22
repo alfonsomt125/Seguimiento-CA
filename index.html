@@ -3132,7 +3132,7 @@
 
     <div id="mSeguimientoWrap" style="display:none;margin-top:6px;border-top:1px solid var(--line);padding-top:16px;">
       <h4 style="margin:0 0 4px;font-size:13px;color:var(--navy);">Seguimiento por fecha (trazabilidad)</h4>
-      <p class="hint" style="margin:0 0 12px;">Cada nota queda con su fecha, como una mini bitácora de esta actividad. También aparecen en la Bitácora Diaria general.</p>
+      <p class="hint" style="margin:0 0 12px;">Cada nota queda con su fecha, como una mini bitácora de esta actividad. También aparecen en Reportes. Aquí puedes registrar notas aunque la actividad ya esté completada.</p>
       <div class="grid-2" style="margin-bottom:10px;">
         <div class="field">
           <label>Fecha</label>
@@ -5329,7 +5329,7 @@ function renderResumen(){
 function renderBitacoraForm(){
   const sel = document.getElementById('entryActivity');
   sel.innerHTML = '<option value="">General (sin actividad asociada)</option>' +
-    activities.map(a=>`<option value="${a.id}">${esc(a.proyecto)}</option>`).join('');
+    activities.filter(a=>getOrdenEstado(a)==='Abierta').map(a=>`<option value="${a.id}">${esc(a.proyecto)}</option>`).join('');
   document.getElementById('entryDate').value = todayISO();
 }
 
@@ -10135,7 +10135,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1839';
+const APP_VERSION = '2026-11-22-1841';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
