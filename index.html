@@ -846,16 +846,18 @@
   .pa-t th,.pa-t td{padding:0;}
   .pa-t .pa-n{position:sticky;left:0;z-index:2;background:#fff;min-width:150px;max-width:150px;padding:6px 8px 6px 0;text-align:left;font-weight:400;line-height:1.25;vertical-align:middle;border-bottom:1px solid var(--line);}
   .pa-t thead .pa-n{border-bottom:none;}
-  .pa-t .pa-m{text-align:center;font-size:11px;font-weight:600;color:var(--gray);border-left:1px solid var(--line);padding:2px 0;text-transform:uppercase;}
-  .pa-t .pa-w{text-align:center;font-size:9px;color:var(--gray);padding-bottom:3px;}
-  .pa-t td.pa-c{border-bottom:1px solid var(--line);padding:3px 1px;text-align:center;}
+  .pa-t .pa-m{text-align:center;font-size:12px;font-weight:600;color:var(--gray);border-left:1px solid var(--line);padding:2px 0;text-transform:uppercase;}
+  .pa-t .pa-w{text-align:center;font-size:10px;color:var(--gray);padding-bottom:3px;}
+  .pa-t td.pa-c{border-bottom:1px solid var(--line);padding:6px 2px;text-align:center;}
+  .pa-t td.pa-c.m0{scroll-snap-align:start;}
+  .pa-scroll{scroll-snap-type:x proximity;scroll-padding-left:152px;}
   .pa-t td.pa-c.m0{border-left:1px solid var(--line);}
-  .pa-cell{display:block;width:20px;height:20px;border-radius:5px;margin:auto;border:1px solid transparent;cursor:default;padding:0;font-size:12px;line-height:18px;color:#fff;background:transparent;font-family:inherit;}
+  .pa-cell{display:block;width:26px;height:26px;border-radius:7px;margin:auto;border:1px solid transparent;cursor:default;padding:0;font-size:14px;line-height:24px;color:#fff;background:transparent;font-family:inherit;}
   .pa-cell.p{background:#dbe9f8;border-color:#9ec2ea;cursor:pointer;}
   .pa-cell.d{background:#2e9e6b;border-color:#2e9e6b;cursor:pointer;}
   .pa-cell.o{background:#fde4e1;border-color:#e4877e;cursor:pointer;}
   .pa-cell.n{background:#fff3d6;border-color:#e8b84a;cursor:pointer;}
-  .pa-cell.cur{box-shadow:0 0 0 2px var(--navy);}
+  .pa-t .pa-w.cur{color:var(--navy);font-weight:700;text-decoration:underline;}
   .pa-edit .pa-cell{cursor:pointer;border:1px dashed var(--line);}
   .pa-edit .pa-cell.p,.pa-edit .pa-cell.d,.pa-edit .pa-cell.o,.pa-edit .pa-cell.n{border-style:solid;}
   .pa-s{display:block;font-size:10.5px;font-weight:600;margin-top:2px;}
@@ -864,7 +866,7 @@
   .pa-leyenda{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--gray);margin:0 0 12px;}
   .pa-leyenda span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px;border:1px solid;}
   .pa-leyenda .l-d::before{background:#2e9e6b;border-color:#2e9e6b;}.pa-leyenda .l-p::before{background:#dbe9f8;border-color:#9ec2ea;}.pa-leyenda .l-o::before{background:#fde4e1;border-color:#e4877e;}
-  @media(max-width:700px){.pa-t .pa-n{min-width:108px;max-width:108px;font-size:11px;}.pa-cell{width:24px;height:24px;line-height:22px;}.pa-corte{margin-left:0;width:100%;}.pa-top .btn-sec#paEditar{margin-left:auto;}}
+  @media(max-width:700px){.pa-scroll{scroll-padding-left:110px;}.pa-t .pa-n{min-width:108px;max-width:108px;font-size:11px;}.pa-cell{width:24px;height:24px;line-height:22px;}.pa-corte{margin-left:0;width:100%;}.pa-top .btn-sec#paEditar{margin-left:auto;}}
   .pa-t th{border-bottom:none;padding:0;letter-spacing:0;font-family:inherit;}
   .pa-t th.pa-m{border-bottom:none;padding:2px 0;}
   .pa-t tr:hover td,.pa-t table tbody tr:hover{background:transparent;}
@@ -9895,7 +9897,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1228';
+const APP_VERSION = '2026-11-22-1233';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14525,14 +14527,12 @@ function renderPlanAnual(){
   const hoy = paHoyIdx();
   const col = v => v===null ? 'var(--gray)' : v>=.9 ? '#2e9e6b' : v>=.7 ? '#c98a00' : '#c0392b';
   document.getElementById('paKpis').innerHTML = `
-    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Cumplimiento al corte</div><div class="pa-kpi-big" style="color:${col(R.global)}">${paPct(R.global)}</div><div class="lbl">${sinIniciar?'Semestre sin iniciar':PA_MESES[Math.floor(corte/4)]+' · sem '+(corte%4+1)}</div></div>
-    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Programadas al corte</div><div class="num">${R.totP}</div></div>
-    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Cumplidas</div><div class="num">${R.totD}</div></div>
+    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Cumplimiento</div><div class="pa-kpi-big" style="color:${col(R.global)}">${paPct(R.global)}</div><div class="lbl">${sinIniciar?'Semestre sin iniciar':'Al corte · '+PA_MESES[Math.floor(corte/4)]+' sem '+(corte%4+1)}</div></div>
+    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Cumplidas</div><div class="num">${R.totD}<span style="font-size:15px;color:var(--gray)"> de ${R.totP}</span></div><div class="lbl">programadas al corte</div></div>
     <div class="kpi"><div class="lbl" style="margin:0 0 4px">Pendientes vencidas</div><div class="num" style="color:${R.vencidas?'#c0392b':'inherit'}">${R.vencidas}</div></div>
-    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Semestre completo</div><div class="num">${R.anualD}/${R.anualP}</div></div>
-    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Por semestre</div><div class="lbl" style="color:var(--navy);font-size:13px;line-height:1.7">1.er: <b style="color:${col(R0.global)}">${paPct(R0.global)}</b><br>2.º: <b style="color:${col(R1.global)}">${paPct(R1.global)}</b></div></div>`;
+    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Por semestre</div><div class="lbl" style="color:var(--navy);font-size:13px;line-height:1.7">1.er: <b style="color:${col(R0.global)}">${paPct(R0.global)}</b> · 2.º: <b style="color:${col(R1.global)}">${paPct(R1.global)}</b></div></div>`;
   const mm = PA_MESES.slice(paSem*6, paSem*6+6);
-  const hdr = `<tr><th class="pa-n" rowspan="2"></th>${mm.map(m=>`<th class="pa-m" colspan="4">${m}</th>`).join('')}</tr><tr>${mm.map(()=>'<th class="pa-w">1</th><th class="pa-w">2</th><th class="pa-w">3</th><th class="pa-w">4</th>').join('')}</tr>`;
+  const hdr = `<tr><th class="pa-n" rowspan="2"></th>${mm.map(m=>`<th class="pa-m" colspan="4">${m}</th>`).join('')}</tr><tr>${mm.map((_,mi)=>[1,2,3,4].map(w=>`<th class="pa-w${(paSem*24+mi*4+w-1)===hoy?' cur':''}">${w}</th>`).join('')).join('')}</tr>`;
   let out = `<div class="pa-leyenda"><span class="l-d">Cumplida</span><span class="l-p">Programada</span><span class="l-o">Vencida sin cumplir</span></div>`;
   R.gs.forEach(({g,acts,pct})=>{
     out += `<div class="panel pa-g${paEdit?' pa-edit':''}"><div class="pa-gh"><h3>${esc(g.n)}</h3><small>${esc(g.r||'')}</small><span class="pa-pct" style="color:${col(pct)}">${paPct(pct)}</span></div><div class="pa-bar"><i style="width:${Math.round((pct||0)*100)}%"></i></div><div class="pa-scroll"><table class="pa-t"><thead>${hdr}</thead><tbody>`;
@@ -14541,7 +14541,7 @@ function renderPlanAnual(){
       for(let i=paSem*24;i<paSem*24+24;i++){
         const p = a.p[i]==='1', d = a.h[i]==='1';
         let c = !p ? '' : d ? 'd' : i<paCorte ? 'o' : i===paCorte ? 'n' : 'p';
-        cells += `<td class="pa-c${i%4===0?' m0':''}"><button type="button" class="pa-cell ${c}${i===hoy?' cur':''}" data-pa="${g.id}|${a.id}|${i}" aria-label="${PA_MESES[Math.floor(i/4)]} semana ${i%4+1}">${d?'✓':''}</button></td>`;
+        cells += `<td class="pa-c${i%4===0?' m0':''}"><button type="button" class="pa-cell ${c}" data-pa="${g.id}|${a.id}|${i}" aria-label="${PA_MESES[Math.floor(i/4)]} semana ${i%4+1}">${d?'✓':''}</button></td>`;
       }
       out += `<tr><td class="pa-n">${esc(a.t)}<small class="pa-s" style="color:${col(ap)}">${ok}/${pr} · ${paPct(ap)}</small></td>${cells}</tr>`;
     });
