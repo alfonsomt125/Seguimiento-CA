@@ -1161,6 +1161,7 @@
         <div class="he-switch" id="paSemSw" style="margin:0;"><button data-sem="0">1.er semestre</button><button data-sem="1">2.º semestre</button></div>
         <div class="pa-corte"><span>Corte</span><select id="paMes"></select><select id="paSem"><option value="1">Sem 1</option><option value="2">Sem 2</option><option value="3">Sem 3</option><option value="4">Sem 4</option></select><button class="btn-sec" id="paHoy" type="button">Hoy</button></div>
         <button class="btn-sec" id="paEditar" type="button">Editar plan</button>
+        <button class="btn-sec" id="paPDF" type="button">Exportar PDF</button>
       </div>
       <div class="kpis" id="paKpis"></div>
       <div id="paGrupos"></div>
@@ -9919,7 +9920,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1551';
+const APP_VERSION = '2026-11-22-1603';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14634,6 +14635,106 @@ document.getElementById('paGrupos').addEventListener('click', async e=>{
   renderPlanAnual(); await savePlanAnual();
 });
 document.getElementById('paSemSw').addEventListener('click', e=>{ const b = e.target.closest('button[data-sem]'); if(!b) return; paSem = +b.dataset.sem; document.getElementById('paGrupos').innerHTML=''; renderPlanAnual(); });
+
+/* --- Exportar el cronograma de mantenimiento preventivo (semestre) a PDF institucional --- */
+function paConstruirPDF(){
+  const sem = paSem, grupos = planAnual[paAno] || [], R = paCalc(grupos, paCorte, sem);
+  const corte = Math.min(Math.max(paCorte, sem*24), sem*24+23), sinIniciar = paCorte < sem*24;
+  const mm = PA_MESES.slice(sem*6, sem*6+6), MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const rango = sem===0 ? `1 de enero al 30 de junio de ${paAno}` : `1 de julio al 30 de diciembre de ${paAno}`;
+  const logoCab = (document.querySelector('.lg-cab')||{}).src || '', logoEfqm = (document.querySelector('.lg-efqm')||{}).src || '';
+  const hoyStr = new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+  const chk = '<b class="ck"></b>';
+  const pct = v => v===null ? '—' : Math.round(v*100)+'%';
+  const bloques = R.gs.map(({g,acts,pct:gp})=>{
+    const gDone = acts.reduce((x,y)=>x+y.ok,0), gPlan = acts.reduce((x,y)=>x+y.pr,0);
+    const filas = acts.map(({a,pr,ok,pct:ap})=>{
+      let c = '';
+      for(let i=sem*24;i<sem*24+24;i++){ const p = a.p[i]==='1', d = a.h[i]==='1'; c += `<td class="w${i%4===0?' m':''}${p?' p':''}">${p&&d?chk:''}</td>`; }
+      return `<tr><td class="nm">${esc(a.t)}</td>${c}<td class="rs">${pr?`${ok}/${pr}`:'—'}</td></tr>`;
+    }).join('');
+    return `<div class="blk"><div class="gb"><span>${esc(g.n)}</span><small>${esc(g.r||'')}</small><b>${pct(gp)}</b></div>
+      <table><colgroup><col style="width:276px">${'<col style="width:26px">'.repeat(24)}<col style="width:56px"></colgroup>
+      <thead><tr><th></th>${mm.map(m=>`<th class="mh" colspan="4">${m}</th>`).join('')}<th class="mh">Cumpl.</th></tr>
+      <tr><th></th>${mm.map(()=>'<th class="wh m">1</th><th class="wh">2</th><th class="wh">3</th><th class="wh">4</th>').join('')}<th></th></tr></thead><tbody>${filas}</tbody></table></div>`;
+  }).join('');
+  const cierre = `<div class="blk cierre"><div class="leg"><span><i class="lp"></i>Semana programada</span><span><i class="lp">${chk}</i>Programada y cumplida</span><span><i class="lv"></i>Sin programar</span></div>
+    <div class="firmas"><div><div class="ln"></div><b>Alfonso Monserrat Tejada</b><br>Líder de Servicios Generales<br><span>Elaboró</span></div><div><div class="ln"></div><b>&nbsp;</b><br>Dirección Administrativa<br><span>Revisó</span></div><div><div class="ln"></div><b>&nbsp;</b><br>Rectoría<br><span>Aprobó</span></div></div></div>`;
+  const cab = `<div class="cab"><img src="${logoCab}"><div class="t1">INSTITUCIÓN DE LA IGLESIA PRESBITERIANA DE COLOMBIA</div></div>
+    <div class="ttl"><div><div class="kick">Servicios Generales · Mantenimiento</div><h1>Cronograma de mantenimiento preventivo</h1><div class="sm">${sem===0?'Primer':'Segundo'} semestre ${paAno} · ${rango}</div></div>
+    <div class="ind"><div class="v">${pct(R.global)}</div><div class="l">Cumplimiento ${sinIniciar?'(semestre sin iniciar)':'al '+MESES[Math.floor(corte/4)].toLowerCase()+', semana '+(corte%4+1)}</div><div class="l2">${R.totD} de ${R.totP} programadas cumplidas</div></div></div>`;
+  const cabMini = `<div class="mini"><b>Cronograma de mantenimiento preventivo</b> · ${sem===0?'1.er':'2.º'} semestre ${paAno}</div>`;
+  const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:Poppins,Arial,sans-serif;color:#011632;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #src{position:absolute;left:0;top:0;width:968px;visibility:hidden}
+  .pg{position:relative;width:1056px;height:816px;padding:30px 44px 0;overflow:hidden;background:#fff;page-break-after:always}
+  .cab{text-align:center;border-bottom:1.5px solid #03459B;padding-bottom:6px}.cab img{height:54px;display:block;margin:0 auto 3px}.cab .t1{font-size:9.5px;font-weight:600;color:#03459B;letter-spacing:.6px}
+  .ttl{display:flex;justify-content:space-between;align-items:flex-end;margin:14px 0 14px}.kick{font-size:9.5px;font-weight:600;letter-spacing:1.4px;color:#F29622;text-transform:uppercase}
+  h1{font-size:21px;font-weight:700;line-height:1.2;margin:2px 0 3px}.sm{font-size:12px;color:#5b6577}
+  .ind{text-align:right;border-right:4px solid #F29622;padding-right:12px}.ind .v{font-size:30px;font-weight:700;line-height:1;color:#03459B}.ind .l{font-size:10.5px;font-weight:600;margin-top:3px}.ind .l2{font-size:10px;color:#5b6577}
+  .mini{font-size:10.5px;color:#03459B;border-bottom:1.5px solid #03459B;padding-bottom:6px;margin-bottom:12px}
+  .blk{margin-bottom:12px;break-inside:avoid}.gb{display:flex;align-items:baseline;gap:10px;background:#011632;color:#fff;padding:6px 10px;border-radius:6px 6px 0 0;font-size:12px;font-weight:600}.gb small{flex:1;font-weight:400;font-size:9.5px;color:#b9c6dc}.gb b{color:#F29622;font-size:12px}
+  table{border-collapse:collapse;table-layout:fixed;width:968px}th,td{border:.5px solid #cfd7e6}
+  th.mh{background:#E5EEF9;color:#03459B;font-size:9px;font-weight:700;text-transform:uppercase;padding:3px 0;text-align:center}th.wh{font-size:8px;font-weight:500;color:#6D7388;text-align:center;padding:1px 0;background:#F7F9FC}
+  td.nm{font-size:9.5px;line-height:1.3;padding:4px 8px;text-align:left}td.w{height:22px;text-align:center;vertical-align:middle;padding:0}td.w.p{background:#03459B}.ck{display:block;width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);margin:0 auto;position:relative;top:-2px}.leg .ck{width:4px;height:8px;border-width:0 1.5px 1.5px 0;top:-1px}
+  td.rs{font-size:9.5px;font-weight:600;text-align:center;color:#03459B}th.m,td.m{border-left:1.2px solid #8aa0c4}
+  .leg{display:flex;gap:22px;font-size:9.5px;color:#5b6577;margin:4px 0 22px}.leg span{display:flex;align-items:center;gap:6px}.leg i{display:inline-flex;align-items:center;justify-content:center;width:16px;height:14px;border:.5px solid #cfd7e6;border-radius:3px}.leg i.lp{background:#03459B;border-color:#03459B}
+  .firmas{display:flex;gap:40px}.firmas>div{flex:1;font-size:10px;line-height:1.5}.firmas .ln{border-top:1px solid #011632;margin-bottom:4px;margin-top:34px}.firmas span{color:#6D7388;font-size:9px}
+  .pie{position:absolute;left:44px;right:44px;bottom:16px;border-top:1.5px solid #03459B;padding-top:6px;text-align:center;font-size:8.5px;color:#03459B;min-height:44px}.pie img{position:absolute;right:0;bottom:0;height:36px}.pie .n{position:absolute;left:0;bottom:0;color:#6D7388}`;
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>
+  <div id="src"><div id="h1">${cab}</div><div id="h2">${cabMini}</div>${bloques}${cierre}</div><div id="out"></div>
+  <template id="pie"><div class="pie">Dirección: Carrera 38 No 74-179 – PBX: 3610431 · www.colegioamericano.edu.co<br>Emitido el ${hoyStr}<img src="${logoEfqm}"><span class="n"></span></div></template></body></html>`;
+}
+async function paExportarPDF(){
+  const btn = document.getElementById('paPDF'); btn.disabled = true;
+  showToast('Generando PDF…');
+  try{
+    if(!window.html2canvas) await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if(!(window.jspdf && window.jspdf.jsPDF)) await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const fr = document.createElement('iframe');
+    fr.style.cssText = 'position:fixed;left:-12000px;top:0;width:1056px;height:816px;border:0;';
+    document.body.appendChild(fr);
+    await new Promise(res=>{ fr.onload = res; fr.srcdoc = paConstruirPDF(); });
+    const d = fr.contentDocument;
+    try{ await Promise.race([d.fonts.ready, new Promise(r=>setTimeout(r,2500))]); }catch(_){}
+    await new Promise(r=>setTimeout(r,300));
+    const out = d.getElementById('out'), H = 816, FOOT = 70, TOP = 30;
+    const mk = head => { const p = d.createElement('div'); p.className = 'pg'; p.appendChild(head.cloneNode(true)); out.appendChild(p); return p; };
+    const bl = [...d.querySelectorAll('#src .blk')];
+    let pg = mk(d.getElementById('h1')), used = pg.firstChild.offsetHeight + TOP;
+    const lim = H - FOOT;
+    const nuevaPag = () => { pg = mk(d.getElementById('h2')); used = pg.firstChild.offsetHeight + 12 + TOP; };
+    bl.forEach(b=>{
+      let guard = 0;
+      while(guard++ < 20){
+        const h = b.offsetHeight + 12, filas = [...b.querySelectorAll('tbody tr')];
+        if(used + h <= lim || !pg.querySelectorAll('.blk').length){ pg.appendChild(b); used += h; break; }
+        if(filas.length < 3){ nuevaPag(); continue; }
+        const parte = b.cloneNode(true); parte.querySelector('tbody').innerHTML = ''; pg.appendChild(parte);
+        const tb = parte.querySelector('tbody'); let n = 0;
+        for(const f of filas){ tb.appendChild(f); if(parte.offsetHeight + 12 + used > lim && n >= 1){ b.querySelector('tbody').prepend(f); break; } n++; }
+        if(n < 2){ b.querySelector('tbody').prepend(...tb.children); parte.remove(); nuevaPag(); continue; }
+        const rest = b.querySelectorAll('tbody tr').length;
+        if(parte.isConnected && (!rest)){ used += parte.offsetHeight + 12; break; }
+        if(parte.isConnected) used += parte.offsetHeight + 12;
+        nuevaPag();
+      }
+    });
+    const pages = [...out.children], tpl = d.getElementById('pie');
+    pages.forEach((p,i)=>{ const f = tpl.content.cloneNode(true); f.querySelector('.n').textContent = `Página ${i+1} de ${pages.length}`; p.appendChild(f); });
+    fr.style.height = (H*pages.length)+'px';
+    await new Promise(r=>setTimeout(r,200));
+    const pdf = new window.jspdf.jsPDF({unit:'pt', format:'letter', orientation:'landscape'});
+    for(let i=0;i<pages.length;i++){
+      const cv = await html2canvas(pages[i], {scale:2.2, width:1056, height:816, windowWidth:1056, windowHeight:H*pages.length, backgroundColor:'#ffffff'});
+      if(i) pdf.addPage('letter','landscape');
+      pdf.addImage(cv.toDataURL('image/jpeg',0.95), 'JPEG', 0, 0, 792, 612);
+    }
+    fr.remove();
+    pdf.save(`Cronograma mantenimiento preventivo ${paSem===0?'1er':'2do'} semestre ${paAno}.pdf`);
+  }catch(e){ showToast('No se pudo generar el PDF (¿sin internet?).'); console.error(e); }
+  btn.disabled = false;
+}
+document.getElementById('paPDF').addEventListener('click', paExportarPDF);
 document.getElementById('paEditar').addEventListener('click', ()=>{ paEdit = !paEdit; renderPlanAnual(); });
 document.getElementById('paHoy').addEventListener('click', ()=>{ paCorte = paHoyIdx(); paSem = paCorte>=24?1:0; document.getElementById('paGrupos').innerHTML=''; renderPlanAnual(); });
 ['paMes','paSem'].forEach(id=>document.getElementById(id).addEventListener('change', ()=>{ paCorte = (+document.getElementById('paMes').value)*4 + (+document.getElementById('paSem').value) - 1; renderPlanAnual(); }));
