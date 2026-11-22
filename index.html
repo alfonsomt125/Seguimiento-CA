@@ -1162,7 +1162,7 @@
 
   <nav class="tabs">
     <button data-view="resumen" class="active">Resumen</button>
-    <button data-view="bitacora">Bitácora Diaria</button>
+    <button data-view="bitacora">Reportes</button>
     <button data-view="actividades">Actividades</button>
     <button data-view="cronograma">Cronograma</button>
   </nav>
@@ -5216,7 +5216,8 @@ function renderResumen(){
   // Columnas por mes (inicio de la actividad)
   const mY = resumenAnoF && /^\d{4}$/.test(resumenAnoF) ? resumenAnoF : yNow;
   const meses = new Array(12).fill(0);
-  activities0.forEach(a=>{ if(a.fechaInicio && a.fechaInicio.slice(0,4)===mY) meses[+a.fechaInicio.slice(5,7)-1]++; });
+  let contadas = 0;
+  activities0.forEach(a=>{ const d = a.fechaInicio || a.fechaFin; if(d && d.slice(0,4)===mY){ meses[+d.slice(5,7)-1]++; contadas++; } });
   const maxM = Math.max(1,...meses), mHoy = (mY===yNow) ? new Date().getMonth() : -1;
   const cols = `<div class="rd-col">${meses.map((n,i)=>`<div class="${i===mHoy?'hoy':''}"><em>${n||''}</em><i style="height:${n/maxM*78}%"></i>${PA_MESES[i][0]}</div>`).join('')}</div>`;
 
@@ -5231,14 +5232,14 @@ function renderResumen(){
 
   const paRows = gruposPA.map(x=>`<div class="rd-row"><span class="n" title="${esc(x.g.n)}">${esc(x.g.n)}</span><div class="rd-trk"><i style="width:${x.pct*100}%;background:${x.pct>=CFG.verde/100?'#1F7A5C':x.pct>=CFG.ambar/100?'#F29622':'#B3261E'}"></i></div><b>${Math.round(x.pct*100)}%</b></div>`).join('');
 
-  const sw = `<div class="he-switch" id="resSwitch">${[['act','Actividades'],['plan','Plan anual'],['bit','Bitácora']].map(x=>`<button data-rt="${x[0]}"${x[0]===resTab?' class="active"':''}>${x[1]}</button>`).join('')}</div>`;
+  const sw = `<div class="he-switch" id="resSwitch">${[['act','Actividades'],['plan','Plan anual']].map(x=>`<button data-rt="${x[0]}"${x[0]===resTab?' class="active"':''}>${x[1]}</button>`).join('')}</div>`;
   const side = (k,big,bl,extra)=>`<div class="rd-side"><div class="ps-kick">${k}</div><div class="ps-big" style="margin-top:14px;">${big}</div><div class="ps-bl">${bl}</div>${extra}</div>`;
   let body = '';
   if(resTab==='act'){
     body = `<div class="rd">${side('Actividades', avgAvance+'%', 'Avance promedio', `<div class="ps-bs"><b>${total}</b> actividades · <b>${cerradas}</b> cerradas</div><div class="rd-ord"><button data-ordencat="Abierta"><b>${abiertas}</b><span>Abiertas</span></button><button class="v" data-ordencat="Vencida"><b>${vencidas}</b><span>Vencidas</span></button></div>`)}
     <div class="rd-main">
       <div class="rd-c"><h3>ACTIVIDADES POR ESTADO</h3>${donut}</div>
-      <div class="rd-c"><h3>ACTIVIDADES POR MES · ${mY}</h3>${cols}</div>
+      <div class="rd-c"><h3>ACTIVIDADES POR MES · ${mY}</h3>${cols}${contadas<total?`<p class="hint" style="margin:8px 0 0;">${contadas} de ${total} con fecha en ${mY}. Las demás son de otros años o no tienen fecha.</p>`:''}</div>
       <div class="rd-c w"><h3>ÁREAS CON MÁS ACTIVIDADES</h3>${areasAll.length?areaRows(areasShow):'<p class="empty">Sin datos aún.</p>'}${areasAll.length>6?`<button class="rd-more" id="rdMore">${window._rdAreasAbiertas?'Ver menos':'Ver las '+areasAll.length+' áreas'}</button>`:''}</div>
     </div></div>`;
   } else if(resTab==='plan'){
@@ -5313,7 +5314,7 @@ function renderResumen(){
       <div class="entry-desc">${esc(e.descripcion)}</div>
       ${(e.fotos && e.fotos.length) ? `<div class="entry-photos">${e.fotos.slice(0,3).map(src=>`<div class="thumb-wrap"><img src="${src}" data-lb="1"></div>`).join('')}${e.fotos.length>3?`<span class="hint" style="align-self:center;">+${e.fotos.length-3} más</span>`:''}</div>` : ''}
     </div>`;
-  }).join('') : '<p class="empty">Aún no hay entradas en la bitácora. Ve a la pestaña "Bitácora Diaria" para agregar la primera.</p>';
+  }).join('') : '<p class="empty">Aún no hay entradas en la bitácora. Ve a la pestaña "Reportes" para agregar la primera.</p>';
   document.getElementById('recentEntries').querySelectorAll('[data-lb]').forEach(img=>{
     img.addEventListener('click', ()=>openLightbox(img.src));
   });
@@ -5337,7 +5338,7 @@ function renderBitacoraList(){
   const hoyI = todayISO(), dd = k=>{ const d = new Date(); d.setDate(d.getDate()-k); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
   const i7 = dd(6), nHoy = bitacora.filter(e=>e.fecha===hoyI).length, n7 = bitacora.filter(e=>e.fecha>=i7&&e.fecha<=hoyI).length;
   const desde = bitRango==='hoy' ? hoyI : bitRango==='sem' ? i7 : bitRango==='mes' ? hoyI.slice(0,8)+'01' : '';
-  document.getElementById('bitSide').innerHTML = `<div class="ps-wrap gg" style="margin-bottom:14px;"><div class="ps-side"><div><div class="ps-kick">Bitácora diaria</div><div class="ps-sem">${fmtDate(hoyI)}</div></div>
+  document.getElementById('bitSide').innerHTML = `<div class="ps-wrap gg" style="margin-bottom:14px;"><div class="ps-side"><div><div class="ps-kick">Reportes</div><div class="ps-sem">${fmtDate(hoyI)}</div></div>
     <div class="ps-mid"><div class="ps-big">${nHoy}</div><div><div class="ps-bl">Entradas hoy</div><div class="ps-bs"><b>${n7}</b> en los últimos 7 días · <b>${bitacora.length}</b> en total</div></div></div>
     <div class="ps-leg">${[['hoy','Hoy'],['sem','7 días'],['mes','Este mes'],['todo','Todo']].map(r=>`<div class="ab-chip${bitRango===r[0]?' on':''}" data-bitr="${r[0]}">${r[1]}</div>`).join('')}</div></div></div>`;
   document.querySelectorAll('#bitSide [data-bitr]').forEach(c=>c.addEventListener('click', ()=>{ bitRango = c.dataset.bitr; renderBitacoraList(); }));
@@ -5643,8 +5644,8 @@ function ggData(){
   const dia = f=>{ const [yy,mm,dd] = f.slice(0,10).split('-').map(Number); return D(yy,mm-1,dd); };
   const hoyD = (()=>{ const t = new Date(); return D(t.getFullYear(),t.getMonth(),t.getDate()); })();
   const all = activities.filter(a=>(!search || a.proyecto.toLowerCase().includes(search)) && (!areaF || a.area===areaF));
-  const conFecha = all.filter(a=>a.fechaInicio);
-  let rows = conFecha.map(a=>{ let i = dia(a.fechaInicio), f = a.fechaFin ? dia(a.fechaFin) : i; if(f<i) [i,f] = [f,i]; return {a, i, f: f+1}; })
+  const conFecha = all.filter(a=>a.fechaInicio || a.fechaFin);
+  let rows = conFecha.map(a=>{ let i = dia(a.fechaInicio || a.fechaFin), f = a.fechaFin ? dia(a.fechaFin) : i; if(f<i) [i,f] = [f,i]; return {a, i, f: f+1}; })
     .filter(r=>r.i < pE && r.f > pS).sort((x,y)=>x.i-y.i || x.f-y.f || x.a.proyecto.localeCompare(y.a.proyecto));
   const cerrada = a=>getOrdenEstado(a)==='Cerrada';
   const st = {
@@ -5675,7 +5676,7 @@ function ggFilas(D, conClick, pdf){
     const av = Math.round(Number(r.a.avance)||0);
     if(!pdf) out += gh;
     else out += `<div class="blk">${gh}`;
-    out += `<${conClick?'button type="button"':'div'} class="gg-row" ${conClick?`data-ggid="${r.a.id}"`:''}><div class="gg-n"><b>${esc(r.a.proyecto)}</b><small>${esc(r.a.area||'')} · ${fmtDate(r.a.fechaInicio)}${r.a.fechaFin?' → '+fmtDate(r.a.fechaFin):''}</small></div>${ggPista(r,D)}<div class="gg-r"><b>${av}%</b></div></${conClick?'button':'div'}>`;
+    out += `<${conClick?'button type="button"':'div'} class="gg-row" ${conClick?`data-ggid="${r.a.id}"`:''}><div class="gg-n"><b>${esc(r.a.proyecto)}</b><small>${esc(r.a.area||'')} · ${r.a.fechaInicio?fmtDate(r.a.fechaInicio):''}${r.a.fechaFin?(r.a.fechaInicio?' → ':'Fin ')+fmtDate(r.a.fechaFin):''}</small></div>${ggPista(r,D)}<div class="gg-r"><b>${av}%</b></div></${conClick?'button':'div'}>`;
     if(pdf) out += `</div>`;
   });
   return out;
@@ -10094,7 +10095,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1831';
+const APP_VERSION = '2026-11-22-1834';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14966,7 +14967,7 @@ const CFG_NAVS = {'mod-tabs':'Barra superior de Mantenimiento', mantSubActividad
 const cfgKey = b => { if(b.dataset.modtab) return 'modtab='+b.dataset.modtab; const a=[...b.attributes].find(x=>x.name.startsWith('data-')); return a ? a.name+'='+a.value : b.textContent.trim(); };
 async function loadCfg(){
   try{ const v = JSON.parse((await storageAPI.get('configApp')).value); if(v && typeof v==='object') CFG = Object.assign(CFG, v); }catch(e){}
-  resTab = CFG.resumen || 'act'; cfgAplicar();
+  resTab = CFG.resumen==='plan' ? 'plan' : 'act'; cfgAplicar();
 }
 async function saveCfg(){ try{ await storageAPI.set('configApp', JSON.stringify(CFG)); }catch(e){ console.warn('config', e); } }
 function cfgAplicar(){
@@ -14997,7 +14998,7 @@ function cfgRender(){
       <div class="cf-f">Meta cumplimiento (verde) %<input type="number" min="1" max="100" data-cfp="verde" value="${CFG.verde}"></div>
       <div class="cf-f">Alerta (ámbar) desde %<input type="number" min="0" max="99" data-cfp="ambar" value="${CFG.ambar}"></div>
       <div class="cf-f">Corte inicial<select data-cfp="corte">${opt('hoy','Hoy',CFG.corte)}${opt('fin','Fin del semestre',CFG.corte)}</select></div>
-      <div class="cf-f">Resumen abre en<select data-cfp="resumen">${opt('act','Actividades',CFG.resumen)}${opt('plan','Plan anual',CFG.resumen)}${opt('bit','Bitácora',CFG.resumen)}</select></div></details>
+      <div class="cf-f">Resumen abre en<select data-cfp="resumen">${opt('act','Actividades',CFG.resumen)}${opt('plan','Plan anual',CFG.resumen)}</select></div></details>
     <details><summary>Apariencia</summary>
       <div class="cf-f">Tamaño de letra<select data-cfp="letra">${opt(100,'Normal',CFG.letra)}${opt(110,'Grande',CFG.letra)}${opt(120,'Más grande',CFG.letra)}</select></div>
       <div class="cf-f">Modo compacto<input type="checkbox" data-cfp="compacto"${CFG.compacto?' checked':''}></div></details>
