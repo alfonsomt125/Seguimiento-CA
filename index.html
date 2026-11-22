@@ -9920,7 +9920,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1608';
+const APP_VERSION = '2026-11-22-1612';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14667,7 +14667,7 @@ function paConstruirPDF(){
     <div class="rule"></div>
     <div class="big">${pct(R.global)}</div><div class="bl">Cumplimiento ${sinIniciar?'(semestre sin iniciar)':'al '+MESES[Math.floor(corte/4)].toLowerCase()+', semana '+(corte%4+1)}</div><div class="bs">${R.totD} de ${R.totP} actividades programadas cumplidas</div>
     <div class="leg"><div><i class="dt ok"></i>Cumplida</div><div><i class="dt ov"></i>Programada y pendiente</div><div><i class="dt fu"></i>Programada a futuro</div></div>
-    <div class="foot"><div class="el"><b>Elaboró</b><br>Alfonso Monserrat Tejada<br>Líder de Servicios Generales<br><span>Emitido el ${hoyStr}</span></div><div class="ef"><img src="${logoEfqm}"></div><div class="pn"></div></div></div>`;
+    <div class="foot"><div class="el"><b>Elaboró</b><br>Alfonso Monserrat Tejada<br>Líder de Servicios Generales<br><span>Emitido el ${hoyStr}</span></div><div class="ef"><img src="${logoEfqm}"></div></div></div>`;
   const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:Poppins,Arial,sans-serif;color:#011632;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #src{position:absolute;left:0;top:0;width:716px;visibility:hidden}
   .pg{position:relative;width:1056px;height:816px;overflow:hidden;background:#fff;display:flex}
@@ -14697,7 +14697,7 @@ function paConstruirPDF(){
   .pb{height:4px;background:#E5EEF9;border-radius:2px;margin:3px 0 2px}.pb i{display:block;height:4px;background:#03459B;border-radius:2px}
   .gt{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:2px}.gt b{color:#011632}.gt span{font-weight:700;color:#F29622;font-size:12px}`;
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>
-  <div id="src">${resumen}${detalle}</div><div id="panel" style="display:none">${panel}</div><div id="out"></div></body></html>`;
+  <div id="src">${resumen}</div><div id="panel" style="display:none">${panel}</div><div id="out"></div></body></html>`;
 }
 async function paExportarPDF(){
   const btn = document.getElementById('paPDF'); btn.disabled = true;
@@ -14723,7 +14723,6 @@ async function paExportarPDF(){
       main.appendChild(b); used += h;
     });
     const pages = [...out.children];
-    pages.forEach((p,i)=>{ p.querySelector('.pn').textContent = `Página ${i+1} de ${pages.length}`; });
     fr.style.height = (H*pages.length)+'px';
     await new Promise(r=>setTimeout(r,200));
     const pdf = new window.jspdf.jsPDF({unit:'pt', format:'letter', orientation:'landscape'});
@@ -14733,7 +14732,7 @@ async function paExportarPDF(){
       pdf.addImage(cv.toDataURL('image/jpeg',0.95), 'JPEG', 0, 0, 792, 612);
     }
     fr.remove();
-    pdf.save(`Informe cronograma mantenimiento preventivo ${paSem===0?'1er':'2do'} semestre ${paAno}.pdf`);
+    pdf.save(`Resumen cronograma mantenimiento preventivo ${paSem===0?'1er':'2do'} semestre ${paAno}.pdf`);
   }catch(e){ showToast('No se pudo generar el PDF (¿sin internet?).'); console.error(e); }
   btn.disabled = false;
 }
