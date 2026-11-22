@@ -1000,6 +1000,7 @@
   .gg .ps-side{display:flex;flex-wrap:wrap;align-items:center;gap:14px 36px;padding:20px 26px;}
   .gg .ps-mid{display:flex;align-items:center;gap:16px;flex:1;min-width:220px;}
   .gg .ps-big{font-size:46px;}.gg .ps-leg{margin:0;display:flex;flex-wrap:wrap;gap:4px 16px;}.gg .ps-leg div{margin:3px 0;}
+  .ab-chip{cursor:pointer;padding:3px 9px;border-radius:999px;border:1px solid transparent;}.ab-chip:hover{background:rgba(255,255,255,.08);}.ab-chip.on{border-color:#F29622;background:rgba(242,150,34,.15);}
   .gg .ps-sem{font-size:18px;}.gg .ps-bs{margin-top:2px;}
 </style></head><body>
 
@@ -1199,6 +1200,7 @@
 
   <!-- ===================== ACTIVIDADES ===================== -->
   <section class="view" id="view-actividades">
+    <div id="actBar"></div>
     <div class="panel">
       <div class="filters">
         <div class="field">
@@ -5469,9 +5471,8 @@ function renderActivitiesTable(){
   const areaF = document.getElementById('filterArea').value;
   const ordenF = document.getElementById('filterOrden').value;
   const perF = document.getElementById('filterPeriodo').value;
-  let rows = activities.filter(a=>{
+  const base = activities.filter(a=>{
     if(search && !a.proyecto.toLowerCase().includes(search)) return false;
-    if(estadoF && a.estado!==estadoF) return false;
     if(areaF && a.area!==areaF) return false;
     if(ordenF && getOrdenEstado(a)!==ordenF) return false;
     if(perF){
@@ -5482,6 +5483,19 @@ function renderActivitiesTable(){
     }
     return true;
   });
+  let rows = estadoF ? base.filter(a=>a.estado===estadoF) : base;
+  // Barra de información (según los filtros, sin contar el de estado para que los chips no cambien)
+  const hoyISO = todayISO(), nB = base.length;
+  const avB = nB ? Math.round(base.reduce((t,a)=>t+(Number(a.avance)||0),0)/nB) : null;
+  const cerB = base.filter(a=>getOrdenEstado(a)==='Cerrada').length;
+  const vencB = base.filter(a=>getOrdenEstado(a)==='Abierta' && a.fechaFin && a.fechaFin<hoyISO).length;
+  const SCb = {'Finalizado':'#1F7A5C','En proceso':'#5D88D6','Pendiente':'#F29622','No ejecutado':'#ff9a8f','No completado':'#ff9a8f','Cancelado':'#94A3B8'};
+  const cnt = {}; base.forEach(a=>{ cnt[a.estado] = (cnt[a.estado]||0)+1; });
+  const perSel = document.getElementById('filterPeriodo'), perTxt = perSel.options[perSel.selectedIndex] ? perSel.options[perSel.selectedIndex].text : 'Todos';
+  document.getElementById('actBar').innerHTML = `<div class="ps-wrap gg" style="margin-bottom:14px;"><div class="ps-side"><div><div class="ps-kick">Actividades</div><div class="ps-sem">${perTxt==='Todos'?'Todos los periodos':esc(perTxt)}</div></div>
+    <div class="ps-mid"><div class="ps-big">${avB===null?'—':avB+'%'}</div><div><div class="ps-bl">Avance promedio</div><div class="ps-bs"><b>${nB}</b> actividades · <b>${cerB}</b> cerradas · <b>${nB-cerB}</b> abiertas${vencB?` · <b>${vencB}</b> vencidas`:''}</div></div></div>
+    <div class="ps-leg">${Object.keys(cnt).sort((x,y)=>ESTADOS.indexOf(x)-ESTADOS.indexOf(y)).map(e=>`<div class="ab-chip${estadoF===e?' on':''}" data-abe="${esc(e)}"><i class="dt" style="background:${SCb[e]||'#94A3B8'};border:0"></i>${esc(e)} <b style="margin-left:2px">${cnt[e]}</b></div>`).join('')}</div></div></div>`;
+  document.querySelectorAll('#actBar [data-abe]').forEach(c=>c.addEventListener('click',()=>{ const f = document.getElementById('filterEstado'); f.value = (f.value===c.dataset.abe) ? '' : c.dataset.abe; renderActivitiesTable(); }));
   const box = document.getElementById('actList');
   if(!rows.length){ box.innerHTML = `<div class="empty">Ninguna actividad coincide con el filtro.</div>`; return; }
   const prRank = {Alta:0,Media:1,Baja:2};
@@ -10049,7 +10063,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1817';
+const APP_VERSION = '2026-11-22-1818';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
