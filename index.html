@@ -904,6 +904,42 @@
   .ac-r .ac-del{padding:2px 8px;border:none;background:transparent;box-shadow:none;color:var(--gray);font-size:14px;min-width:0;}
   .ac-r .ac-del:hover{color:#c0392b;background:transparent;}
   @media(max-width:700px){.ac-r{padding-left:6px;gap:8px;}.prog-mini{width:40px;}}
+  .ps-wrap{display:grid;grid-template-columns:270px minmax(0,1fr);gap:0;background:#fff;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);}
+  .ps-side{background:#011632;color:#fff;padding:26px 24px;}
+  .ps-kick{font-size:10px;font-weight:600;letter-spacing:1.3px;color:#F29622;text-transform:uppercase;}
+  .ps-sem{font-size:20px;font-weight:700;line-height:1.2;margin-top:6px;}
+  .ps-rule{width:40px;height:3px;background:#F29622;margin:16px 0;}
+  .ps-big{font-size:58px;font-weight:700;line-height:1;color:#F29622;}
+  .ps-bl{font-size:12px;font-weight:600;margin-top:8px;}.ps-bs{font-size:11px;color:#b9c6dc;margin-top:4px;line-height:1.5;}.ps-bs b{color:#fff;}
+  .ps-leg{margin-top:22px;font-size:11px;color:#dbe4f2;}.ps-leg div{display:flex;align-items:center;gap:9px;margin:7px 0;}
+  .ps-main{padding:22px 24px;min-width:0;}
+  .ps-hd,.ps-row{display:flex;align-items:center;gap:10px;}
+  .ps-hd{font-size:10px;font-weight:600;color:var(--gray);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px;}
+  .ps-hn,.ps-n{width:150px;flex:none;}.ps-hr,.ps-r{width:60px;flex:none;text-align:right;}
+  .ps-rul{flex:1;display:flex;}.ps-rul span{flex:1;padding-left:4px;}
+  .ps-row{width:100%;border:none;background:transparent;border-bottom:1px solid var(--line);padding:12px 0;font:inherit;text-align:left;cursor:pointer;color:inherit;border-radius:0;}
+  .ps-row:hover{background:var(--primary-soft);}
+  .ps-n b{display:block;font-size:13px;line-height:1.25;}.ps-n small{display:block;font-size:10px;color:var(--gray);margin-top:2px;}
+  .ps-trk{position:relative;flex:1;height:30px;background:#F7F9FC;border-radius:6px;overflow:hidden;}
+  .ps-trk u{position:absolute;top:0;bottom:0;width:16.667%;}.ps-trk u:nth-child(even){background:#E9EFF8;}
+  .ps-trk .dt{position:absolute;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;line-height:12px;}
+  .dt{display:inline-block;border-radius:50%;font-style:normal;font-size:9px;font-weight:700;text-align:center;box-sizing:border-box;}
+  .dt.ok{background:#03459B;color:#fff;}.dt.ov{background:#fff;border:2px solid #F29622;color:#F29622;}.dt.fu{background:#fff;border:2px solid #7f9bc7;color:#7f9bc7;}
+  .ps-leg .dt{width:12px;height:12px;}
+  .ps-r b{font-size:15px;color:#03459B;}.ps-r small{font-size:10px;color:var(--gray);}
+  .ps-pb{height:4px;background:#E5EEF9;border-radius:2px;margin:3px 0 2px;}.ps-pb i{display:block;height:4px;background:#03459B;border-radius:2px;}
+  .ps-tip{font-size:12px;color:var(--gray);margin:12px 0 0;}
+  .pa-back{border:none;background:transparent;color:var(--primary);font:inherit;font-size:14px;cursor:pointer;padding:0 0 10px;}
+  @media(max-width:800px){
+    .ps-wrap{grid-template-columns:1fr;}
+    .ps-side{padding:20px;}.ps-big{font-size:46px;}
+    .ps-main{padding:8px 16px 16px;}
+    .ps-hd{display:none;}
+    .ps-row{display:grid;grid-template-columns:1fr 60px;gap:6px 10px;}
+    .ps-n{width:auto;}.ps-trk{grid-column:1 / 3;grid-row:2;height:26px;}
+    .ps-trk .dt{width:13px;height:13px;margin:-6.5px 0 0 -6.5px;font-size:0;border-width:2px;}
+    .ps-r{grid-column:2;grid-row:1;}
+  }
 </style></head><body>
 
 <div id="loginScreen" style="display:none;">
@@ -9920,7 +9956,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1614';
+const APP_VERSION = '2026-11-22-1620';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14507,7 +14543,7 @@ const TRABAJADORES_CATALOG_VERSION = 'listado-personal-jul2026-v1';
 
 /* ===================== PLAN ANUAL DE MANTENIMIENTO ===================== */
 const PLAN_SEED_2026 = [{"id":"g1","n":"Equipos de aire acondicionado","r":"Dir. Administrativa - Líder S. Generales - Aliado estrategico","a":[{"id":"a1","sub":"Contrato de Servicios Vigente","t":"Seleccionar aliado para prestacion de servicio","p":"010000000000000000000000000000000000000000000000","h":"010000000000000000000000000000000000000000000000"},{"id":"a2","sub":"Mantenimiento Preventivo y correctivo","t":"Revision de equipos y condiciones electricas","p":"001000000000010000000001000000000001000000000000","h":"001000000000010000000001000000000000000000000000"},{"id":"a3","sub":"Mantenimiento Preventivo y correctivo","t":"Lavado de los equipos, revisiones de las presiones del refrigerante, deteccion de fallas.","p":"000110000000001110000000100000000000100000000000","h":"000110000000001100000000000000000000000000000000"}]},{"id":"g2","n":"Iluminación y soportes eléctricos","r":"Líder S. Generales","a":[{"id":"a4","sub":"Mantenimiento Preventivo y correctivo","t":"Inspeccion de puntos electricos, carga electrica en cajas de registro, reemplazo de cables en deterioro, analisis de recorrido electrico, estado de breacker.","p":"010000000001000010000000100000001000000010000000","h":"010000000001000010000000000000000000000000000000"},{"id":"a5","sub":"Mantenimiento Preventivo y correctivo","t":"Inspeccion a bombillos, velas, soportes, balastos, reflectores.","p":"010000000001000010000000100000001000000010000000","h":"010000000001000010000000000000000000000000000000"},{"id":"a6","sub":"Mantenimiento Preventivo y correctivo","t":"Limpieza de cajas de registro electrico","p":"001000000000010000000001000000000000010000010000","h":"000000000000000000000001000000000000000000000000"},{"id":"a7","sub":"Mantenimiento Preventivo y correctivo","t":"Reemplazo de velas, bombillos LED, balastos, reflectores.","p":"000100000000001000000000100000000000001000001000","h":"000100000000001000000000000000000000000000000000"},{"id":"a8","sub":"Mantenimiento Preventivo y correctivo","t":"Reemplazo de bombillos ahorradores","p":"000100000000001000000000100000000000001000001000","h":"000100000000001000000000000000000000000000000000"}]},{"id":"g3","n":"Plomería","r":"Líder S. Generales","a":[{"id":"a9","sub":"Mantenimiento Preventivo y correctivo","t":"Inspeccion de registros y contador de agua potable","p":"010001000100010001000001000001000000100001000100","h":"010000000100000001000000000000000000000000000000"},{"id":"a10","sub":"Mantenimiento Preventivo y correctivo","t":"Inspeccion de acoples PVC (Tapones, adaptadores, codos, uniones, etc)","p":"010001000100010001000001000001000000100001000100","h":"010000000100000001000000000000000000000000000000"},{"id":"a11","sub":"Mantenimiento Preventivo y correctivo","t":"Cambio de tuberias deteriorado","p":"001000000000000000000001110000000000000000100000","h":"000000000000000000000001000000000000000000000000"},{"id":"a12","sub":"Mantenimiento Preventivo y correctivo","t":"Limpieza de canales de desague","p":"000100000100000000000001100000000000100000001100","h":"000100000100000000000000000000000000000000000000"},{"id":"a13","sub":"Mantenimiento Preventivo y correctivo","t":"Pruebas con controles establecidos en zonas para ubicación de posibles fugas","p":"000100000001000000010000000100000001000000010000","h":"000000000000000000010000000000000000000000000000"}]},{"id":"g4","n":"Obra civil","r":"Líder S. Generales","a":[{"id":"a14","sub":"Mantenimiento Preventivo y correctivo","t":"Revision e inspeccion de cubiertas","p":"110000000000000000000001100000000000100000001100","h":"110000000000000000000001000000000000000000000000"},{"id":"a15","sub":"Mantenimiento Preventivo y correctivo","t":"Limpieza de drenages canales de cubiertas","p":"011000000000000000000001100000000000100000000000","h":"011000000000000000000001000000000000000000000000"},{"id":"a16","sub":"Mantenimiento Preventivo y correctivo","t":"Proceso de cambio de placas de concreto","p":"011100000000000000000001100000000000100000000000","h":"000000000000000000000000000000000000000000000000"},{"id":"a17","sub":"Mantenimiento Preventivo y correctivo","t":"Pintura en paredes y cielo raso","p":"011100000000000000000000000000000000000000000000","h":"011100000000000000000000000000000000000000000000"},{"id":"a18","sub":"Mantenimiento Preventivo y correctivo","t":"Pintura de rejillas y portones metalicos","p":"001100000000000000000000110000000000000000000000","h":"000000000000000000000000000000000000000000000000"}]},{"id":"g5","n":"Cerrajería y carpintería","r":"Líder S. Generales","a":[{"id":"a19","sub":"Mantenimiento Preventivo y correctivo","t":"Inspeccion de cerraduras, cerrojos, candados, manijas","p":"011000000000000010000001000000000000100000100000","h":"011000000000000010000000000000000000000000000000"},{"id":"a20","sub":"Mantenimiento Preventivo y correctivo","t":"Inspeccion a comodas y escritorios","p":"001000100010001000100001000001001000100000001000","h":"001000100000001000100000000000000000000000000000"},{"id":"a21","sub":"Mantenimiento Preventivo y correctivo","t":"Pruebas de estado de cerraduras, gatos hidraulicos, candados, cerrojos","p":"001000100010001000100001000001001000100000001000","h":"001000000000001000100000000000000000000000000000"},{"id":"a22","sub":"Mantenimiento Preventivo y correctivo","t":"Cambio de visagras, cerraduras, perillas, gatos hidraulicos","p":"011000000000000000000000000110000000000000000000","h":"011000000000000000000000000000000000000000000000"},{"id":"a23","sub":"Mantenimiento Preventivo y correctivo","t":"Pintura de comodas, escritorios y bancas","p":"011100000000000000000000000110000000000000000000","h":"000000000000000000000000000000000000000000000000"},{"id":"a24","sub":"Mantenimiento Preventivo y correctivo","t":"Pintura  y mantenimiento de lockers, ventanas y puertas.","p":"011100000000000000000000000000000000000000000000","h":"000000000000000000000000000000000000000000000000"},{"id":"a25","sub":"Mantenimiento Preventivo y correctivo","t":"Lubricacion a cerraduras, visagras, candados, cerrojos","p":"000010001000100000100010001000100000100000100000","h":"000010001000100000100000000000000000000000000000"}]},{"id":"g6","n":"Mantenimiento de sillas","r":"Líder S. Generales","a":[{"id":"a26","sub":"Mantenimiento Preventivo y correctivo","t":"Seleccionar aliado para prestacion de servicio","p":"100000000000000000000000000000000000000000000000","h":"100000000000000000000000000000000000000000000000"},{"id":"a27","sub":"Mantenimiento Preventivo y correctivo","t":"Inspección y revision de sillas en aulas de clases","p":"100000000000000000000001100000000000000000000100","h":"100000000000000000000001000000000000000000000000"},{"id":"a28","sub":"Mantenimiento Preventivo y correctivo","t":"Mantenimiento general de sillas","p":"111100000000000000000000000000000000000000000011","h":"111100000000000000000000000000000000000000000000"}]},{"id":"g7","n":"Organización de puestos de trabajo","r":"Líder S. Generales","a":[{"id":"a29","sub":"Planeación y organización","t":"Recepcion de información de Direccion administrativa","p":"100000000000000000000000000000000000000000000000","h":"100000000000000000000000000000000000000000000000"},{"id":"a30","sub":"Planeación y organización","t":"Organización de puestos de trabajo","p":"011000000000000000000001100000000000000000000000","h":"011000000000000000000001000000000000000000000000"}]}];
-let planAnual = {}, paAno = null, paEdit = false, paCorte = 0, paSem = 0, paOpen = {};
+let planAnual = {}, paAno = null, paEdit = false, paCorte = 0, paSem = 0, paOpen = {}, paDet = null;
 const PA_MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 function paHoyIdx(){ const d = new Date(); return d.getMonth()*4 + Math.min(4, Math.ceil(d.getDate()/7)) - 1; }
 async function loadPlanAnual(){
@@ -14549,18 +14585,39 @@ function renderPlanAnual(){
   const sinIniciar = paCorte < paSem*24;
   const hoy = paHoyIdx();
   const col = v => v===null ? 'var(--gray)' : v>=.9 ? '#2e9e6b' : v>=.7 ? '#c98a00' : '#c0392b';
-  document.getElementById('paKpis').innerHTML = `
-    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Cumplimiento</div><div class="pa-kpi-big" style="color:${col(R.global)}">${paPct(R.global)}</div><div class="lbl">${sinIniciar?'Semestre sin iniciar':'Al corte · '+PA_MESES[Math.floor(corte/4)]+' sem '+(corte%4+1)}</div></div>
-    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Cumplidas</div><div class="num">${R.totD}<span style="font-size:15px;color:var(--gray)"> de ${R.totP}</span></div><div class="lbl">programadas al corte</div></div>
-    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Pendientes vencidas</div><div class="num" style="color:${R.vencidas?'#c0392b':'inherit'}">${R.vencidas}</div></div>
-    <div class="kpi"><div class="lbl" style="margin:0 0 4px">Por semestre</div><div class="lbl" style="color:var(--navy);font-size:13px;line-height:1.7">1.er: <b style="color:${col(R0.global)}">${paPct(R0.global)}</b> · 2.º: <b style="color:${col(R1.global)}">${paPct(R1.global)}</b></div></div>`;
+  document.getElementById('paKpis').innerHTML = '';
+  const lo = paSem*24;
+  if(paDet && !grupos.some(g=>g.id===paDet)) paDet = null;
+  if(!paDet){
+    const MES3 = PA_MESES.slice(paSem*6, paSem*6+6);
+    const pista = (items, big) => {
+      let dots = '';
+      for(let k=0;k<24;k++){
+        const it = items.filter(a=>a.p[lo+k]==='1'); if(!it.length) continue;
+        const hechas = it.filter(a=>a.h[lo+k]==='1').length, i = lo+k;
+        const st = hechas===it.length ? 'ok' : (i<=corte ? 'ov' : 'fu');
+        dots += `<i class="dt ${st}" style="left:${(k+.5)/24*100}%">${big&&it.length>1?it.length:''}</i>`;
+      }
+      return `<div class="ps-trk">${[0,1,2,3,4,5].map(m=>`<u style="left:${m/6*100}%"></u>`).join('')}${dots}</div>`;
+    };
+    const filas = R.gs.map(({g,acts,pct})=>{
+      const pr = acts.reduce((x,y)=>x+y.pr,0), ok = acts.reduce((x,y)=>x+y.ok,0);
+      return `<button type="button" class="ps-row" data-pg="${g.id}"><div class="ps-n"><b>${esc(g.n)}</b><small>${esc(g.r||'')}</small></div>${pista(g.a,true)}<div class="ps-r"><b>${paPct(pct)}</b><div class="ps-pb"><i style="width:${Math.round((pct||0)*100)}%"></i></div><small>${ok}/${pr}</small></div></button>`;
+    }).join('');
+    const side = `<div class="ps-side"><div class="ps-kick">Mantenimiento preventivo</div><div class="ps-sem">${paSem===0?'1.er':'2.º'} semestre ${paAno}</div><div class="ps-rule"></div>
+      <div class="ps-big">${paPct(R.global)}</div><div class="ps-bl">${sinIniciar?'Semestre sin iniciar':'Cumplimiento al '+PA_MESES[Math.floor(corte/4)].toLowerCase()+', semana '+(corte%4+1)}</div>
+      <div class="ps-bs">${R.totD} de ${R.totP} programadas cumplidas${R.vencidas?` · <b>${R.vencidas}</b> pendientes vencidas`:''}</div>
+      <div class="ps-leg"><div><i class="dt ok"></i>Cumplida</div><div><i class="dt ov"></i>Programada y pendiente</div><div><i class="dt fu"></i>Programada a futuro</div></div>
+      <div class="ps-bs" style="margin-top:14px;">Por semestre: 1.er <b>${paPct(R0.global)}</b> · 2.º <b>${paPct(R1.global)}</b></div></div>`;
+    document.getElementById('paGrupos').innerHTML = `${paEdit?'<p class="hint" style="margin:0 0 10px;">Modo edición: entra a un área para programar semanas y cambiar sus actividades.</p>':''}<div class="ps-wrap">${side}<div class="ps-main"><div class="ps-hd"><span class="ps-hn">Área</span><div class="ps-rul">${MES3.map(m=>`<span>${m}</span>`).join('')}</div><span class="ps-hr">Cumplido</span></div>${filas}${paEdit?'<button type="button" class="btn-sec pa-add" data-pact="addg">+ Agregar grupo</button>':'<p class="ps-tip">Toca un área para ver y marcar sus actividades.</p>'}</div></div>`;
+    return;
+  }
   const mm = PA_MESES.slice(paSem*6, paSem*6+6);
   const hdr = `<tr><th class="pa-n" rowspan="2"></th>${mm.map(m=>`<th class="pa-m" colspan="4">${m}</th>`).join('')}</tr><tr>${mm.map((_,mi)=>[1,2,3,4].map(w=>`<th class="pa-w${(paSem*24+mi*4+w-1)===hoy?' cur':''}">${w}</th>`).join('')).join('')}</tr>`;
-  let out = `${paEdit?'<p class="hint" style="margin:0 0 10px;">Modo edición: toca las semanas para programarlas o quitarlas, y cambia nombres, responsables, actividades y grupos.</p>':''}<div class="pa-leyenda"><button type="button" class="pa-all" data-ptall="1">${(planAnual[paAno]||[]).every(g=>paOpen[g.id])?'Contraer todo':'Expandir todo'}</button><span class="l-d">Cumplida</span><span class="l-p">Programada</span><span class="l-o">Vencida sin cumplir</span></div>`;
-  R.gs.forEach(({g,acts,pct})=>{
-    const gp = acts.reduce((x,y)=>x+y.pr,0), gd = acts.reduce((x,y)=>x+y.ok,0), open_ = !!paOpen[g.id];
-    out += `<div class="panel pa-g${paEdit?' pa-edit':''}"><button type="button" class="pa-gh" data-pt="${g.id}" aria-expanded="${open_}"><i class="pa-chev${open_?' on':''}">›</i><h3>${esc(g.n)}</h3><span class="pa-cnt">${gd}/${gp}</span><span class="pa-pct" style="color:${col(pct)}">${paPct(pct)}</span></button><div class="pa-bar"><i style="width:${Math.round((pct||0)*100)}%"></i></div>`;
-    if(!open_){ out += `</div>`; return; }
+  let out = `<button type="button" class="pa-back" data-pback="1">‹ Todas las áreas</button>${paEdit?'<p class="hint" style="margin:0 0 10px;">Modo edición: toca las semanas para programarlas o quitarlas, y cambia nombres, responsables y actividades.</p>':''}<div class="pa-leyenda"><span class="l-d">Cumplida</span><span class="l-p">Programada</span><span class="l-o">Vencida sin cumplir</span></div>`;
+  R.gs.filter(x=>x.g.id===paDet).forEach(({g,acts,pct})=>{
+    const gp = acts.reduce((x,y)=>x+y.pr,0), gd = acts.reduce((x,y)=>x+y.ok,0);
+    out += `<div class="panel pa-g${paEdit?' pa-edit':''}"><div class="pa-gh" style="cursor:default"><h3>${esc(g.n)}</h3><span class="pa-cnt">${gd}/${gp}</span><span class="pa-pct" style="color:${col(pct)}">${paPct(pct)}</span></div><div class="pa-bar"><i style="width:${Math.round((pct||0)*100)}%"></i></div>`;
     out += `${paEdit ? `<div class="pa-ge"><input class="pa-in" data-pe="gn|${g.id}" value="${esc(g.n)}" placeholder="Nombre del grupo"><input class="pa-in" data-pe="gr|${g.id}" value="${esc(g.r||'')}" placeholder="Responsables"><button type="button" class="pa-x" data-pact="delg|${g.id}">Eliminar grupo</button></div>` : `<div class="pa-resp">${esc(g.r||'')}</div>`}<div class="pa-scroll"><table class="pa-t"><thead>${hdr}</thead><tbody>`;
     acts.forEach(({a,pr,ok,pct:ap})=>{
       let cells = '';
@@ -14573,7 +14630,6 @@ function renderPlanAnual(){
     });
     out += `</tbody></table></div>${paEdit?`<button type="button" class="btn-sec pa-add" data-pact="adda|${g.id}">+ Agregar actividad</button>`:''}</div>`;
   });
-  if(paEdit) out += `<button type="button" class="btn-sec pa-add" data-pact="addg">+ Agregar grupo</button>`;
   const prev = document.querySelector('#paGrupos .pa-scroll'); const sl = prev ? prev.scrollLeft : null;
   document.getElementById('paGrupos').innerHTML = out;
   document.querySelectorAll('#paGrupos .pa-scroll').forEach(sc=>{
@@ -14607,6 +14663,7 @@ document.getElementById('paAnos').addEventListener('click', async e=>{
     planAnual[ny] = JSON.parse(JSON.stringify(planAnual[paAno])); planAnual[ny].forEach(g=>g.a.forEach(a=>{ a.h = '0'.repeat(48); }));
     paAno = ny; await savePlanAnual();
   } else paAno = b.dataset.pay;
+  paDet = null;
   renderPlanAnual();
 });
 document.getElementById('paGrupos').addEventListener('change', async e=>{
@@ -14617,21 +14674,19 @@ document.getElementById('paGrupos').addEventListener('change', async e=>{
   await savePlanAnual();
 });
 document.getElementById('paGrupos').addEventListener('click', e=>{
-  const t = e.target.closest('[data-pt]'), all = e.target.closest('[data-ptall]');
-  if(!t && !all) return;
-  if(all){ const L = planAnual[paAno]||[]; const on = !L.every(g=>paOpen[g.id]); L.forEach(g=>{ paOpen[g.id] = on; }); }
-  else paOpen[t.dataset.pt] = !paOpen[t.dataset.pt];
-  renderPlanAnual();
+  const t = e.target.closest('[data-pg]'), back = e.target.closest('[data-pback]');
+  if(!t && !back) return;
+  paDet = back ? null : t.dataset.pg;
+  renderPlanAnual(); window.scrollTo({top:0});
 });
 document.getElementById('paGrupos').addEventListener('click', async e=>{
   const b = e.target.closest('button[data-pact]'); if(!b) return;
   const [k, gid, aid] = b.dataset.pact.split('|'); const L = planAnual[paAno]; const g = L.find(x=>x.id===gid);
   const nid = p => p + Date.now().toString(36);
-  if(k==='adda'){ paOpen[gid] = true; }
-  if(k==='adda') g.a.push({id:nid('a'), sub:'', t:'Nueva actividad', p:'0'.repeat(48), h:'0'.repeat(48)});
-  else if(k==='addg'){ const ng = {id:nid('g'), n:'Nuevo grupo', r:'', a:[{id:nid('a'), sub:'', t:'Nueva actividad', p:'0'.repeat(48), h:'0'.repeat(48)}]}; L.push(ng); paOpen[ng.id] = true; }
+    if(k==='adda') g.a.push({id:nid('a'), sub:'', t:'Nueva actividad', p:'0'.repeat(48), h:'0'.repeat(48)});
+  else if(k==='addg'){ const ng = {id:nid('g'), n:'Nuevo grupo', r:'', a:[{id:nid('a'), sub:'', t:'Nueva actividad', p:'0'.repeat(48), h:'0'.repeat(48)}]}; L.push(ng); paDet = ng.id; }
   else if(k==='dela'){ if(!confirm('¿Eliminar esta actividad y sus cumplimientos?')) return; g.a = g.a.filter(x=>x.id!==aid); }
-  else if(k==='delg'){ if(!confirm('¿Eliminar el grupo completo con sus actividades?')) return; planAnual[paAno] = L.filter(x=>x.id!==gid); }
+  else if(k==='delg'){ if(!confirm('¿Eliminar el grupo completo con sus actividades?')) return; planAnual[paAno] = L.filter(x=>x.id!==gid); paDet = null; }
   renderPlanAnual(); await savePlanAnual();
 });
 document.getElementById('paSemSw').addEventListener('click', e=>{ const b = e.target.closest('button[data-sem]'); if(!b) return; paSem = +b.dataset.sem; document.getElementById('paGrupos').innerHTML=''; renderPlanAnual(); });
