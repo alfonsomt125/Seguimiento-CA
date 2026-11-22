@@ -904,6 +904,32 @@
   .ac-r .ac-del{padding:2px 8px;border:none;background:transparent;box-shadow:none;color:var(--gray);font-size:14px;min-width:0;}
   .ac-r .ac-del:hover{color:#c0392b;background:transparent;}
   @media(max-width:700px){.ac-r{padding-left:6px;gap:8px;}.prog-mini{width:40px;}}
+
+  .rd{display:grid;grid-template-columns:270px minmax(0,1fr);background:#fff;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px;}
+  .rd-side{background:#011632;color:#fff;padding:26px 24px;}
+  .rd-side .ps-big{font-size:54px;}
+  .rd-big2{font-size:34px;font-weight:700;line-height:1;color:#fff;margin-top:22px;}
+  .rd-ord{display:flex;gap:8px;margin-top:22px;}
+  .rd-ord button{flex:1;background:#0b2548;border:1px solid #1d3a63;border-radius:10px;color:#fff;padding:10px;text-align:left;cursor:pointer;font-family:inherit;}
+  .rd-ord b{display:block;font-size:22px;color:#F29622;}.rd-ord span{font-size:10px;color:#b9c6dc;}
+  .rd-ord button.v b{color:#ff9a8f;}
+  .rd-main{padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0;}
+  .rd-c{border:1px solid #e3e8f2;border-radius:12px;padding:14px 16px;min-width:0;}
+  .rd-c.w{grid-column:1/3;}
+  .rd-c h3{margin:0 0 12px;font-size:12px;font-weight:600;color:#011632;letter-spacing:.3px;}
+  .rd-don{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .rd-lg{font-size:12px;flex:1;min-width:130px;}.rd-lg div{display:flex;align-items:center;gap:8px;margin:4px 0;}
+  .rd-lg i{width:9px;height:9px;border-radius:50%;flex:none;}.rd-lg span{margin-left:auto;font-weight:600;}
+  .rd-col{display:flex;align-items:flex-end;gap:5px;height:110px;}
+  .rd-col div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;font-size:10px;color:var(--gray);gap:3px;}
+  .rd-col i{display:block;width:100%;background:#03459B;border-radius:4px 4px 0 0;min-height:2px;}
+  .rd-col div.hoy i{background:#F29622;}.rd-col em{font-style:normal;font-size:9px;color:#011632;font-weight:600;}
+  .rd-row{display:grid;grid-template-columns:minmax(90px,170px) 1fr 52px;align-items:center;gap:10px;font-size:12px;margin:7px 0;}
+  .rd-row .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rd-trk{height:5px;background:#E5EEF9;border-radius:3px;}.rd-trk i{display:block;height:5px;border-radius:3px;background:#03459B;}
+  .rd-row b{text-align:right;font-weight:600;}
+  .rd-more{background:none;border:0;color:#03459B;font-size:12px;cursor:pointer;padding:4px 0;font-family:inherit;}
+  @media(max-width:860px){.rd{grid-template-columns:1fr;}.rd-main{grid-template-columns:1fr;padding:14px;}.rd-c.w{grid-column:auto;}.rd-side{padding:20px;}}
   .ps-wrap{display:grid;grid-template-columns:270px minmax(0,1fr);gap:0;background:#fff;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);}
   .ps-side{background:#011632;color:#fff;padding:26px 24px;}
   .ps-kick{font-size:10px;font-weight:600;letter-spacing:1.3px;color:#F29622;text-transform:uppercase;}
@@ -1095,23 +1121,7 @@
       <span class="year-pills-label">Año</span>
       <div class="year-pills" id="resumenAno" data-value=""></div>
     </div>
-    <div class="kpis" id="kpiRow"></div>
-    <div class="grid-2">
-      <div class="panel">
-        <h2>Actividades por estado</h2>
-        <div id="statusPie" class="pie-wrap"></div>
-        <div id="statusBars"></div>
-      </div>
-      <div class="panel">
-        <h2>Órdenes: abiertas vs. cerradas</h2>
-        <p class="hint" style="margin:0 0 10px;">Se considera "Cerrada" cuando llega al 100% de avance, se marca Finalizada, o se Cancela. Toca para ver el detalle.</p>
-        <div id="ordenPie" class="pie-wrap"></div>
-      </div>
-    </div>
-    <div class="panel">
-      <h2>Actividades por área</h2>
-      <div id="areaBars"></div>
-    </div>
+    <div id="resDash"></div>
     <div class="panel">
       <h2>Últimas entradas de bitácora</h2>
       <div id="recentEntries"></div>
@@ -5141,86 +5151,74 @@ function renderResumen(){
 
   const total = activities0.length;
   const avgAvance = total ? Math.round(activities0.reduce((s,a)=>s+Number(a.avance||0),0)/total) : 0;
-  const entriesToday = bitacora0.filter(e=>e.fecha===todayISO()).length;
+  const hoyISO = todayISO();
+  const abiertas = activities0.filter(a=>getOrdenEstado(a)==='Abierta').length;
+  const cerradas = total - abiertas;
+  const vencidas = activities0.filter(a=>getOrdenEstado(a)==='Abierta' && a.fechaFin && a.fechaFin<hoyISO).length;
 
-  document.getElementById('kpiRow').innerHTML = `
-    <div class="kpi"><div class="num">${total}</div><div class="lbl">Actividades totales</div></div>
-    <div class="kpi"><div class="num">${avgAvance}%</div><div class="lbl">Avance promedio</div></div>
-    <div class="kpi"><div class="num">${entriesToday}</div><div class="lbl">Entradas registradas hoy</div></div>
-  `;
-
-  const statusCounts = {};
-  ESTADOS.forEach(s=>statusCounts[s]=0);
-  activities0.forEach(a=>{ statusCounts[a.estado]=(statusCounts[a.estado]||0)+1; });
-  const maxS = Math.max(1,...Object.values(statusCounts));
-
-  const pieEntries = ESTADOS.map((s,i)=>({label:s, count:statusCounts[s], color:PIE_COLORS[i%PIE_COLORS.length]})).filter(e=>e.count>0);
-  const pieTotal = pieEntries.reduce((s,e)=>s+e.count,0);
-  const pieEl = document.getElementById('statusPie');
-  if(!pieTotal){
-    pieEl.innerHTML = '<p class="empty">Sin datos aún.</p>';
-  } else {
-    let acc = 0;
-    const stops = pieEntries.map(e=>{
-      const from = acc/pieTotal*360;
-      acc += e.count;
-      const to = acc/pieTotal*360;
-      return `${e.color} ${from}deg ${to}deg`;
-    }).join(', ');
-    pieEl.innerHTML = `
-      <div class="pie-chart" style="background:conic-gradient(${stops});"></div>
-      <div class="pie-legend">${pieEntries.map(e=>`
-        <div class="pie-legend-row">
-          <span class="pie-swatch" style="background:${e.color}"></span>
-          <span class="pie-legend-name">${e.label}</span>
-          <span class="pie-legend-val">${e.count} (${Math.round(e.count/pieTotal*100)}%)</span>
-        </div>`).join('')}</div>`;
+  // Plan anual (preventivo)
+  const yNow = String(new Date().getFullYear());
+  const py = (resumenAnoF && planAnual[resumenAnoF]) ? resumenAnoF : (planAnual[yNow] ? yNow : (typeof paAno!=='undefined' ? paAno : null));
+  let prev = null, prevLbl = 'Cumplimiento preventivo', gruposPA = [];
+  if(py && planAnual[py]){
+    const actual = py===yNow;
+    const sem = actual ? (paHoyIdx()>=24?1:0) : 1, corte = actual ? paHoyIdx() : 47;
+    const R = paCalc(planAnual[py], corte, sem);
+    prev = R.global; gruposPA = R.gs.filter(x=>x.pct!==null);
+    prevLbl = 'Preventivo ' + (sem?'2.º':'1.er') + ' semestre ' + py;
   }
 
-  document.getElementById('statusBars').innerHTML = ESTADOS.map(s=>`
-    <div class="bar-row">
-      <span class="name">${s}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${(statusCounts[s]/maxS*100)}%;background:${STATUS_COLOR[s]}"></div></div>
-      <span class="count">${statusCounts[s]}</span>
-    </div>`).join('');
+  const SC = {'Finalizado':'#1F7A5C','En proceso':'#03459B','Pendiente':'#F29622','No ejecutado':'#B3261E','No completado':'#B3261E','Cancelado':'#94A3B8'};
+  const statusCounts = {}; ESTADOS.forEach(s=>statusCounts[s]=0);
+  activities0.forEach(a=>{ statusCounts[a.estado]=(statusCounts[a.estado]||0)+1; });
+  const ents = ESTADOS.filter(s=>statusCounts[s]>0);
+  const R_ = 15.9155; let off = 0;
+  const arcs = ents.map(s=>{ const l = statusCounts[s]/total*100; const x = `<circle cx="21" cy="21" r="${R_}" fill="none" stroke="${SC[s]||'#64748B'}" stroke-width="5" stroke-dasharray="${Math.max(l-0.6,0.1)} ${100-Math.max(l-0.6,0.1)}" stroke-dashoffset="${-off}" transform="rotate(-90 21 21)"/>`; off+=l; return x; }).join('');
+  const donut = total ? `<div class="rd-don"><svg viewBox="0 0 42 42" width="118" height="118"><circle cx="21" cy="21" r="${R_}" fill="none" stroke="#E5EEF9" stroke-width="5"/>${arcs}<text x="21" y="23" text-anchor="middle" font-size="8" font-weight="700" fill="#011632">${total}</text></svg><div class="rd-lg">${ents.map(s=>`<div><i style="background:${SC[s]||'#64748B'}"></i>${s}<span>${statusCounts[s]}</span></div>`).join('')}</div></div>` : '<p class="empty">Sin datos aún.</p>';
 
+  // Columnas por mes (inicio de la actividad)
+  const mY = resumenAnoF && /^\d{4}$/.test(resumenAnoF) ? resumenAnoF : yNow;
+  const meses = new Array(12).fill(0);
+  activities0.forEach(a=>{ if(a.fechaInicio && a.fechaInicio.slice(0,4)===mY) meses[+a.fechaInicio.slice(5,7)-1]++; });
+  const maxM = Math.max(1,...meses), mHoy = (mY===yNow) ? new Date().getMonth() : -1;
+  const cols = `<div class="rd-col">${meses.map((n,i)=>`<div class="${i===mHoy?'hoy':''}"><em>${n||''}</em><i style="height:${n/maxM*78}%"></i>${PA_MESES[i][0]}</div>`).join('')}</div>`;
+
+  // Áreas
   const areaCounts = {};
   activities0.forEach(a=>{ const ar=a.area||'Sin área'; areaCounts[ar]=(areaCounts[ar]||0)+1; });
-  const areas = Object.keys(areaCounts);
-  const maxA = Math.max(1,...Object.values(areaCounts));
-  document.getElementById('areaBars').innerHTML = areas.length ? areas.map(ar=>`
-    <div class="bar-row">
-      <span class="name" title="${esc(ar)}">${esc(ar)}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${(areaCounts[ar]/maxA*100)}%;background:var(--navy-2)"></div></div>
-      <span class="count">${areaCounts[ar]}</span>
-    </div>`).join('') : '<p class="empty">Sin datos aún.</p>';
+  const areasAll = Object.keys(areaCounts).sort((x,y)=>areaCounts[y]-areaCounts[x]);
+  const maxA = Math.max(1, ...Object.values(areaCounts));
+  const areaRows = (lst)=>lst.map(ar=>`<div class="rd-row"><span class="n" title="${esc(ar)}">${esc(ar)}</span><div class="rd-trk"><i style="width:${areaCounts[ar]/maxA*100}%"></i></div><b>${areaCounts[ar]}</b></div>`).join('');
+  window._rdAreasAbiertas = window._rdAreasAbiertas || false;
+  const areasShow = window._rdAreasAbiertas ? areasAll : areasAll.slice(0,6);
 
-  // --- Torta: Órdenes abiertas vs cerradas (interactiva) ---
-  const abiertas = activities0.filter(a=>getOrdenEstado(a)==='Abierta').length;
-  const cerradas = activities0.filter(a=>getOrdenEstado(a)==='Cerrada').length;
-  const ordenPieEl = document.getElementById('ordenPie');
-  const totalOrden = abiertas + cerradas;
-  if(!totalOrden){
-    ordenPieEl.innerHTML = '<p class="empty">Sin datos aún.</p>';
-  } else {
-    const pctAbiertas = abiertas/totalOrden*360;
-    const stops = `#03459B 0deg ${pctAbiertas}deg, #64748B ${pctAbiertas}deg 360deg`;
-    ordenPieEl.innerHTML = `
-      <div class="pie-chart" id="ordenPieChart" style="background:conic-gradient(${stops});cursor:pointer;" title="Toca para ver las órdenes abiertas"></div>
-      <div class="pie-legend">
-        <div class="pie-legend-row" data-ordencat="Abierta" style="cursor:pointer;"><span class="pie-swatch" style="background:#03459B"></span><span class="pie-legend-name">Abiertas</span><span class="pie-legend-val">${abiertas} (${Math.round(abiertas/totalOrden*100)}%)</span></div>
-        <div class="pie-legend-row" data-ordencat="Cerrada" style="cursor:pointer;"><span class="pie-swatch" style="background:#64748B"></span><span class="pie-legend-name">Cerradas</span><span class="pie-legend-val">${cerradas} (${Math.round(cerradas/totalOrden*100)}%)</span></div>
-      </div>`;
-    const irAActividadesConOrden = (orden)=>{
+  const paRows = gruposPA.map(x=>`<div class="rd-row"><span class="n" title="${esc(x.g.n)}">${esc(x.g.n)}</span><div class="rd-trk"><i style="width:${x.pct*100}%;background:${x.pct>=.9?'#1F7A5C':x.pct>=.7?'#F29622':'#B3261E'}"></i></div><b>${Math.round(x.pct*100)}%</b></div>`).join('');
+
+  document.getElementById('resDash').innerHTML = `<div class="rd">
+    <div class="rd-side">
+      <div class="ps-kick">Mantenimiento</div>
+      <div class="ps-big" style="margin-top:14px;">${prev===null?'—':Math.round(prev*100)+'%'}</div>
+      <div class="ps-bl">${esc(prevLbl)}</div>
+      <div class="rd-big2">${avgAvance}%</div>
+      <div class="ps-bl">Avance de actividades</div>
+      <div class="ps-bs"><b>${total}</b> actividades · <b>${cerradas}</b> cerradas</div>
+      <div class="rd-ord"><button data-ordencat="Abierta"><b>${abiertas}</b><span>Abiertas</span></button><button class="v" data-ordencat="Vencida"><b>${vencidas}</b><span>Vencidas</span></button></div>
+    </div>
+    <div class="rd-main">
+      <div class="rd-c"><h3>ACTIVIDADES POR ESTADO</h3>${donut}</div>
+      <div class="rd-c"><h3>ACTIVIDADES POR MES · ${mY}</h3>${cols}</div>
+      ${paRows ? `<div class="rd-c w"><h3>PLAN ANUAL POR GRUPO</h3>${paRows}</div>` : ''}
+      <div class="rd-c w"><h3>ÁREAS CON MÁS ACTIVIDADES</h3>${areasAll.length?areaRows(areasShow):'<p class="empty">Sin datos aún.</p>'}${areasAll.length>6?`<button class="rd-more" id="rdMore">${window._rdAreasAbiertas?'Ver menos':'Ver las '+areasAll.length+' áreas'}</button>`:''}</div>
+    </div></div>`;
+  document.querySelectorAll('#resDash [data-ordencat]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
       document.querySelector('#mantSubActividades nav.tabs button[data-view="actividades"]').click();
-      document.getElementById('filterOrden').value = orden;
+      document.getElementById('filterOrden').value = btn.dataset.ordencat==='Vencida' ? 'Abierta' : btn.dataset.ordencat;
       renderActivitiesTable();
-    };
-    document.getElementById('ordenPieChart').addEventListener('click', ()=>irAActividadesConOrden('Abierta'));
-    document.querySelectorAll('#ordenPie [data-ordencat]').forEach(row=>{
-      row.addEventListener('click', ()=>irAActividadesConOrden(row.dataset.ordencat));
     });
-  }
+  });
+  const mb = document.getElementById('rdMore');
+  if(mb) mb.addEventListener('click', ()=>{ window._rdAreasAbiertas = !window._rdAreasAbiertas; renderResumen(); });
 
   const recent = [...bitacora0].sort((a,b)=> (b.fecha+b.createdAt).localeCompare(a.fecha+a.createdAt)).slice(0,5);
   document.getElementById('recentEntries').innerHTML = recent.length ? recent.map(e=>{
@@ -9992,7 +9990,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1641';
+const APP_VERSION = '2026-11-22-1741';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
