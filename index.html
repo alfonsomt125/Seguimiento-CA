@@ -5898,7 +5898,7 @@ let repId = null;
   bg.innerHTML = `<div class="modal"><h3>Reprogramar actividad</h3><p class="hint" id="repNom" style="margin:0 0 12px;"></p>
     <div class="grid-2"><div class="field"><label>Nueva fecha de inicio (opcional)</label><input type="date" id="repIni"></div><div class="field"><label>Nueva fecha de fin</label><input type="date" id="repFin"></div></div>
     <div class="field"><label>Motivo (opcional)</label><input type="text" id="repMot" placeholder="Ej: falta de presupuesto, lluvias…"></div>
-    <p class="hint">La actividad original no cambia: sigue contando como no cumplida en su periodo. Se crea una nueva actividad con las nuevas fechas.</p>
+    <p class="hint">La actividad original no cambia: sigue contando como no cumplida en su periodo. Se crea una nueva actividad con las nuevas fechas que continúa desde el avance en que quedó.</p>
     <div class="modal-actions"><button class="ghost" id="repCan" type="button">Cancelar</button><button class="primary" id="repOk" type="button">Reprogramar</button></div></div>`;
   document.body.appendChild(bg);
   bg.addEventListener('click', e=>{ if(e.target===bg) bg.classList.remove('active'); });
@@ -5908,7 +5908,8 @@ let repId = null;
     if(!fin){ showToast('Elige la nueva fecha de fin.'); return; }
     if(ini && ini>fin){ showToast('El inicio no puede ser posterior al fin.'); return; }
     const o = activities.find(a=>a.id===repId); if(!o) return;
-    const nuevo = {...o, id:uid(), estado:'Pendiente', avance:0, presupEjec:0, fechaInicio:ini, fechaFin:fin, reprogDe:o.id,
+    const av = Number(o.avance)||0;
+    const nuevo = {...o, id:uid(), estado: av>0 ? 'En proceso' : 'Pendiente', avance:av, presupEjec:0, fechaInicio:ini, fechaFin:fin, reprogDe:o.id,
       obs: ('Reprogramada'+(o.fechaFin?' (fin original '+fmtDate(o.fechaFin)+')':'')+(mot?': '+mot:'')).slice(0,200)};
     delete nuevo.reprogA; delete nuevo.reprogFecha;
     o.reprogA = nuevo.id; o.reprogFecha = todayISO();
@@ -10135,7 +10136,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1841';
+const APP_VERSION = '2026-11-22-1847';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
