@@ -940,6 +940,12 @@
     .ps-trk .dt{width:13px;height:13px;margin:-6.5px 0 0 -6.5px;font-size:0;border-width:2px;}
     .ps-r{grid-column:2;grid-row:1;}
   }
+  #ganttScroll{border:none;overflow:visible;border-radius:0;}
+  .ps-wrap.gg{grid-template-columns:1fr;}
+  .gg .ps-side{display:flex;flex-wrap:wrap;align-items:center;gap:14px 36px;padding:20px 26px;}
+  .gg .ps-mid{display:flex;align-items:center;gap:16px;flex:1;min-width:220px;}
+  .gg .ps-big{font-size:46px;}.gg .ps-leg{margin:0;display:flex;flex-wrap:wrap;gap:4px 16px;}.gg .ps-leg div{margin:3px 0;}
+  .gg .ps-sem{font-size:18px;}.gg .ps-bs{margin-top:2px;}
 </style></head><body>
 
 <div id="loginScreen" style="display:none;">
@@ -1215,12 +1221,10 @@
           <select id="ganttArea"><option value="">Todas</option></select>
         </div>
         <div class="field">
-          <label>Escala</label>
-          <select id="ganttScale">
-            <option value="month">Meses</option>
-            <option value="week">Semanas</option>
-          </select>
+          <label>Periodo</label>
+          <select id="ganttPeriodo"></select>
         </div>
+        <button class="ghost" id="ggPDF" type="button" style="white-space:nowrap;">Exportar PDF</button>
       </div>
       <p class="hint" id="ganttInfo" style="margin-bottom:10px;"></p>
       <div class="gantt-scroll" id="ganttScroll">
@@ -5502,127 +5506,159 @@ function populateGanttFilters(){
   areaSel.value = prevArea;
 }
 
-function renderGantt(){
-  const container = document.getElementById('ganttChart');
-  const info = document.getElementById('ganttInfo');
-  if(!container) return;
-
+const GG_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const GG_CSS = `.gg-hd,.gg-row{display:flex;align-items:center;gap:10px}
+  .gg-hd{font-size:10px;font-weight:600;color:#6D7388;letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px}
+  .gg-hn,.gg-n{width:170px;flex:none}.gg-hr,.gg-r{width:48px;flex:none;text-align:right}
+  .gg-rul{flex:1;display:flex;margin:0 8px}.gg-rul span{flex:1;padding-left:3px}
+  .gg-gh{font-size:10px;font-weight:700;letter-spacing:1px;color:#F29622;text-transform:uppercase;padding:12px 0 4px}
+  .gg-row{width:100%;border:none;background:transparent;border-bottom:1px solid #e3e8f2;padding:9px 0;font:inherit;text-align:left;color:inherit;border-radius:0}
+  .gg-n b{display:block;font-size:12px;line-height:1.25;font-weight:600}.gg-n small{display:block;font-size:9.5px;color:#6D7388;margin-top:2px}
+  .gg-r b{font-size:13px;color:#03459B}
+  .gg-trk{position:relative;flex:1;height:28px;background:#F7F9FC;border-radius:6px;overflow:hidden}
+  .gg-in{position:absolute;left:8px;right:8px;top:0;bottom:0}
+  .gg-in u{position:absolute;top:0;bottom:0;background:transparent}.gg-in u.b{background:#E9EFF8}
+  .gg-ln{position:absolute;top:50%;height:4px;margin-top:-2px;border-radius:2px;background:#c9d6ea}
+  .gg-lf{position:absolute;top:0;bottom:0;border-radius:2px;background:#03459B}
+  .gg-dt{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;box-sizing:border-box;background:#03459B}
+  .gg-dt.ov{background:#fff;border:2px solid #F29622}.gg-dt.pe{background:#fff;border:2px solid #7f9bc7}
+  .gg-hoy{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#F29622;opacity:.85}`;
+(function(){ const st = document.createElement('style'); st.textContent = GG_CSS + `
+  #ggMain .gg-row{cursor:pointer}#ggMain .gg-row:hover{background:var(--primary-soft)}
+  @media(max-width:800px){#ggMain .gg-hd{display:none}#ggMain .gg-row{display:grid;grid-template-columns:1fr 48px;gap:6px 10px}#ggMain .gg-n{width:auto}#ggMain .gg-trk{grid-column:1 / 3;grid-row:2}#ggMain .gg-r{grid-column:2;grid-row:1}}`; document.head.appendChild(st); })();
+function ggPeriodos(){
+  const ys = new Set();
+  activities.forEach(a=>{ [a.fechaInicio, a.fechaFin].forEach(f=>{ if(f && /^\d{4}/.test(f)) ys.add(f.slice(0,4)); }); });
+  return [...ys].sort((x,y)=>y.localeCompare(x));
+}
+function ggData(){
   const search = document.getElementById('ganttSearch').value.toLowerCase();
   const areaF = document.getElementById('ganttArea').value;
-  const scale = document.getElementById('ganttScale').value;
-
-  const allMatching = activities.filter(a=>{
-    if(search && !a.proyecto.toLowerCase().includes(search)) return false;
-    if(areaF && a.area!==areaF) return false;
-    return true;
-  });
-  const withDates = allMatching.filter(a=>a.fechaInicio);
-  const withoutDates = allMatching.length - withDates.length;
-
-  info.textContent = withDates.length
-    ? `Mostrando ${withDates.length} actividad(es) con fecha registrada.` + (withoutDates ? ` ${withoutDates} actividad(es) sin fecha no se muestran.` : '')
-    : '';
-
-  if(!withDates.length){
-    container.innerHTML = `<div class="gantt-empty">Ninguna actividad con fecha coincide con el filtro. Las fechas se completan al editar una actividad o al registrarse desde un acta de recibido a satisfacción.</div>`;
-    return;
-  }
-
-  // resolve start/end per activity (fall back to start-only as a 1-day marker)
-  const rows = withDates.map(a=>{
-    const start = parseISO(a.fechaInicio);
-    let end = a.fechaFin ? parseISO(a.fechaFin) : start;
-    if(end < start) end = start; // guard against bad data
-    return {a, start, end};
-  }).sort((x,y)=> x.start - y.start);
-
-  let rangeStart = new Date(Math.min(...rows.map(r=>r.start)));
-  let rangeEnd = new Date(Math.max(...rows.map(r=>r.end)));
-  // pad range a little, then snap to month boundaries for clean headers
-  rangeStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
-  rangeEnd = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth()+1, 0);
-
-  const pxPerDay = scale==='week' ? 12 : 4;
-  const totalDays = daysBetween(rangeStart, rangeEnd) + 1;
-  const totalWidth = totalDays * pxPerDay;
-
-  // header columns
-  let colsHtml = '';
-  if(scale==='month'){
-    let cursor = new Date(rangeStart);
-    while(cursor <= rangeEnd){
-      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth()+1, 0);
-      const spanDays = daysBetween(cursor, monthEnd < rangeEnd ? monthEnd : rangeEnd) + 1;
-      colsHtml += `<div class="gantt-col-label" style="width:${spanDays*pxPerDay}px;">${MESES_CORTOS[cursor.getMonth()]} ${cursor.getFullYear()}</div>`;
-      cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
-    }
-  } else {
-    let cursor = new Date(rangeStart);
-    while(cursor <= rangeEnd){
-      const weekEnd = addDays(cursor, 6);
-      const spanDays = Math.min(7, daysBetween(cursor, rangeEnd)+1);
-      colsHtml += `<div class="gantt-col-label" style="width:${spanDays*pxPerDay}px;">${cursor.getDate()}/${cursor.getMonth()+1}</div>`;
-      cursor = addDays(cursor, 7);
-    }
-  }
-
-  // grid background columns (month gridlines regardless of scale, for readability)
-  let gridHtml = '';
-  {
-    let cursor = new Date(rangeStart);
-    while(cursor <= rangeEnd){
-      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth()+1, 0);
-      const spanDays = daysBetween(cursor, monthEnd < rangeEnd ? monthEnd : rangeEnd) + 1;
-      gridHtml += `<div class="gantt-grid-col" style="width:${spanDays*pxPerDay}px;"></div>`;
-      cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
-    }
-  }
-
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const todayOffset = (today >= rangeStart && today <= rangeEnd) ? daysBetween(rangeStart, today) * pxPerDay : null;
-
-  let rowsHtml = rows.map(({a,start,end}, i)=>{
-    const left = daysBetween(rangeStart, start) * pxPerDay;
-    const widthDays = Math.max(daysBetween(start, end), 0);
-    const width = Math.max(widthDays * pxPerDay, 14);
-    const statusColor = STATUS_COLOR[a.estado] || 'var(--gray)';
-    const barColor = i%2===0 ? '#011632' : '#F29622';
-    const title = `${esc(a.proyecto)} | ${a.estado} | ${fmtDate(a.fechaInicio)} - ${a.fechaFin?fmtDate(a.fechaFin):'sin fecha fin'}`;
-    const rowTint = i%2===0 ? 'gantt-row-blue' : 'gantt-row-orange';
-    return `<div class="gantt-row ${rowTint}">
-      <div class="gantt-row-label" title="${esc(a.proyecto)}">
-        <span class="dot" style="background:${statusColor}" title="Estado: ${a.estado}"></span>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.proyecto)}</span>
-      </div>
-      <div class="gantt-row-track" style="width:${totalWidth}px;">
-        ${gridHtml}
-        ${todayOffset!==null ? `<div class="gantt-today-line" style="left:${todayOffset}px;"></div>` : ''}
-        <div class="gantt-bar" style="left:${left}px;width:${width}px;background:${barColor};" title="${title}">
-          <span class="bar-label">${esc(a.proyecto)}</span>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-
-  container.innerHTML = `<div class="gantt">
-    <div class="gantt-header">
-      <div class="gantt-header-label">Proyecto / Actividad</div>
-      <div class="gantt-header-cols" style="width:${totalWidth}px;">${colsHtml}</div>
-    </div>
-    ${rowsHtml}
-  </div>
-  <div class="gantt-legend">
-    ${Object.entries(STATUS_COLOR).map(([s,c])=>`<span class="item"><span class="dot" style="background:${c}"></span>${s}</span>`).join('')}
-    ${todayOffset!==null ? '<span class="item"><span class="dot" style="background:var(--orange)"></span>Hoy</span>' : ''}
-  </div>`;
+  const per = document.getElementById('ganttPeriodo').value; if(!per) return null;
+  const [y, sm] = per.split('|'), m0 = sm==='2' ? 6 : 0, nM = sm ? 6 : 12;
+  const D = (yy,mm,dd)=>Date.UTC(yy,mm,dd)/86400000;
+  const pS = D(+y,m0,1), pE = D(+y,m0+nM,1);
+  const dia = f=>{ const [yy,mm,dd] = f.slice(0,10).split('-').map(Number); return D(yy,mm-1,dd); };
+  const hoyD = (()=>{ const t = new Date(); return D(t.getFullYear(),t.getMonth(),t.getDate()); })();
+  const all = activities.filter(a=>(!search || a.proyecto.toLowerCase().includes(search)) && (!areaF || a.area===areaF));
+  const conFecha = all.filter(a=>a.fechaInicio);
+  let rows = conFecha.map(a=>{ let i = dia(a.fechaInicio), f = a.fechaFin ? dia(a.fechaFin) : i; if(f<i) [i,f] = [f,i]; return {a, i, f: f+1}; })
+    .filter(r=>r.i < pE && r.f > pS).sort((x,y)=>x.i-y.i || x.f-y.f || x.a.proyecto.localeCompare(y.a.proyecto));
+  const cerrada = a=>getOrdenEstado(a)==='Cerrada';
+  const st = {
+    n: rows.length, avance: rows.length ? Math.round(rows.reduce((t,r)=>t+(Number(r.a.avance)||0),0)/rows.length) : null,
+    fin: rows.filter(r=>r.a.estado==='Finalizado' || Number(r.a.avance)>=100).length,
+    venc: rows.filter(r=>!cerrada(r.a) && r.f-1 < hoyD).length,
+    sinFecha: all.length - conFecha.length
+  };
+  st.curso = st.n - st.fin - st.venc;
+  const meses = Array.from({length:nM},(_,k)=>GG_MESES[m0+k]);
+  const tit = sm ? `${sm==='1'?'1.er':'2.º'} semestre ${y}` : `Año ${y}`;
+  return {rows, st, meses, tit, pS, pE, hoyD, cerrada, y, m0, nM};
 }
-
+function ggPista(r, D){
+  const span = D.pE - D.pS, fr = d=>Math.min(1,Math.max(0,(d-D.pS)/span))*100;
+  const ini = fr(r.i), fin = fr(r.f), av = Math.max(0,Math.min(100,Number(r.a.avance)||0));
+  const cerr = D.cerrada(r.a), ven = !cerr && r.f-1 < D.hoyD;
+  const bands = Array.from({length:D.nM},(_,k)=>`<u class="${k%2?'b':''}" style="left:${k/D.nM*100}%;width:${100/D.nM}%"></u>`).join('');
+  const hoy = (D.hoyD>=D.pS && D.hoyD<D.pE) ? `<i class="gg-hoy" style="left:${fr(D.hoyD)}%"></i>` : '';
+  return `<div class="gg-trk"><div class="gg-in">${bands}${hoy}<div class="gg-ln" style="left:${ini}%;width:${Math.max(fin-ini,.8)}%"><i class="gg-lf" style="left:0;width:${av}%"></i></div>${r.i>=D.pS?`<i class="gg-dt" style="left:${ini}%"></i>`:''}${r.f<=D.pE?`<i class="gg-dt ${cerr?'':(ven?'ov':'pe')}" style="left:${fin}%"></i>`:''}</div></div>`;
+}
+function ggFilas(D, conClick, pdf){
+  let out = '', mesAct = -1;
+  D.rows.forEach(r=>{
+    const d = new Date(Math.max(r.i,D.pS)*86400000), key = d.getUTCFullYear()*12+d.getUTCMonth();
+    let gh = '';
+    if(key!==mesAct){ mesAct = key; gh = `<div class="gg-gh" data-gg="1">${GG_MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}</div>`; }
+    const av = Math.round(Number(r.a.avance)||0);
+    if(!pdf) out += gh;
+    else out += `<div class="blk">${gh}`;
+    out += `<${conClick?'button type="button"':'div'} class="gg-row" ${conClick?`data-ggid="${r.a.id}"`:''}><div class="gg-n"><b>${esc(r.a.proyecto)}</b><small>${esc(r.a.area||'')} · ${fmtDate(r.a.fechaInicio)}${r.a.fechaFin?' → '+fmtDate(r.a.fechaFin):''}</small></div>${ggPista(r,D)}<div class="gg-r"><b>${av}%</b></div></${conClick?'button':'div'}>`;
+    if(pdf) out += `</div>`;
+  });
+  return out;
+}
+function renderGantt(){
+  const container = document.getElementById('ggMain') || document.getElementById('ganttChart');
+  const info = document.getElementById('ganttInfo');
+  if(!container) return;
+  const perSel = document.getElementById('ganttPeriodo'), prev = perSel.value, ys = ggPeriodos();
+  perSel.innerHTML = ys.map(y=>`<option value="${y}">${y} · año completo</option><option value="${y}|1">${y} · 1.er semestre</option><option value="${y}|2">${y} · 2.º semestre</option>`).join('');
+  const hoyY = String(new Date().getFullYear());
+  perSel.value = [...perSel.options].some(o=>o.value===prev) ? prev : (ys.includes(hoyY) ? hoyY : (ys[0]||''));
+  const D = ggData();
+  if(!D){ document.getElementById('ganttChart').innerHTML = '<div class="gantt-empty">Aún no hay actividades con fecha.</div>'; info.textContent = ''; return; }
+  info.textContent = D.st.sinFecha ? `${D.st.sinFecha} actividad(es) sin fecha no se muestran. Las fechas se completan al editar una actividad.` : '';
+  const {st} = D;
+  const side = `<div class="ps-side"><div><div class="ps-kick">Cronograma de proyectos</div><div class="ps-sem">${D.tit}</div></div>
+    <div class="ps-mid"><div class="ps-big">${st.avance===null?'—':st.avance+'%'}</div><div><div class="ps-bl">Avance promedio</div>
+    <div class="ps-bs"><b>${st.n}</b> proyectos · <b>${st.fin}</b> finalizados · <b>${st.curso}</b> en curso${st.venc?` · <b>${st.venc}</b> vencidos`:''}</div></div></div>
+    <div class="ps-leg"><div><i class="dt ok"></i>Cumplido</div><div><i class="dt fu"></i>Fin en curso</div><div><i class="dt ov"></i>Fin vencido</div><div><i class="dt" style="background:#F29622;width:3px;border-radius:0"></i>Hoy</div></div></div>`;
+  const main = `<div class="ps-main" id="ggMain"><div class="gg-hd"><span class="gg-hn">Proyecto</span><div class="gg-rul">${D.meses.map(m=>`<span>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>${st.n?ggFilas(D,true):'<p class="ps-tip">Ningún proyecto con fecha en este periodo.</p>'}<p class="ps-tip">Toca un proyecto para editarlo.</p></div>`;
+  document.getElementById('ganttChart').innerHTML = `<div class="ps-wrap gg">${side}${main}</div>`;
+}
+document.getElementById('ganttChart').addEventListener('click', e=>{ const r = e.target.closest('[data-ggid]'); if(r) openModal(r.dataset.ggid); });
 document.getElementById('ganttSearch').addEventListener('input', renderGantt);
-['ganttArea','ganttScale'].forEach(id=>{
+['ganttArea','ganttPeriodo'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderGantt);
   document.getElementById(id).addEventListener('change', renderGantt);
 });
+
+
+function ggConstruirPDF(){
+  const D = ggData(), st = D.st;
+  const logoCab = (document.querySelector('.lg-cab')||{}).src || '';
+  const hoyStr = new Date().toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'});
+  const panel = `<div class="side"><div class="lgo"><img src="${logoCab}"></div>
+    <div class="kick">Servicios Generales · Mantenimiento</div><h1>Cronograma de proyectos</h1><div class="sem">${D.tit}</div>
+    <div class="rule"></div>
+    <div class="big">${st.avance===null?'—':st.avance+'%'}</div><div class="bl">Avance promedio</div><div class="bs">${st.n} proyectos · ${st.fin} finalizados · ${st.curso} en curso${st.venc?` · ${st.venc} vencidos`:''}</div>
+    <div class="leg"><div><i class="gg-dt" style="position:static;margin:0;display:inline-block"></i>Inicio / fin cumplido</div><div><i class="gg-dt pe" style="position:static;margin:0;display:inline-block"></i>Fin en curso</div><div><i class="gg-dt ov" style="position:static;margin:0;display:inline-block"></i>Fin vencido</div><div><i style="display:inline-block;width:3px;height:12px;background:#F29622"></i>Hoy</div></div>
+    <div class="foot"><div class="el"><b>Elaboró</b><br>Alfonso Monserrat Tejada<br>Líder de Servicios Generales<br><span>Emitido el ${hoyStr}</span></div><div class="pn"></div></div></div>`;
+  const hd = `<div class="gg-hd"><span class="gg-hn">Proyecto</span><div class="gg-rul">${D.meses.map(m=>`<span>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>`;
+  const css = paPdfCss() + GG_CSS + `.blk{margin:0}.gg-row{padding:6px 0}.gg-n,.gg-hn{width:200px}.gg-trk{height:24px}.gg-n b{font-size:10.5px}.gg-n small{font-size:8.5px}.gg-gh{padding:10px 0 3px;font-size:9.5px}.gg-hd{margin-bottom:2px}.pn{margin-top:10px;font-size:9px;color:#8fa3c4}#src{width:716px}`;
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>
+  <div id="src">${ggFilas(D,false,true)}</div><div id="panel" style="display:none">${panel}</div><div id="hd" style="display:none">${hd}</div><div id="out"></div></body></html>`;
+}
+async function ggExportarPDF(){
+  const btn = document.getElementById('ggPDF');
+  if(!ggData() || !ggData().st.n){ showToast('No hay proyectos con fecha en este periodo.'); return; }
+  btn.disabled = true; showToast('Generando PDF…');
+  try{
+    if(!window.html2canvas) await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if(!(window.jspdf && window.jspdf.jsPDF)) await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const fr = document.createElement('iframe');
+    fr.style.cssText = 'position:fixed;left:-12000px;top:0;width:1056px;height:816px;border:0;';
+    document.body.appendChild(fr);
+    await new Promise(res=>{ fr.onload = res; fr.srcdoc = ggConstruirPDF(); });
+    const d = fr.contentDocument;
+    try{ await Promise.race([d.fonts.ready, new Promise(r=>setTimeout(r,2500))]); }catch(_){}
+    await new Promise(r=>setTimeout(r,300));
+    const out = d.getElementById('out'), H = 816, AV = H - 34 - 24 - 40 - 22;
+    const mk = titulo => { const p = d.createElement('div'); p.className = 'pg'; p.appendChild(d.getElementById('panel').firstElementChild.cloneNode(true)); const m = d.createElement('div'); m.className = 'main'; m.innerHTML = `<div class="tt">${titulo}</div>` + d.getElementById('hd').innerHTML; p.appendChild(m); out.appendChild(p); return m; };
+    let main = mk('Proyectos por fecha de inicio'), used = 0;
+    [...d.querySelectorAll('#src .blk')].forEach(b=>{
+      const h = b.offsetHeight;
+      if(used && used + h > AV){ main = mk('Proyectos por fecha de inicio · continuación'); used = 0; }
+      main.appendChild(b); used += h;
+    });
+    const pages = [...out.children];
+    pages.forEach((p,i)=>{ p.querySelector('.pn').textContent = `Página ${i+1} de ${pages.length}`; });
+    fr.style.height = (H*pages.length)+'px';
+    await new Promise(r=>setTimeout(r,200));
+    const pdf = new window.jspdf.jsPDF({unit:'pt', format:'letter', orientation:'landscape'});
+    for(let i=0;i<pages.length;i++){
+      const cv = await html2canvas(pages[i], {scale:2.2, width:1056, height:816, windowWidth:1056, windowHeight:H*pages.length, backgroundColor:'#ffffff'});
+      if(i) pdf.addPage('letter','landscape');
+      pdf.addImage(cv.toDataURL('image/jpeg',0.95), 'JPEG', 0, 0, 792, 612);
+    }
+    fr.remove();
+    pdf.save(`Cronograma de proyectos ${D_tit()}.pdf`);
+  }catch(e){ showToast('No se pudo generar el PDF (¿sin internet?).'); console.error(e); }
+  btn.disabled = false;
+}
+function D_tit(){ const D = ggData(); return D ? D.tit : ''; }
+document.getElementById('ggPDF').addEventListener('click', ggExportarPDF);
 
 /* ---- modal ---- */
 function openModal(id){
@@ -9956,7 +9992,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1620';
+const APP_VERSION = '2026-11-22-1640';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14692,6 +14728,34 @@ document.getElementById('paGrupos').addEventListener('click', async e=>{
 document.getElementById('paSemSw').addEventListener('click', e=>{ const b = e.target.closest('button[data-sem]'); if(!b) return; paSem = +b.dataset.sem; document.getElementById('paGrupos').innerHTML=''; renderPlanAnual(); });
 
 /* --- Exportar el informe del cronograma de mantenimiento preventivo (semestre) a PDF institucional --- */
+function paPdfCss(){ return `*{box-sizing:border-box;margin:0;padding:0}body{font-family:Poppins,Arial,sans-serif;color:#011632;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #src{position:absolute;left:0;top:0;width:716px;visibility:hidden}
+  .pg{position:relative;width:1056px;height:816px;overflow:hidden;background:#fff;display:flex}
+  .side{width:290px;height:816px;background:#011632;color:#fff;padding:30px 26px;position:relative;flex:none}
+  .lgo{background:#fff;border-radius:10px;padding:8px 10px;display:flex;justify-content:center;margin-bottom:26px}.lgo img{height:46px}
+  .kick{font-size:9.5px;font-weight:600;letter-spacing:1.4px;color:#F29622;text-transform:uppercase}
+  .side h1{font-size:22px;font-weight:700;line-height:1.2;margin:6px 0 6px}.sem{font-size:13px;color:#b9c6dc}
+  .rule{width:44px;height:3px;background:#F29622;margin:20px 0}
+  .big{font-size:68px;font-weight:700;line-height:1;color:#F29622}.bl{font-size:12px;font-weight:600;margin-top:8px}.bs{font-size:10.5px;color:#b9c6dc;margin-top:3px}
+  .leg{margin-top:34px;font-size:10px;color:#dbe4f2}.leg div{display:flex;align-items:center;gap:9px;margin:8px 0}
+  .foot{position:absolute;left:26px;right:26px;bottom:26px;font-size:9.5px;line-height:1.55;color:#dbe4f2;border-top:1px solid #1d3a63;padding-top:12px}.foot b{color:#fff;font-size:10px}.foot span{color:#8fa3c4;font-size:9px}
+  .ef{position:absolute;right:0;top:12px;background:#fff;border-radius:8px;padding:5px 7px}.ef img{height:30px;display:block}.pn{margin-top:10px;font-size:9px;color:#8fa3c4}
+  .main{flex:1;padding:34px 30px 30px 30px;width:766px}
+  .tt{font-size:11px;font-weight:600;letter-spacing:1.2px;color:#03459B;text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid #03459B}
+  .blk{margin-bottom:12px}
+  .rh,.ar{display:flex;align-items:center;gap:10px}.rh{font-size:9px;font-weight:600;color:#6D7388;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px}
+  .rh>span:first-child,.an{width:150px;flex:none}.rh .rr{width:60px;flex:none;text-align:right}.rul{flex:1;display:flex}.rul span{flex:1;text-align:left;padding-left:4px}
+  .ar{padding:11px 0;border-bottom:1px solid #e3e8f2}.ar.sm{padding:3px 0}
+  .an b{display:block;font-size:12px;line-height:1.25}.an small{display:block;font-size:8.5px;color:#6D7388;margin-top:2px}.an span{font-size:9.5px;line-height:1.25;display:block}
+  .trk{position:relative;flex:1;height:28px;background:#F7F9FC;border-radius:6px;overflow:hidden}.ar.sm .trk{height:16px}
+  .trk u{position:absolute;top:0;bottom:0;width:16.667%}.trk u:nth-child(even){background:#E9EFF8}
+  .dt{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;display:inline-block;font-style:normal;font-size:8px;font-weight:700;line-height:15px;text-align:center}
+  .dt.big{width:15px;height:15px;margin:-7.5px 0 0 -7.5px;line-height:11px;font-size:8px}
+  .dt.ok{background:#03459B;color:#fff}.dt.ov{background:#fff;border:2px solid #F29622;color:#F29622}.dt.fu{background:#fff;border:2px solid #7f9bc7;color:#7f9bc7}
+  .leg .dt,.leg i.dt{position:static;margin:0;width:11px;height:11px}
+  .rs2{width:60px;flex:none;text-align:right}.rs2 b{font-size:14px;color:#03459B}.rs2 small{font-size:9px;color:#6D7388}.ar.sm .rs2 b{font-size:11px}
+  .pb{height:4px;background:#E5EEF9;border-radius:2px;margin:3px 0 2px}.pb i{display:block;height:4px;background:#03459B;border-radius:2px}
+  .gt{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:2px}.gt b{color:#011632}.gt span{font-weight:700;color:#F29622;font-size:12px}`; }
 function paConstruirPDF(){
   const sem = paSem, grupos = planAnual[paAno] || [], R = paCalc(grupos, paCorte, sem), lo = sem*24;
   const corte = Math.min(Math.max(paCorte, lo), lo+23), sinIniciar = paCorte < lo;
@@ -14723,34 +14787,7 @@ function paConstruirPDF(){
     <div class="big">${pct(R.global)}</div><div class="bl">Cumplimiento ${sinIniciar?'(semestre sin iniciar)':'al '+MESES[Math.floor(corte/4)].toLowerCase()+', semana '+(corte%4+1)}</div><div class="bs">${R.totD} de ${R.totP} actividades programadas cumplidas</div>
     <div class="leg"><div><i class="dt ok"></i>Cumplida</div><div><i class="dt ov"></i>Programada y pendiente</div><div><i class="dt fu"></i>Programada a futuro</div></div>
     <div class="foot"><div class="el"><b>Elaboró</b><br>Alfonso Monserrat Tejada<br>Líder de Servicios Generales<br><span>Emitido el ${hoyStr}</span></div></div></div>`;
-  const css = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:Poppins,Arial,sans-serif;color:#011632;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #src{position:absolute;left:0;top:0;width:716px;visibility:hidden}
-  .pg{position:relative;width:1056px;height:816px;overflow:hidden;background:#fff;display:flex}
-  .side{width:290px;height:816px;background:#011632;color:#fff;padding:30px 26px;position:relative;flex:none}
-  .lgo{background:#fff;border-radius:10px;padding:8px 10px;display:flex;justify-content:center;margin-bottom:26px}.lgo img{height:46px}
-  .kick{font-size:9.5px;font-weight:600;letter-spacing:1.4px;color:#F29622;text-transform:uppercase}
-  .side h1{font-size:22px;font-weight:700;line-height:1.2;margin:6px 0 6px}.sem{font-size:13px;color:#b9c6dc}
-  .rule{width:44px;height:3px;background:#F29622;margin:20px 0}
-  .big{font-size:68px;font-weight:700;line-height:1;color:#F29622}.bl{font-size:12px;font-weight:600;margin-top:8px}.bs{font-size:10.5px;color:#b9c6dc;margin-top:3px}
-  .leg{margin-top:34px;font-size:10px;color:#dbe4f2}.leg div{display:flex;align-items:center;gap:9px;margin:8px 0}
-  .foot{position:absolute;left:26px;right:26px;bottom:26px;font-size:9.5px;line-height:1.55;color:#dbe4f2;border-top:1px solid #1d3a63;padding-top:12px}.foot b{color:#fff;font-size:10px}.foot span{color:#8fa3c4;font-size:9px}
-  .ef{position:absolute;right:0;top:12px;background:#fff;border-radius:8px;padding:5px 7px}.ef img{height:30px;display:block}.pn{margin-top:10px;font-size:9px;color:#8fa3c4}
-  .main{flex:1;padding:34px 30px 30px 30px;width:766px}
-  .tt{font-size:11px;font-weight:600;letter-spacing:1.2px;color:#03459B;text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid #03459B}
-  .blk{margin-bottom:12px}
-  .rh,.ar{display:flex;align-items:center;gap:10px}.rh{font-size:9px;font-weight:600;color:#6D7388;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px}
-  .rh>span:first-child,.an{width:150px;flex:none}.rh .rr{width:60px;flex:none;text-align:right}.rul{flex:1;display:flex}.rul span{flex:1;text-align:left;padding-left:4px}
-  .ar{padding:11px 0;border-bottom:1px solid #e3e8f2}.ar.sm{padding:3px 0}
-  .an b{display:block;font-size:12px;line-height:1.25}.an small{display:block;font-size:8.5px;color:#6D7388;margin-top:2px}.an span{font-size:9.5px;line-height:1.25;display:block}
-  .trk{position:relative;flex:1;height:28px;background:#F7F9FC;border-radius:6px;overflow:hidden}.ar.sm .trk{height:16px}
-  .trk u{position:absolute;top:0;bottom:0;width:16.667%}.trk u:nth-child(even){background:#E9EFF8}
-  .dt{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;display:inline-block;font-style:normal;font-size:8px;font-weight:700;line-height:15px;text-align:center}
-  .dt.big{width:15px;height:15px;margin:-7.5px 0 0 -7.5px;line-height:11px;font-size:8px}
-  .dt.ok{background:#03459B;color:#fff}.dt.ov{background:#fff;border:2px solid #F29622;color:#F29622}.dt.fu{background:#fff;border:2px solid #7f9bc7;color:#7f9bc7}
-  .leg .dt,.leg i.dt{position:static;margin:0;width:11px;height:11px}
-  .rs2{width:60px;flex:none;text-align:right}.rs2 b{font-size:14px;color:#03459B}.rs2 small{font-size:9px;color:#6D7388}.ar.sm .rs2 b{font-size:11px}
-  .pb{height:4px;background:#E5EEF9;border-radius:2px;margin:3px 0 2px}.pb i{display:block;height:4px;background:#03459B;border-radius:2px}
-  .gt{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:2px}.gt b{color:#011632}.gt span{font-weight:700;color:#F29622;font-size:12px}`;
+  const css = paPdfCss();
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>
   <div id="src">${resumen}</div><div id="panel" style="display:none">${panel}</div><div id="out"></div></body></html>`;
 }
