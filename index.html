@@ -959,6 +959,23 @@
   .cf-btn{display:block;width:100%;text-align:left;margin:6px 0;padding:9px 12px;border:1px solid var(--line);background:#fff;border-radius:9px;font:inherit;font-size:13px;cursor:pointer;color:#011632;}
   .cf-btn:hover{background:var(--paper-2);}.cf-btn.r{color:#b3261e;}
   body.compacto .panel{padding:12px 14px;}body.compacto .kpi{padding:10px 12px;}body.compacto nav.tabs button{padding:6px 10px;}body.compacto .rd-main{padding:12px;gap:8px;}
+
+  .bt-wrap .ps-big{font-size:54px;}
+  .bt-new{margin-top:22px;width:100%;background:#F29622;color:#011632;border:0;border-radius:10px;padding:11px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+  .bt-new:hover{background:#ffb04a;}
+  .bt-big2{font-size:30px;font-weight:700;line-height:1;margin-top:20px;}
+  #bitacoraList .day-group{margin-bottom:18px;}
+  #bitacoraList .day-heading{font-family:inherit;font-size:11px;font-weight:600;letter-spacing:1.2px;color:#03459B;margin:0 0 4px;}
+  #bitacoraList .entry{display:flex;flex-direction:column;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;background:none;padding:12px 30px 12px 16px;margin:0;}
+  #bitacoraList .entry::before{content:"";position:absolute;left:0;top:19px;width:8px;height:8px;border-radius:50%;background:#03459B;}
+  #bitacoraList .entry.st-Pendiente::before,#bitacoraList .entry.st-En_proceso::before{background:#F29622;}
+  #bitacoraList .entry.st-No_ejecutado::before,#bitacoraList .entry.st-No_completado::before{background:#B3261E;}
+  #bitacoraList .entry.st-Cancelado::before{background:#94A3B8;}
+  #bitacoraList .entry-top{order:2;margin:2px 0 0;}#bitacoraList .entry-stamp{display:none;}
+  #bitacoraList .entry-desc{order:1;font-weight:500;}
+  #bitacoraList .entry-activity{font-weight:400;font-size:12px;color:var(--gray);}
+  #bitacoraList .entry-meta{order:3;font-size:11.5px;margin-top:4px;}#bitacoraList .entry-photos{order:3;}
+  #bitacoraList .entry-del{top:10px;opacity:.35;}#bitacoraList .entry:hover .entry-del{opacity:1;}
   .ps-wrap{display:grid;grid-template-columns:270px minmax(0,1fr);gap:0;background:#fff;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);}
   .ps-side{background:#011632;color:#fff;padding:26px 24px;}
   .ps-kick{font-size:10px;font-weight:600;letter-spacing:1.3px;color:#F29622;text-transform:uppercase;}
@@ -1160,8 +1177,12 @@
 
   <!-- ===================== BITACORA ===================== -->
   <section class="view" id="view-bitacora">
-    <div class="panel">
-      <h2>Nueva entrada</h2>
+    <div class="ps-wrap bt-wrap">
+      <div class="ps-side" id="bitSide"></div>
+      <div class="ps-main"><div id="bitacoraList"></div></div>
+    </div>
+    <div class="modal-bg" id="entryModal"><div class="modal">
+      <h3>Nueva entrada</h3>
       <div class="grid-3">
         <div class="field">
           <label>Fecha</label>
@@ -1192,10 +1213,8 @@
         <p class="hint">Se comprimen automáticamente para ahorrar espacio. Puedes seleccionar varias.</p>
         <div id="photoPreview" class="photo-preview"></div>
       </div>
-      <button class="primary" id="btnAddEntry">Guardar entrada</button>
-    </div>
-
-    <div id="bitacoraList"></div>
+      <div class="modal-actions"><button class="ghost" id="btnCancelEntry" type="button">Cancelar</button><button class="primary" id="btnAddEntry">Guardar entrada</button></div>
+    </div></div>
   </section>
 
   <!-- ===================== ACTIVIDADES ===================== -->
@@ -5313,8 +5332,12 @@ function renderBitacoraList(){
   bitacora.forEach(e=>{ (byDay[e.fecha] = byDay[e.fecha]||[]).push(e); });
   const days = Object.keys(byDay).sort().reverse();
   const container = document.getElementById('bitacoraList');
+  const hoyI = todayISO(), d7 = new Date(); d7.setDate(d7.getDate()-6);
+  const i7 = d7.getFullYear()+'-'+String(d7.getMonth()+1).padStart(2,'0')+'-'+String(d7.getDate()).padStart(2,'0');
+  document.getElementById('bitSide').innerHTML = `<div class="ps-kick">Bitácora diaria</div><div class="ps-big" style="margin-top:14px;">${bitacora.filter(e=>e.fecha===hoyI).length}</div><div class="ps-bl">Entradas hoy</div><div class="bt-big2">${bitacora.filter(e=>e.fecha>=i7&&e.fecha<=hoyI).length}</div><div class="ps-bl">Últimos 7 días</div><div class="ps-bs"><b>${bitacora.length}</b> entradas en total</div><button type="button" class="bt-new" id="btnNuevaEntrada">+ Nueva entrada</button>`;
+  document.getElementById('btnNuevaEntrada').addEventListener('click', ()=>{ renderBitacoraForm(); document.getElementById('entryModal').classList.add('active'); setTimeout(()=>document.getElementById('entryDesc').focus(),50); });
   if(!days.length){
-    container.innerHTML = '<p class="empty">Todavía no hay entradas. Registra la primera actividad del día arriba.</p>';
+    container.innerHTML = '<p class="empty">Todavía no hay entradas. Toca «Nueva entrada» para registrar la primera.</p>';
     return;
   }
   container.innerHTML = days.map(day=>{
@@ -5357,6 +5380,8 @@ function renderBitacoraList(){
   });
 }
 
+document.getElementById('btnCancelEntry').addEventListener('click', ()=>document.getElementById('entryModal').classList.remove('active'));
+document.getElementById('entryModal').addEventListener('click', e=>{ if(e.target.id==='entryModal') e.target.classList.remove('active'); });
 document.getElementById('btnAddEntry').addEventListener('click', async ()=>{
   const fecha = document.getElementById('entryDate').value || todayISO();
   const descripcion = document.getElementById('entryDesc').value.trim();
@@ -5373,6 +5398,7 @@ document.getElementById('btnAddEntry').addEventListener('click', async ()=>{
   };
   bitacora.push(entry);
   await saveBitacora();
+  document.getElementById('entryModal').classList.remove('active');
   document.getElementById('entryDesc').value='';
   document.getElementById('entryResp').value='';
   document.getElementById('entryLink').value='';
@@ -10063,7 +10089,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1818';
+const APP_VERSION = '2026-11-22-1820';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
