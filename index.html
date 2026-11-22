@@ -891,6 +891,19 @@
   .pa-g{padding:14px 18px;}
   .pa-g .pa-bar{margin:0;}
   .pa-g .pa-scroll,.pa-g .pa-resp,.pa-g .pa-ge{margin-top:12px;}
+  .ac-g{border-top:1px solid var(--line);padding:6px 0;}
+  .ac-g:first-child{border-top:none;}
+  .ac-gh{display:flex;align-items:center;gap:8px;width:100%;border:none;background:transparent;padding:6px 0;font:inherit;cursor:pointer;text-align:left;color:inherit;}
+  .ac-n{color:var(--gray);font-size:13px;}
+  .ac-r{display:flex;align-items:center;gap:10px;padding:10px 4px 10px 24px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px;}
+  .ac-r:hover{background:var(--primary-soft);}
+  .ac-t{flex:1;min-width:0;}
+  .ac-name{font-weight:600;font-size:14px;line-height:1.3;}
+  .ac-sub{color:var(--gray);font-size:12px;margin-top:2px;}
+  .ac-pc{width:36px;text-align:right;font-weight:600;font-size:13px;}
+  .ac-r .ac-del{padding:2px 8px;border:none;background:transparent;box-shadow:none;color:var(--gray);font-size:14px;min-width:0;}
+  .ac-r .ac-del:hover{color:#c0392b;background:transparent;}
+  @media(max-width:700px){.ac-r{padding-left:6px;gap:8px;}.prog-mini{width:40px;}}
 </style></head><body>
 
 <div id="loginScreen" style="display:none;">
@@ -1112,6 +1125,10 @@
           <input type="text" id="filterSearch" placeholder="Nombre del proyecto...">
         </div>
         <div class="field">
+          <label>Periodo</label>
+          <select id="filterPeriodo"><option value="">Todos</option></select>
+        </div>
+        <div class="field">
           <label>Estado</label>
           <select id="filterEstado"><option value="">Todos</option></select>
         </div>
@@ -1130,21 +1147,8 @@
         <button class="primary" id="btnNewActivity" style="white-space:nowrap;">+ Nueva actividad</button>
         <button class="ghost" id="btnSyncCatalog" style="white-space:nowrap;" title="Vuelve a revisar si hay actividades nuevas del catálogo (informes de gestión) que aún no estén en tu lista">↻ Actualizar catálogo</button>
       </div>
-      <div class="year-pills-wrap">
-        <span class="year-pills-label">Año</span>
-        <div class="year-pills" id="filterAno" data-value=""></div>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th class="sortable" data-sort="proyecto">Proyecto / Actividad</th><th class="sortable" data-sort="area">Área</th><th class="sortable" data-sort="responsable">Responsable</th><th class="sortable" data-sort="prioridad">Prioridad</th>
-              <th class="sortable" data-sort="estado">Estado</th><th class="sortable" data-sort="avance">Avance</th><th>Orden</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="activitiesBody"></tbody>
-        </table>
-      </div>
+      <div id="filterAno" data-value="" style="display:none"></div>
+      <div id="actList"></div>
     </div>
   </section>
 
@@ -5321,7 +5325,9 @@ function populateFilterOptions(){
   areaSel.innerHTML = '<option value="">Todas</option>' + areas.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('');
   const anos = [...new Set(activities.map(a=>getActivityYear(a)).filter(Boolean))].sort((x,y)=>y.localeCompare(x));
   const hasSinFecha = activities.some(a=>!getActivityYear(a));
-  renderYearPills('filterAno', anos, hasSinFecha, renderActivitiesTable);
+  const perSel = document.getElementById('filterPeriodo'), prevPer = perSel.value;
+  perSel.innerHTML = '<option value="">Todos</option>' + anos.map(y=>`<option value="${y}|1">${y} · 1.er semestre</option><option value="${y}|2">${y} · 2.º semestre</option><option value="${y}">${y} · año completo</option>`).join('') + (hasSinFecha?'<option value="__sinfecha">Sin fecha</option>':'');
+  perSel.value = [...perSel.options].some(o=>o.value===prevPer) ? prevPer : '';
   renderYearPills('resumenAno', anos, hasSinFecha, renderResumen);
 }
 
@@ -5364,46 +5370,43 @@ function renderActivitiesTable(){
   const estadoF = document.getElementById('filterEstado').value;
   const areaF = document.getElementById('filterArea').value;
   const ordenF = document.getElementById('filterOrden').value;
-  const anoF = document.getElementById('filterAno').dataset.value || '';
+  const perF = document.getElementById('filterPeriodo').value;
   let rows = activities.filter(a=>{
     if(search && !a.proyecto.toLowerCase().includes(search)) return false;
     if(estadoF && a.estado!==estadoF) return false;
     if(areaF && a.area!==areaF) return false;
     if(ordenF && getOrdenEstado(a)!==ordenF) return false;
-    if(anoF){
-      const y = getActivityYear(a);
-      if(anoF==='__sinfecha'){ if(y) return false; }
-      else if(y!==anoF) return false;
+    if(perF){
+      const y = getActivityYear(a), [py, ps] = perF.split('|');
+      if(perF==='__sinfecha'){ if(y) return false; }
+      else if(y!==py) return false;
+      else if(ps){ const d = a.fechaInicio || a.fechaFin; if(((+d.slice(5,7))<=6 ? '1' : '2')!==ps) return false; }
     }
     return true;
   });
-  rows = sortActivityRows(rows);
-  updateSortHeaders();
-  const tbody = document.getElementById('activitiesBody');
-  if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">Ninguna actividad coincide con el filtro.</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = rows.map(a=>{
-    const orden = getOrdenEstado(a);
-    return `
-    <tr>
-      <td><strong>${esc(a.proyecto)}</strong>${a.obs?`<div style="color:var(--gray);font-size:11.5px;margin-top:2px;">${esc(a.obs)}</div>`:''}</td>
-      <td>${esc(a.area)}</td>
-      <td>${esc(a.responsable)||'—'}</td>
-      <td><span class="pri-${a.prioridad}">${a.prioridad}</span></td>
-      <td><span class="pill pill-${String(a.estado).replace(/ /g,'_')}">${a.estado}</span></td>
-      <td><span class="prog-mini"><span class="prog-mini-fill" style="width:${a.avance}%"></span></span>${a.avance}%</td>
-      <td><span class="pill pill-orden-${orden}">${orden==='Abierta'?'🟢 Abierta':'⚫ Cerrada'}</span></td>
-      <td><div class="row-actions">
-        <button class="ghost" data-edit="${a.id}">Editar</button>
-        <button class="ghost danger" data-del="${a.id}">Eliminar</button>
-      </div></td>
-    </tr>`;
+  const box = document.getElementById('actList');
+  if(!rows.length){ box.innerHTML = `<div class="empty">Ninguna actividad coincide con el filtro.</div>`; return; }
+  const prRank = {Alta:0,Media:1,Baja:2};
+  rows.sort((x,y)=>(prRank[x.prioridad]??9)-(prRank[y.prioridad]??9) || x.proyecto.localeCompare(y.proyecto));
+  const orden = [...ESTADOS, ...new Set(rows.map(a=>a.estado).filter(e=>!ESTADOS.includes(e)))];
+  box.innerHTML = orden.map(est=>{
+    const list = rows.filter(a=>a.estado===est); if(!list.length) return '';
+    const cerrado = est==='Finalizado' || est==='Cancelado';
+    const open_ = actOpen[est]!==undefined ? actOpen[est] : !cerrado;
+    return `<div class="ac-g"><button type="button" class="ac-gh" data-acg="${esc(est)}" aria-expanded="${open_}"><i class="pa-chev${open_?' on':''}">›</i><span class="pill pill-${String(est).replace(/ /g,'_')}">${esc(est)}</span><span class="ac-n">${list.length}</span></button>${open_ ? list.map(a=>`
+      <div class="ac-r" data-edit="${a.id}">
+        <div class="ac-t"><div class="ac-name">${esc(a.proyecto)}</div><div class="ac-sub">${[esc(a.area), esc(a.responsable), a.prioridad==='Alta'?'<b class="pri-Alta">Prioridad alta</b>':''].filter(Boolean).join(' · ')}${a.obs?` · ${esc(a.obs)}`:''}</div></div>
+        <span class="prog-mini"><span class="prog-mini-fill" style="width:${a.avance}%"></span></span><span class="ac-pc">${a.avance}%</span>
+        <button class="ghost danger ac-del" data-del="${a.id}" title="Eliminar" aria-label="Eliminar">✕</button>
+      </div>`).join('') : ''}</div>`;
   }).join('');
-
-  tbody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openModal(b.dataset.edit)));
-  tbody.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', async ()=>{
+  box.querySelectorAll('[data-acg]').forEach(b=>b.addEventListener('click',()=>{
+    const k = b.dataset.acg, cur = actOpen[k]!==undefined ? actOpen[k] : !(k==='Finalizado'||k==='Cancelado');
+    actOpen[k] = !cur; renderActivitiesTable();
+  }));
+  box.querySelectorAll('[data-edit]').forEach(r=>r.addEventListener('click',e=>{ if(e.target.closest('[data-del]')) return; openModal(r.dataset.edit); }));
+  box.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', async e=>{
+    e.stopPropagation();
     if(!await customConfirm('¿Eliminar esta actividad? También quedarán huérfanas sus entradas de bitácora.')) return;
     const deleted = activities.find(a=>a.id===b.dataset.del);
     activities = activities.filter(a=>a.id!==b.dataset.del);
@@ -5413,14 +5416,15 @@ function renderActivitiesTable(){
       if(!deletedNames.includes(n)){ deletedNames.push(n); await saveDeletedNames(); }
     }
     populateFilterOptions();
-  populateGanttFilters();
+    populateGanttFilters();
     renderActivitiesTable();
-  renderGantt();
+    renderGantt();
     renderResumen();
     renderBitacoraForm();
     showToast('Actividad eliminada.');
   }));
 }
+let actOpen = {};
 
 /* 'filterSearch' solo usa 'input': su evento 'change' se dispara al perder el
    foco (blur), lo que ocurre justo al hacer mousedown sobre un botón como
@@ -5435,7 +5439,7 @@ document.querySelectorAll('#view-actividades th.sortable').forEach(th=>{
     renderActivitiesTable();
   });
 });
-['filterEstado','filterArea','filterOrden'].forEach(id=>{
+['filterPeriodo','filterEstado','filterArea','filterOrden'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderActivitiesTable);
   document.getElementById(id).addEventListener('change', renderActivitiesTable);
 });
@@ -9915,7 +9919,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1324';
+const APP_VERSION = '2026-11-22-1551';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
