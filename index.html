@@ -1022,6 +1022,8 @@
   .gg .ps-side{display:flex;flex-wrap:wrap;align-items:center;gap:14px 36px;padding:20px 26px;}
   .gg .ps-mid{display:flex;align-items:center;gap:16px;flex:1;min-width:220px;}
   .gg .ps-big{font-size:46px;}.gg .ps-leg{margin:0;display:flex;flex-wrap:wrap;gap:4px 16px;}.gg .ps-leg div{margin:3px 0;}
+  .ac-rep{font-size:15px;line-height:1;width:30px;height:30px;padding:0;border-radius:8px;white-space:nowrap;color:#03459B;border:1px solid #cfdcf0;background:#fff;cursor:pointer;font-family:inherit;}.ac-rep:hover{background:#E9EFF8;}
+  .ac-tag{color:#F29622;font-weight:600;}
   .ab-chip{cursor:pointer;padding:3px 9px;border-radius:999px;border:1px solid transparent;}.ab-chip:hover{background:rgba(255,255,255,.08);}.ab-chip.on{border-color:#F29622;background:rgba(242,150,34,.15);}
   .gg .ps-sem{font-size:18px;}.gg .ps-bs{margin-top:2px;}
 </style></head><body>
@@ -3758,6 +3760,7 @@ const ESTADOS = ['Pendiente','En proceso','Finalizado','No ejecutado','No comple
    llega al 100% de avance antes de que alguien actualice el estado a
    "Finalizado" a mano. */
 function getOrdenEstado(a){
+  if(a.reprogA) return 'Cerrada'; // ya se reprogramó: su continuación está en otra actividad
   if(a.estado==='Finalizado' || a.estado==='Cancelado' || Number(a.avance||0)>=100) return 'Cerrada';
   return 'Abierta';
 }
@@ -5541,7 +5544,8 @@ function renderActivitiesTable(){
     const open_ = actOpen[est]!==undefined ? actOpen[est] : !cerrado;
     return `<div class="ac-g"><button type="button" class="ac-gh" data-acg="${esc(est)}" aria-expanded="${open_}"><i class="pa-chev${open_?' on':''}">›</i><span class="pill pill-${String(est).replace(/ /g,'_')}">${esc(est)}</span><span class="ac-n">${list.length}</span></button>${open_ ? list.map(a=>`
       <div class="ac-r" data-edit="${a.id}">
-        <div class="ac-t"><div class="ac-name">${esc(a.proyecto)}</div><div class="ac-sub">${[esc(a.area), esc(a.responsable), a.prioridad==='Alta'?'<b class="pri-Alta">Prioridad alta</b>':''].filter(Boolean).join(' · ')}${a.obs?` · ${esc(a.obs)}`:''}</div></div>
+        <div class="ac-t"><div class="ac-name">${esc(a.proyecto)}</div><div class="ac-sub">${[esc(a.area), esc(a.responsable), a.prioridad==='Alta'?'<b class="pri-Alta">Prioridad alta</b>':''].filter(Boolean).join(' · ')}${a.reprogA?` · <b class="ac-tag">↻ Reprogramada</b>`:''}${a.reprogDe?` · <b class="ac-tag">↻ Reprogramación</b>`:''}${a.obs?` · ${esc(a.obs)}`:''}</div></div>
+        ${(!a.reprogA && (a.estado==='No ejecutado'||a.estado==='No completado'||(getOrdenEstado(a)==='Abierta' && a.fechaFin && a.fechaFin<todayISO()))) ? `<button type="button" class="ghost ac-rep" data-rep="${a.id}" title="Reprogramar: crea una nueva fecha y conserva esta como incumplida" aria-label="Reprogramar">↻</button>` : ''}
         <span class="prog-mini"><span class="prog-mini-fill" style="width:${a.avance}%"></span></span><span class="ac-pc">${a.avance}%</span>
         <button class="ghost danger ac-del" data-del="${a.id}" title="Eliminar" aria-label="Eliminar">✕</button>
       </div>`).join('') : ''}</div>`;
@@ -5550,7 +5554,7 @@ function renderActivitiesTable(){
     const k = b.dataset.acg, cur = actOpen[k]!==undefined ? actOpen[k] : !(k==='Finalizado'||k==='Cancelado');
     actOpen[k] = !cur; renderActivitiesTable();
   }));
-  box.querySelectorAll('[data-edit]').forEach(r=>r.addEventListener('click',e=>{ if(e.target.closest('[data-del]')) return; openModal(r.dataset.edit); }));
+  box.querySelectorAll('[data-edit]').forEach(r=>r.addEventListener('click',e=>{ if(e.target.closest('[data-del]')) return; if(e.target.closest('[data-rep]')){ abrirReprog(e.target.closest('[data-rep]').dataset.rep); return; } openModal(r.dataset.edit); }));
   box.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', async e=>{
     e.stopPropagation();
     if(!await customConfirm('¿Eliminar esta actividad? También quedarán huérfanas sus entradas de bitácora.')) return;
@@ -5886,6 +5890,40 @@ document.getElementById('btnSaveModal').addEventListener('click', async ()=>{
   renderBitacoraForm();
   showToast('Actividad guardada.');
 });
+
+/* ===== Reprogramar una actividad: la original se conserva (incumplida en su periodo) y se crea su continuación ===== */
+let repId = null;
+(function(){
+  const bg = document.createElement('div'); bg.className = 'modal-bg'; bg.id = 'repModal';
+  bg.innerHTML = `<div class="modal"><h3>Reprogramar actividad</h3><p class="hint" id="repNom" style="margin:0 0 12px;"></p>
+    <div class="grid-2"><div class="field"><label>Nueva fecha de inicio (opcional)</label><input type="date" id="repIni"></div><div class="field"><label>Nueva fecha de fin</label><input type="date" id="repFin"></div></div>
+    <div class="field"><label>Motivo (opcional)</label><input type="text" id="repMot" placeholder="Ej: falta de presupuesto, lluvias…"></div>
+    <p class="hint">La actividad original no cambia: sigue contando como no cumplida en su periodo. Se crea una nueva actividad con las nuevas fechas.</p>
+    <div class="modal-actions"><button class="ghost" id="repCan" type="button">Cancelar</button><button class="primary" id="repOk" type="button">Reprogramar</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.addEventListener('click', e=>{ if(e.target===bg) bg.classList.remove('active'); });
+  document.getElementById('repCan').addEventListener('click', ()=>bg.classList.remove('active'));
+  document.getElementById('repOk').addEventListener('click', async ()=>{
+    const fin = document.getElementById('repFin').value, ini = document.getElementById('repIni').value, mot = document.getElementById('repMot').value.trim();
+    if(!fin){ showToast('Elige la nueva fecha de fin.'); return; }
+    if(ini && ini>fin){ showToast('El inicio no puede ser posterior al fin.'); return; }
+    const o = activities.find(a=>a.id===repId); if(!o) return;
+    const nuevo = {...o, id:uid(), estado:'Pendiente', avance:0, presupEjec:0, fechaInicio:ini, fechaFin:fin, reprogDe:o.id,
+      obs: ('Reprogramada'+(o.fechaFin?' (fin original '+fmtDate(o.fechaFin)+')':'')+(mot?': '+mot:'')).slice(0,200)};
+    delete nuevo.reprogA; delete nuevo.reprogFecha;
+    o.reprogA = nuevo.id; o.reprogFecha = todayISO();
+    activities.push(nuevo);
+    await saveActivities(); bg.classList.remove('active');
+    populateFilterOptions(); populateGanttFilters(); renderActivitiesTable(); renderGantt(); renderResumen();
+    showToast('Actividad reprogramada.');
+  });
+})();
+function abrirReprog(id){
+  const a = activities.find(x=>x.id===id); if(!a) return; repId = id;
+  document.getElementById('repNom').textContent = a.proyecto;
+  ['repIni','repFin','repMot'].forEach(k=>document.getElementById(k).value='');
+  document.getElementById('repModal').classList.add('active');
+}
 
 /* ============================================================
    TABS
@@ -10097,7 +10135,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1835';
+const APP_VERSION = '2026-11-22-1839';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
