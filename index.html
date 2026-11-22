@@ -5460,6 +5460,8 @@ function populateFilterOptions(){
   const perSel = document.getElementById('filterPeriodo'), prevPer = perSel.value;
   perSel.innerHTML = '<option value="">Todos</option>' + anos.map(y=>`<option value="${y}|1">${y} · 1.er semestre</option><option value="${y}|2">${y} · 2.º semestre</option><option value="${y}">${y} · año completo</option>`).join('') + (hasSinFecha?'<option value="__sinfecha">Sin fecha</option>':'');
   perSel.value = [...perSel.options].some(o=>o.value===prevPer) ? prevPer : '';
+  const rEl = document.getElementById('resumenAno');
+  if(!rEl.dataset.init){ rEl.dataset.init = '1'; const yAct = String(new Date().getFullYear()); if(anos.includes(yAct)) rEl.dataset.value = yAct; }
   renderYearPills('resumenAno', anos, hasSinFecha, renderResumen);
 }
 
@@ -10095,7 +10097,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1834';
+const APP_VERSION = '2026-11-22-1835';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
