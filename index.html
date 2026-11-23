@@ -2185,17 +2185,17 @@
 
   <div id="heVistas">
   <div class="he-switch" id="heSwitch">
-    <button class="active" data-hevista="persona">Por persona</button>
-    <button data-hevista="resumen">Resumen general</button>
+    <button class="active" data-hevista="resumen">Resumen general</button>
+    <button data-hevista="persona">Por persona</button>
   </div>
-  <div id="heVistaPersona" class="he-split">
+  <div id="heVistaPersona" class="he-split" style="display:none;">
     <div class="panel he-left">
       <input type="text" id="heBuscar" placeholder="Buscar persona…">
       <div id="heResumenPorTrabajador"></div>
     </div>
     <div class="panel he-right" id="heDetallePanel"></div>
   </div>
-  <div id="heVistaResumen" style="display:none;">
+  <div id="heVistaResumen">
   <div class="panel">
     <h2 style="margin:0 0 4px;">📊 Dashboard de horas extras</h2>
     <p class="hint" style="margin:0 0 14px;">Del período seleccionado arriba.</p>
@@ -9378,7 +9378,7 @@ function renderHorasExtra(){
   const rowSel = resumenWrap.querySelector('.he-p.sel');
   if(heAbierto && rowSel){ rowSel.after(panelDet); panelDet.style.display = ''; } else panelDet.style.display = 'none';
 }
-let heSel = null, heTab = 'registros', heVista = 'persona', heAbierto = false;
+let heSel = null, heTab = 'registros', heVista = 'resumen', heAbierto = false;
 const HE_CORTES = [['2026-08-20','2026-09-15','20 ago – 15 sep'],['2026-09-16','2026-10-15','16 sep – 15 oct'],['2026-10-16','2026-11-15','16 oct – 15 nov'],['2026-11-16','2026-12-15','16 nov – 15 dic'],['2026-12-16','2027-01-15','16 dic – 15 ene']];
 function heIniciales(n){ return (n||'?').trim().split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase(); }
 function renderHeDetalle(f, desde, hasta){
@@ -10249,7 +10249,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-2031';
+const APP_VERSION = '2026-11-22-2040';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
