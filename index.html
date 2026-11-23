@@ -4420,13 +4420,25 @@ const supabaseAPI = (function(){
       emergencia, no el almacenamiento principal). */
 const storageAPI = (function(){
   if(supabaseAPI){
+    /* Caché de arranque: una sola consulta trae todas las claves (antes eran ~40 viajes
+       secuenciales a Supabase, que era lo que hacía lenta la carga). Se vacía al terminar
+       de arrancar para que las lecturas posteriores sean siempre frescas. */
+    let cache = null;
     return {
+      async prefetch(){
+        try{
+          const { data, error } = await supabaseAPI.from(TABLA_STORAGE).select('key,value');
+          if(!error && data){ cache = {}; data.forEach(r=>{ cache[r.key] = r.value; }); }
+        }catch(e){ cache = null; }
+      },
+      clearCache(){ cache = null; },
       async get(key){
         /* Distingue "no existe" (sin error y sin fila) de "no se pudo leer" (error de red,
            límite, caída). Ante un error se reintenta; si sigue fallando se marca
            cargaFallida y se bloquean los guardados, para que un fallo de lectura
            nunca se confunda con datos vacíos y termine pisando lo guardado. */
         if(cargaFallida) throw new Error('storage unavailable');
+        if(cache){ if(key in cache) return {key, value: cache[key]}; throw new Error('not found'); }
         let ultimo = null;
         for(let intento=0; intento<3; intento++){
           let res;
@@ -4448,6 +4460,7 @@ const storageAPI = (function(){
         const { error } = await supabaseAPI.from(TABLA_STORAGE)
           .upsert({key, value, updated_at: new Date().toISOString()}, {onConflict:'key'});
         if(error) throw error;
+        if(cache) cache[key] = value;
         return {key, value};
       }
     };
@@ -10351,7 +10364,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-2133';
+const APP_VERSION = '2026-11-23-1033';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15321,6 +15334,7 @@ async function init(){
   document.getElementById('todayStampEsp').textContent = now.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
   await migrarLocalASupabase();
+  if(storageAPI.prefetch) await storageAPI.prefetch();
 
   await loadAll();
   await loadCfg();
@@ -15432,6 +15446,7 @@ async function init(){
   renderAiresAll();
 
   document.getElementById('loadingScreen').style.display='none';
+  if(storageAPI.clearCache) storageAPI.clearCache();
   document.getElementById('app').style.display='block';
   showSelector();
 }
