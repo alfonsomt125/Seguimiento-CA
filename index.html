@@ -609,7 +609,21 @@
   .he-switch{display:inline-flex;gap:4px;padding:4px;background:var(--primary-soft);border-radius:12px;margin:0 0 14px;}
   .he-switch button{border:none;background:transparent;padding:8px 18px;border-radius:9px;font-size:14px;font-weight:500;color:var(--gray);cursor:pointer;font-family:inherit;}
   .he-switch button.active{background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(1,22,50,.12);}
-  .he-split{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start;}
+  .he-bar{overflow:visible;}.he-bar .ps-side{border-radius:16px;}
+  .he-ctl{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;}.he-ctl2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .he-chips{background:none!important;border:0!important;padding:0!important;box-shadow:none!important;margin:0!important;}
+  .he-chips .year-pill{background:transparent;color:#dbe4f2;border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:5px 12px;font-size:12px;}
+  .he-chips .year-pill.active{background:rgba(242,150,34,.2);border-color:#F29622;color:#fff;}
+  .he-bar select,.he-bar input[type=date]{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:5px 8px;font:inherit;font-size:12px;color-scheme:dark;}
+  .he-bar select option{color:#011632;background:#fff;}
+  .he-fechas{display:inline-flex;align-items:center;gap:5px;color:#b9c6dc;}.he-fechas i{font-style:normal;}
+  .he-chip,.he-bar .cfg-menu>summary{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:5px 12px;font:inherit;font-size:12px;cursor:pointer;}
+  .he-chip:hover,.he-bar .cfg-menu>summary:hover{background:rgba(255,255,255,.18);}
+  .he-bar .cfg-items{color:var(--navy);}
+  .he-bar.log .he-onlymant{display:none;}
+  .he-split{display:block;}.he-left{padding:6px 14px 14px;}
+  .he-right{margin:2px 0 12px 44px;border-left:3px solid #F29622;border-radius:0 12px 12px 0;min-height:0;}
+  @media(max-width:700px){.he-right{margin-left:8px;}}
   .he-left{padding:14px;}
   .he-left input{width:100%;margin-bottom:10px;}
   .he-p{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;cursor:pointer;border:1px solid transparent;}
@@ -637,7 +651,6 @@
   .he-tot b{font-size:18px;color:var(--navy);}
   .he-aviso{margin-top:10px;padding:10px 14px;border-radius:12px;background:#FBE9E9;color:#B93F3E;font-size:13px;}
   .he-nota{white-space:pre-wrap;padding:14px;background:var(--primary-soft);border-radius:12px;font-size:14px;}
-  @media(max-width:860px){.he-split{grid-template-columns:1fr;}}
 
   /* ===== Horarios: opción A ===== */
   .hor-nav{display:inline-flex;align-items:center;gap:6px;margin:0 0 12px;}
@@ -1959,10 +1972,31 @@
   <div id="mantSubHorasExtra" style="display:none;">
   <button class="module-back" data-mantback="1">← Seguimiento de Mantenimiento</button>
   <div class="mod-tabs"><button data-modtab="horasextra" class="active">Horas extras</button><button data-modtab="horarios">Horarios de trabajo</button></div>
-  <div class="year-pills" id="heAreaTabs" style="margin:10px 0 14px;">
-    <button class="year-pill active" data-hearea="mantenimiento">🔧 Mantenimiento</button>
-    <button class="year-pill" data-hearea="logistica">🚚 Logística</button>
-  </div>
+  <div class="ps-wrap gg he-bar" id="heBar" style="margin:10px 0 14px;"><div class="ps-side">
+    <div><div class="ps-kick">Horas extras</div><div class="ps-sem" id="heTituloResumen">Mantenimiento</div></div>
+    <div class="ps-mid he-onlymant"><div class="ps-big" id="heTotBig">0h</div><div><div class="ps-bl" id="hePerLbl"></div><div class="ps-bs" id="heTotInfo"></div></div></div>
+    <div class="he-ctl">
+      <div class="year-pills he-chips" id="heAreaTabs">
+        <button class="year-pill active" data-hearea="mantenimiento">🔧 Mantenimiento</button>
+        <button class="year-pill" data-hearea="logistica">🚚 Logística</button>
+      </div>
+      <span class="he-ctl2 he-onlymant">
+        <select id="heCorteSel" title="Período de corte"></select>
+        <span class="he-fechas"><input type="date" id="heDesdePeriodo" title="Desde"><i>–</i><input type="date" id="heHastaPeriodo" title="Hasta"></span>
+        <button class="he-chip" id="btnExportarResumenHE" type="button">⬇ PDF</button>
+        <details class="cfg-menu" id="heCfgMenu">
+          <summary class="ghost">⚙ Configuración</summary>
+          <div class="cfg-items">
+            <button id="btnConfigLimitesHE">Límites de horas</button>
+            <button id="btnAutorizadosHE">Personal autorizado</button>
+            <button id="btnVerificarHE">Verificar con horarios</button>
+            <button id="btnFormulasHE">Fórmulas</button>
+          </div>
+        </details>
+      </span>
+    </div>
+    <p class="ps-bs he-onlymant" id="heLimitesTexto" style="flex-basis:100%;margin:0;"></p>
+  </div></div>
 
   <!-- ===== Logística: turnos, horas extras y recargos ===== -->
   <div id="heLogPanel" style="display:none;">
@@ -2149,40 +2183,6 @@
     <div class="modal-actions"><button class="ghost" id="btnLogPCancelar">Cancelar</button><button class="primary" id="btnLogPGuardar">Guardar</button></div>
   </div></div>
 
-  <div class="panel">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
-      <h2 style="margin:0;" id="heTituloResumen">Horas extras — resumen del período</h2>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="ghost" id="btnExportarResumenHE">⬇ PDF</button>
-        <details class="cfg-menu" id="heCfgMenu">
-          <summary class="ghost">⚙ Configuración</summary>
-          <div class="cfg-items">
-            <button id="btnConfigLimitesHE">Límites de horas</button>
-            <button id="btnAutorizadosHE">Personal autorizado</button>
-            <button id="btnVerificarHE">Verificar con horarios</button>
-            <button id="btnFormulasHE">Fórmulas</button>
-          </div>
-        </details>
-      </div>
-    </div>
-    <p class="hint" style="margin:0 0 12px;" id="heLimitesTexto"></p>
-    <div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;margin-bottom:14px;">
-      <div>
-        <div class="hint" style="margin:0 0 6px;" title="Por defecto del 15 al 15; puedes ajustar las fechas si el corte es distinto (ej. del 20 al 15)">Período de corte</div>
-        <div class="year-pills" id="heCortesRapidos" style="margin:0;">
-          <button class="year-pill" data-corte="2026-08-20|2026-09-15">20 ago – 15 sep</button>
-          <button class="year-pill" data-corte="2026-09-16|2026-10-15">16 sep – 15 oct</button>
-          <button class="year-pill" data-corte="2026-10-16|2026-11-15">16 oct – 15 nov</button>
-          <button class="year-pill" data-corte="2026-11-16|2026-12-15">16 nov – 15 dic</button>
-          <button class="year-pill" data-corte="2026-12-16|2027-01-15">16 dic – 15 ene</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:flex-end;">
-        <div class="field" style="margin:0;"><label>Desde</label><input type="date" id="heDesdePeriodo"></div>
-        <div class="field" style="margin:0;"><label>Hasta</label><input type="date" id="heHastaPeriodo"></div>
-      </div>
-    </div>
-  </div>
   <div id="heVistas">
   <div class="he-switch" id="heSwitch">
     <button class="active" data-hevista="persona">Por persona</button>
@@ -9328,8 +9328,9 @@ function renderHorasExtra(){
   document.getElementById('heLogPanel').style.display = esLog ? 'block' : 'none';
   document.querySelectorAll('#mantSubHorasExtra > .panel').forEach(pn=>pn.style.display = esLog ? 'none' : '');
   document.getElementById('heVistas').style.display = esLog ? 'none' : '';
-  if(esLog){ renderLogisticaHE(); return; }
-  document.getElementById('heTituloResumen').textContent = 'Horas extras ' + (heAreaActual==='logistica'?'Logística':'Mantenimiento') + ' — resumen del período';
+  document.getElementById('heBar').classList.toggle('log', esLog);
+  if(esLog){ document.getElementById('heTituloResumen').textContent = 'Logística'; renderLogisticaHE(); return; }
+  document.getElementById('heTituloResumen').textContent = 'Mantenimiento';
   actualizarTextoLimitesHE();
   if(!document.getElementById('heDesdePeriodo').value || !document.getElementById('heHastaPeriodo').value){
     const def = periodoPorDefecto();
@@ -9339,14 +9340,15 @@ function renderHorasExtra(){
   const {desde, hasta} = periodoActualHE();
   renderHeDashboard(desde, hasta);
   renderHePendientes();
-  document.querySelectorAll('#heCortesRapidos [data-corte]').forEach(b=>{
-    b.classList.toggle('active', b.dataset.corte===`${desde}|${hasta}`);
-  });
+  const cs = document.getElementById('heCorteSel');
+  if(!cs.options.length) cs.innerHTML = HE_CORTES.map(c=>`<option value="${c[0]}|${c[1]}">${c[2]}</option>`).join('') + '<option value="custom">Fechas personalizadas</option>';
+  cs.value = [...cs.options].some(o=>o.value===`${desde}|${hasta}`) ? `${desde}|${hasta}` : 'custom';
 
   document.querySelectorAll('#heSwitch [data-hevista]').forEach(b=>b.classList.toggle('active', b.dataset.hevista===heVista));
   document.getElementById('heVistaPersona').style.display = heVista==='persona' ? '' : 'none';
   document.getElementById('heVistaResumen').style.display = heVista==='resumen' ? '' : 'none';
 
+  const panelDet = document.getElementById('heDetallePanel'); document.getElementById('heVistaPersona').appendChild(panelDet);
   const resumenWrap = document.getElementById('heResumenPorTrabajador');
   const filas = trabajadoresHE().map(t=>{
     const total = horasDelPeriodo(t.id, desde, hasta);
@@ -9357,6 +9359,10 @@ function renderHorasExtra(){
     return {t, total, pct, pctReal, excedido, color};
   }).sort((a,b)=>b.total-a.total || a.t.nombre.localeCompare(b.t.nombre));
   if(!filas.some(f=>f.t.id===heSel)) heSel = filas[0] ? filas[0].t.id : null;
+  const totH = r2(filas.reduce((x,f)=>x+f.total,0)), nSobre = filas.filter(f=>f.excedido).length, nCerca = filas.filter(f=>!f.excedido && f.pct>=80).length, nCon = filas.filter(f=>f.total>0).length;
+  document.getElementById('heTotBig').textContent = totH+'h';
+  document.getElementById('hePerLbl').textContent = fmtDate(desde)+' – '+fmtDate(hasta);
+  document.getElementById('heTotInfo').innerHTML = `<b>${nCon}</b> personas con horas · <b>${nCerca}</b> cerca del límite · <b>${nSobre}</b> sobre el límite`;
   const busqueda = document.getElementById('heBuscar').value.toLowerCase().trim();
   const lista = busqueda ? filas.filter(f=>f.t.nombre.toLowerCase().includes(busqueda)) : filas;
   resumenWrap.innerHTML = lista.length ? lista.map(f=>`
@@ -9366,11 +9372,14 @@ function renderHorasExtra(){
       <span class="he-ph" style="color:${f.color};">${f.total}h</span>
     </div>`).join('') : `<p class="empty">${busqueda ? 'Nada coincide con la búsqueda.' : 'Aún no hay trabajadores registrados (se agregan desde Salida de Insumos).'}</p>`;
   resumenWrap.querySelectorAll('[data-vertrabajadorhe]').forEach(el=>{
-    el.addEventListener('click', ()=>{ heSel = el.dataset.vertrabajadorhe; renderHorasExtra(); });
+    el.addEventListener('click', ()=>{ const id = el.dataset.vertrabajadorhe; if(heSel===id && heAbierto) heAbierto = false; else { heSel = id; heAbierto = true; } renderHorasExtra(); });
   });
   renderHeDetalle(filas.find(f=>f.t.id===heSel), desde, hasta);
+  const rowSel = resumenWrap.querySelector('.he-p.sel');
+  if(heAbierto && rowSel){ rowSel.after(panelDet); panelDet.style.display = ''; } else panelDet.style.display = 'none';
 }
-let heSel = null, heTab = 'registros', heVista = 'persona';
+let heSel = null, heTab = 'registros', heVista = 'persona', heAbierto = false;
+const HE_CORTES = [['2026-08-20','2026-09-15','20 ago – 15 sep'],['2026-09-16','2026-10-15','16 sep – 15 oct'],['2026-10-16','2026-11-15','16 oct – 15 nov'],['2026-11-16','2026-12-15','16 nov – 15 dic'],['2026-12-16','2027-01-15','16 dic – 15 ene']];
 function heIniciales(n){ return (n||'?').trim().split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase(); }
 function renderHeDetalle(f, desde, hasta){
   const box = document.getElementById('heDetallePanel');
@@ -9397,7 +9406,7 @@ function renderHeDetalle(f, desde, hasta){
     cuerpo = `<div class="he-kpis">${Object.keys(vals).map(k=>`<div class="he-kpi"><div class="lbl">${HE_TIPO_LABEL[k]}</div><div class="num">${d.totales[k].toFixed(2)}h</div><div class="val">${mon(vals[k])}</div></div>`).join('')}</div>
       <div class="he-tot"><span>Total ${d.totalHoras.toFixed(2)}h</span><b>${mon(d.totalPagar)}</b></div>
       ${d.excede ? `<div class="he-aviso">Supera ${limitesHorasExtras.tope}h: liquidado hasta el tope ${mon(d.totalPagarLimitado)} · excedente ${d.excedenteHoras}h <button class="ghost" data-gestionarexcedente="${t.id}" style="margin-left:8px;">${d.compensacion?'Ver gestión':'Gestionar excedente'}</button></div>` : ''}
-      <p class="hint" style="margin-top:10px;">No incluye lo marcado como pendiente o compensatorio. Salario base: ${mon(t.salario||SMMLV_2026)}.</p>`;
+      <p class="hint" style="margin-top:10px;">No incluye lo marcado como pendiente o compensatorio. Salario base: ${mon(t.salario||SMMLV_2026)}${t.salario?'':' (mínimo 2026)'}. Puedes cambiarlo con «💲 Salario».</p>`;
   }else{
     cuerpo = `<div class="he-nota">${nota ? esc(nota) : '<span class="hint">Sin observaciones para este período.</span>'}</div><button class="ghost" data-notahe="${t.id}" style="margin-top:12px;">${nota?'Editar nota':'Escribir nota'}</button>`;
   }
@@ -9405,12 +9414,13 @@ function renderHeDetalle(f, desde, hasta){
     <div class="he-dh">
       <span class="he-av lg">${esc(heIniciales(t.nombre))}</span>
       <div style="flex:1;min-width:160px;"><div class="he-dn">${esc(t.nombre)}</div><div class="hint" style="margin:0;">${fmtDate(desde)} – ${fmtDate(hasta)} · <span style="color:${f.color};font-weight:600;">${f.total}h de ${limitesHorasExtras.mensual}h${f.excedido?' (excedido)':''}</span></div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="ghost" data-raprapido="${t.id}">⚡ Mes</button><button class="primary" data-agregarhe="${t.id}">+ Agregar</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="ghost" data-salariohe="${t.id}" title="Salario base de esta persona (para la liquidación)">💲 Salario</button><button class="ghost" data-raprapido="${t.id}">⚡ Mes</button><button class="primary" data-agregarhe="${t.id}">+ Agregar</button></div>
     </div>
     <div class="he-tabs">${tabs.map(([k,l])=>`<button class="${k===heTab?'active':''}" data-hetab="${k}">${l}</button>`).join('')}</div>
     ${cuerpo}`;
   box.querySelectorAll('[data-hetab]').forEach(b=>b.addEventListener('click', ()=>{ heTab = b.dataset.hetab; renderHorasExtra(); }));
   box.querySelectorAll('[data-agregarhe]').forEach(b=>b.addEventListener('click', ()=>abrirHEModal(null, b.dataset.agregarhe)));
+  box.querySelectorAll('[data-salariohe]').forEach(b=>b.addEventListener('click', ()=>heSalarioAbrir(b.dataset.salariohe)));
   box.querySelectorAll('[data-raprapido]').forEach(b=>b.addEventListener('click', ()=>heRapAbrirPara(b.dataset.raprapido)));
   box.querySelectorAll('[data-notahe]').forEach(b=>b.addEventListener('click', ()=>heNotaAbrir(b.dataset.notahe)));
   box.querySelectorAll('[data-gestionarexcedente]').forEach(b=>b.addEventListener('click', ()=>abrirCompensarHE(b.dataset.gestionarexcedente, desde, hasta)));
@@ -9425,7 +9435,33 @@ function renderHeDetalle(f, desde, hasta){
     showToast('Registro eliminado.');
   }));
 }
+
+/* Salario base por persona (Horas extras Mantenimiento) */
+let heSalId = null;
+(function(){
+  const bg = document.createElement('div'); bg.className = 'modal-bg'; bg.id = 'heSalModal';
+  bg.innerHTML = `<div class="modal" style="max-width:380px;"><h3 id="heSalNom" style="margin-top:0;">Salario</h3>
+    <p class="hint" style="margin:0 0 10px;">Salario mensual base para liquidar las horas extras de esta persona. Si lo dejas vacío se usa el mínimo 2026.</p>
+    <div class="field"><label>Salario mensual</label><input type="number" min="0" step="1000" id="heSalVal" placeholder="Ej: 1750905"></div>
+    <div class="modal-actions"><button class="ghost" id="heSalCan" type="button">Cancelar</button><button class="primary" id="heSalOk" type="button">Guardar</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.addEventListener('click', e=>{ if(e.target===bg) bg.classList.remove('active'); });
+  document.getElementById('heSalCan').addEventListener('click', ()=>bg.classList.remove('active'));
+  document.getElementById('heSalOk').addEventListener('click', async ()=>{
+    const t = trabajadores.find(x=>x.id===heSalId); if(!t) return;
+    const v = Number(document.getElementById('heSalVal').value) || 0;
+    if(v) t.salario = v; else delete t.salario;
+    await saveTrabajadores(); bg.classList.remove('active'); renderHorasExtra(); showToast('Salario actualizado.');
+  });
+})();
+function heSalarioAbrir(id){
+  const t = trabajadores.find(x=>x.id===id); if(!t) return; heSalId = id;
+  document.getElementById('heSalNom').textContent = 'Salario de '+t.nombre;
+  document.getElementById('heSalVal').value = t.salario || '';
+  document.getElementById('heSalModal').classList.add('active');
+}
 document.querySelectorAll('#heSwitch [data-hevista]').forEach(b=>b.addEventListener('click', ()=>{ heVista = b.dataset.hevista; renderHorasExtra(); }));
+document.getElementById('heCorteSel').addEventListener('change', e=>{ if(e.target.value==='custom') return; const [d,h] = e.target.value.split('|'); document.getElementById('heDesdePeriodo').value = d; document.getElementById('heHastaPeriodo').value = h; renderHorasExtra(); });
 document.getElementById('heDesdePeriodo').addEventListener('change', renderHorasExtra);
 document.getElementById('heHastaPeriodo').addEventListener('change', renderHorasExtra);
 
@@ -10213,7 +10249,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-1935';
+const APP_VERSION = '2026-11-22-2031';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
