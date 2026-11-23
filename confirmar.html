@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Confirmar recibido · Servicios Generales</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',sans-serif;background:#F6F8FC;color:#011632;min-height:100vh;}
+  .top{background:#011632;color:#fff;padding:16px 18px;}
+  .top small{display:block;font-size:10px;letter-spacing:.12em;color:#F29622;text-transform:uppercase;}
+  .top b{font-size:16px;font-weight:500;}
+  .box{max-width:460px;margin:16px auto;padding:0 14px;}
+  .card{background:#fff;border:1px solid #E1E7F0;border-radius:14px;padding:16px;margin-bottom:12px;}
+  h2{font-size:15px;margin:0 0 4px;font-weight:600;}
+  p{font-size:13px;color:#5D6B82;margin:0 0 10px;line-height:1.5;}
+  ul{margin:0;padding:0;list-style:none;}
+  li{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:8px 0;border-bottom:1px solid #F0F3F8;}
+  li:last-child{border:0;}li b{white-space:nowrap;color:#03459B;}
+  label{font-size:12px;color:#5D6B82;display:block;margin:12px 0 6px;}
+  input{width:100%;font:inherit;font-size:24px;letter-spacing:.4em;text-align:center;padding:12px;border:1.5px solid #CBD5E4;border-radius:12px;color:#011632;}
+  input:focus{outline:none;border-color:#F29622;}
+  button{width:100%;margin-top:14px;padding:14px;font:inherit;font-size:15px;font-weight:500;border:0;border-radius:12px;background:#03459B;color:#fff;cursor:pointer;}
+  button:disabled{opacity:.5;}
+  .err{color:#B3261E;font-size:13px;margin-top:10px;min-height:18px;}
+  .ok{text-align:center;}.ok .tick{font-size:44px;color:#1F7A5C;line-height:1;}
+</style>
+</head>
+<body>
+<div class="top"><small>Colegio Americano de Barranquilla · Servicios Generales</small><b>Confirmar recibido</b></div>
+<div class="box" id="app"><div class="card"><p>Cargando…</p></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB = window.supabase.createClient('https://xkusyxjqbxgggqiwrlsz.supabase.co','sb_publishable_cpq8OautpunzQp0VdMZTKw_ahhj4w6S');
+const token = (new URLSearchParams(location.search).get('t')||'').replace(/[^A-Za-z0-9]/g,'');
+const KEY = 'confirma_'+token, app = document.getElementById('app');
+const esc = s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function sha(txt){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+function msg(t){ app.innerHTML = '<div class="card"><h2>'+t[0]+'</h2><p>'+t[1]+'</p></div>'; }
+function hecho(r){
+  app.innerHTML = '<div class="card ok"><div class="tick">✓</div><h2>Recibido confirmado</h2><p>'+esc(r.nombre)+', quedó registrado el '+new Date(r.confirmadaEn).toLocaleString('es-CO',{dateStyle:'long',timeStyle:'short'})+'. Ya puedes cerrar esta página.</p></div>';
+}
+(async function(){
+  if(token.length<12){ msg(['Enlace no válido','Pide un nuevo enlace a Servicios Generales.']); return; }
+  let r;
+  try{
+    const { data, error } = await SB.from('app_storage').select('value').eq('key', KEY).maybeSingle();
+    if(error) throw error;
+    if(!data){ msg(['Enlace no encontrado','Pide un nuevo enlace a Servicios Generales.']); return; }
+    r = JSON.parse(data.value);
+  }catch(e){ msg(['Sin conexión','Revisa tu internet e intenta de nuevo.']); return; }
+  if(r.estado==='confirmada'){ hecho(r); return; }
+  app.innerHTML = '<div class="card"><h2>Hola, '+esc(r.nombre)+'</h2><p>Recibiste esto el '+esc(r.fecha)+':</p><ul>'+r.items.map(i=>'<li><span>'+esc(i.n)+'</span><b>'+esc(i.c)+' '+esc(i.u||'')+'</b></li>').join('')+'</ul></div>'
+   +'<div class="card"><h2>Confirma con tu PIN</h2><p>Escribe tu PIN personal para confirmar que recibiste lo anterior.</p><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••••"><div class="err" id="err"></div><button id="ok">Confirmo que lo recibí</button></div>';
+  const btn = document.getElementById('ok'), err = document.getElementById('err');
+  btn.addEventListener('click', async ()=>{
+    const pin = document.getElementById('pin').value.trim();
+    if(!/^\d{4,8}$/.test(pin)){ err.textContent = 'Escribe tu PIN (4 a 8 números).'; return; }
+    if((r.intentos||0) >= 5){ err.textContent = 'Demasiados intentos. Pide un nuevo enlace.'; return; }
+    btn.disabled = true; err.textContent = '';
+    try{
+      if(await sha(r.salt+pin) !== r.pinHash){
+        r.intentos = (r.intentos||0)+1;
+        await SB.from('app_storage').upsert({key:KEY, value:JSON.stringify(r), updated_at:new Date().toISOString()},{onConflict:'key'});
+        err.textContent = r.intentos>=5 ? 'Demasiados intentos. Pide un nuevo enlace.' : 'PIN incorrecto. Intenta de nuevo.';
+        btn.disabled = false; return;
+      }
+      r.estado = 'confirmada'; r.confirmadaEn = new Date().toISOString(); r.dispositivo = navigator.userAgent.slice(0,160);
+      const { error } = await SB.from('app_storage').upsert({key:KEY, value:JSON.stringify(r), updated_at:new Date().toISOString()},{onConflict:'key'});
+      if(error) throw error;
+      hecho(r);
+    }catch(e){ err.textContent = 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.'; btn.disabled = false; }
+  });
+})();
+</script>
+</body>
+</html>

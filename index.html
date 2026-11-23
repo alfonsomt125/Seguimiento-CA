@@ -3765,6 +3765,7 @@
       <button class="ghost" id="btnLimpiarFirma">Limpiar firma</button>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="ghost" id="btnCancelFirma">Cancelar</button>
+        <button class="ghost" id="btnEnviarConfirmar" title="Registra la entrega y envía un enlace al celular de la persona para confirmar con su PIN">📲 Enviar al celular</button>
         <button class="ghost" id="btnFirmarDespues" title="Registra la entrega ahora y guarda la firma más tarde">🕐 Firmar después</button>
         <button class="primary" id="btnConfirmarEntrega">Confirmar entrega</button>
       </div>
@@ -10364,7 +10365,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-23-1033';
+const APP_VERSION = '2026-11-23-1040';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14213,7 +14214,7 @@ async function syncEntregaFromMovimientos(entregaId){
       const insumo = insumos.find(i=>i.id===m.insumoId);
       return {insumoId:m.insumoId, nombre: insumo?insumo.nombre:'(insumo eliminado)', cantidad:m.cantidad, unidad: insumo?(insumo.unidad||''):''};
     });
-    entrega.firma = null;
+    entrega.firma = null; entrega.confirmacion = null; entrega.confirmToken = null;
   }
   await saveEntregas();
 }
@@ -14604,6 +14605,7 @@ document.getElementById('btnCerrarEntrega').addEventListener('click', ()=>{
   document.getElementById('firmaResumen').textContent = `${entregaTrabajadorActual.nombre}: ${resumen}`;
   clearFirmaCanvas();
   document.getElementById('btnFirmarDespues').style.display = 'inline-block';
+  document.getElementById('btnEnviarConfirmar').style.display = 'inline-block';
   document.getElementById('firmaModalBg').classList.add('active');
 });
 document.getElementById('btnCancelFirma').addEventListener('click', ()=>{
@@ -14733,7 +14735,7 @@ async function comprimirFirmasExistentes(){
    la entrega queda visible en el historial con el aviso "⚠ Firmar", listo
    para completarla más tarde con el mismo mecanismo que ya existe para
    cuando una firma queda invalidada al editar/eliminar un movimiento. */
-async function crearEntregaConFirma(firmaDataUrlOrNull){
+async function crearEntregaConFirma(firmaDataUrlOrNull, extra){
   // revalidar stock por si cambió mientras se armaba el carrito
   for(const c of carrito){
     const i = insumos.find(x=>x.id===c.insumoId);
@@ -14761,7 +14763,7 @@ async function crearEntregaConFirma(firmaDataUrlOrNull){
   entregas.push({
     id: entregaId, trabajadorId: entregaTrabajadorActual.id, trabajadorNombre: entregaTrabajadorActual.nombre,
     fecha, items: carrito.map(c=>({insumoId:c.insumoId, nombre:c.nombre, cantidad:c.cantidad, unidad:c.unidad})),
-    firma: firmaDataUrlOrNull, createdAt: new Date().toISOString()
+    firma: firmaDataUrlOrNull, createdAt: new Date().toISOString(), ...(extra||{})
   });
   await saveEntregas();
 
@@ -14850,7 +14852,7 @@ document.getElementById('btnGuardarEdicionEntrega').addEventListener('click', as
       entregadoA:e.trabajadorNombre, motivo:'Entrega digital', entregaId:e.id, createdAt:new Date().toISOString()});
   });
   e.items = carrito.map(c=>({insumoId:c.insumoId, nombre:c.nombre, cantidad:c.cantidad, unidad:c.unidad}));
-  e.firma = null;
+  e.firma = null; e.confirmacion = null; e.confirmToken = null;
   await saveInsumos(); await saveMovimientos(); await saveEntregas();
   carrito = []; entregaTrabajadorActual = null; editingEntregaId = null; setEntregaModo(false);
   document.getElementById('entregaStepCart').style.display = 'none';
@@ -14871,7 +14873,7 @@ function renderEntregasHistory(){
       <td>${fmtDate(e.fecha)}</td>
       <td>${esc(e.trabajadorNombre)}</td>
       <td>${esc(productos)}</td>
-      <td>${e.firma?`<img class="firma-thumb" src="${e.firma}" data-lb="1">`:`<button class="ghost" data-resign="${e.id}" style="color:var(--orange);border-color:var(--orange);">⚠ Firmar</button>`}</td>
+      <td>${e.firma?`<img class="firma-thumb" src="${e.firma}" data-lb="1">`:e.confirmacion?`<span title="${esc(e.confirmacion.metodo)}" style="color:#1F7A5C;font-weight:500;white-space:nowrap;">✓ Confirmada ${esc(new Date(e.confirmacion.fecha).toLocaleString('es-CO',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}</span>`:e.confirmToken?`<button class="ghost" data-enlace="${e.id}" style="color:var(--orange);border-color:var(--orange);">⏳ Pendiente · enlace</button>`:`<button class="ghost" data-resign="${e.id}" style="color:var(--orange);border-color:var(--orange);">⚠ Firmar</button>`}</td>
       <td><button class="ghost" data-editentrega="${e.id}">Editar</button> <button class="ghost danger" data-delentrega="${e.id}">Eliminar</button></td>
     </tr>`;
   }).join('') : `<tr><td colspan="5" class="empty">Aún no hay entregas digitales registradas.</td></tr>`;
@@ -14879,6 +14881,7 @@ function renderEntregasHistory(){
   tbody.querySelectorAll('[data-lb]').forEach(img=>{
     img.addEventListener('click', ()=>openLightbox(img.src));
   });
+  tbody.querySelectorAll('[data-enlace]').forEach(b=>b.addEventListener('click', ()=>mostrarEnlaceConfirma(b.dataset.enlace)));
   tbody.querySelectorAll('[data-resign]').forEach(b=>{
     b.addEventListener('click', ()=>openResignModal(b.dataset.resign));
   });
@@ -14932,8 +14935,83 @@ function openResignModal(entregaId){
   document.getElementById('firmaResumen').textContent = `${entrega.trabajadorNombre}: ${resumen}`;
   clearFirmaCanvas();
   document.getElementById('btnFirmarDespues').style.display = 'none';
+  document.getElementById('btnEnviarConfirmar').style.display = 'none';
   document.getElementById('firmaModalBg').classList.add('active');
 }
+
+
+/* ============================================================
+   CONFIRMACIÓN DE RECIBIDO DESDE EL CELULAR (enlace + PIN personal)
+   La persona abre confirmar.html?t=<token>, ve lo que recibió y confirma con su PIN.
+   Cada confirmación vive en su propia clave pequeña "confirma_<token>" (no toca el listado de entregas).
+   ============================================================ */
+const URL_CONFIRMAR = 'https://alfonsomt125.github.io/Seguimiento-CA/confirmar.html';
+async function sha256Hex(t){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+function tokenAleatorio(){ const a = new Uint8Array(16); crypto.getRandomValues(a); return [...a].map(x=>x.toString(36).padStart(2,'0')).join('').slice(0,24); }
+(function(){
+  const bg = document.createElement('div'); bg.className = 'modal-bg'; bg.id = 'pinModal';
+  bg.innerHTML = `<div class="modal" style="max-width:380px;"><h3 id="pinTit" style="margin-top:0;">PIN personal</h3>
+    <p class="hint" style="margin:0 0 10px;">La persona usará este PIN para confirmar sus entregas desde el celular. Dáselo de forma privada.</p>
+    <div class="field"><label>PIN (4 a 8 números)</label><input type="text" inputmode="numeric" maxlength="8" id="pinVal" autocomplete="off"></div>
+    <div class="modal-actions"><button class="ghost" id="pinCan" type="button">Cancelar</button><button class="primary" id="pinOk" type="button">Guardar PIN</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.addEventListener('click', e=>{ if(e.target===bg){ bg.classList.remove('active'); bg._res && bg._res(false); } });
+  document.getElementById('pinCan').addEventListener('click', ()=>{ bg.classList.remove('active'); bg._res && bg._res(false); });
+  document.getElementById('pinOk').addEventListener('click', async ()=>{
+    const v = document.getElementById('pinVal').value.trim();
+    if(!/^\d{4,8}$/.test(v)){ showToast('El PIN debe tener de 4 a 8 números.'); return; }
+    const t = bg._t; t.pinSalt = tokenAleatorio(); t.pinHash = await sha256Hex(t.pinSalt+v);
+    await saveTrabajadores(); bg.classList.remove('active'); showToast('PIN guardado.'); bg._res && bg._res(true);
+  });
+})();
+function pedirPin(t){ return new Promise(res=>{ const bg = document.getElementById('pinModal'); bg._t = t; bg._res = res; document.getElementById('pinTit').textContent = 'PIN de '+t.nombre; document.getElementById('pinVal').value = ''; bg.classList.add('active'); }); }
+
+async function crearConfirmacion(entrega, t){
+  const rec = { entregaId: entrega.id, nombre: entrega.trabajadorNombre, fecha: fmtDate(entrega.fecha), items: entrega.items.map(i=>({n:i.nombre,c:i.cantidad,u:i.unidad||''})), pinHash: t.pinHash, salt: t.pinSalt, estado:'pendiente', intentos:0 };
+  await storageAPI.set('confirma_'+entrega.confirmToken, JSON.stringify(rec));
+}
+function mostrarEnlaceConfirma(entregaId){
+  const e = entregas.find(x=>x.id===entregaId); if(!e || !e.confirmToken) return;
+  const url = URL_CONFIRMAR+'?t='+e.confirmToken, t = trabajadores.find(x=>x.id===e.trabajadorId);
+  const txt = `Hola ${e.trabajadorNombre}, confirma lo que recibiste de Servicios Generales con tu PIN personal: ${url}`;
+  let bg = document.getElementById('enlaceModal');
+  if(!bg){ bg = document.createElement('div'); bg.className = 'modal-bg'; bg.id = 'enlaceModal'; document.body.appendChild(bg); bg.addEventListener('click', ev=>{ if(ev.target===bg) bg.classList.remove('active'); }); }
+  bg.innerHTML = `<div class="modal" style="max-width:420px;"><h3 style="margin-top:0;">Enlace para ${esc(e.trabajadorNombre)}</h3>
+    <p class="hint" style="margin:0 0 10px;">Envíaselo por WhatsApp. La persona lo abre en su celular, ve lo que recibió y confirma con su PIN.</p>
+    <input type="text" readonly value="${esc(url)}" style="width:100%;font-size:12px;" onclick="this.select()">
+    <div class="modal-actions" style="flex-wrap:wrap;"><button class="ghost" id="enlCerrar" type="button">Cerrar</button><button class="ghost" id="enlCopiar" type="button">Copiar enlace</button><button class="ghost" id="enlPin" type="button">Cambiar PIN</button><button class="primary" id="enlWa" type="button">Enviar por WhatsApp</button></div></div>`;
+  bg.classList.add('active');
+  document.getElementById('enlCerrar').onclick = ()=>bg.classList.remove('active');
+  document.getElementById('enlCopiar').onclick = async ()=>{ try{ await navigator.clipboard.writeText(url); showToast('Enlace copiado.'); }catch(_){ showToast('Selecciona el enlace y cópialo.'); } };
+  document.getElementById('enlWa').onclick = ()=>window.open('https://wa.me/?text='+encodeURIComponent(txt), '_blank');
+  document.getElementById('enlPin').onclick = async ()=>{ if(t && await pedirPin(t)){ await crearConfirmacion(e, t); showToast('PIN actualizado en este enlace.'); } };
+}
+document.getElementById('btnEnviarConfirmar').addEventListener('click', async ()=>{
+  if(resignEntregaId || !entregaTrabajadorActual) return;
+  const t = trabajadores.find(x=>x.id===entregaTrabajadorActual.id) || entregaTrabajadorActual;
+  if(!t.pinHash && !await pedirPin(t)) return;
+  const token = tokenAleatorio();
+  const ok = await crearEntregaConFirma(null, {confirmToken: token});
+  if(!ok) return;
+  const entrega = entregas[entregas.length-1];
+  try{ await crearConfirmacion(entrega, t); }catch(e){ showToast('La entrega quedó registrada, pero no se pudo crear el enlace. Ábrelo desde el historial.'); }
+  populateInvFilters(); populateMovSelects(); renderPanelCards(); renderMovimientosTable(); renderMovimientosAllTable(); renderTrabajadorTiles(); renderEntregasHistory();
+  mostrarEnlaceConfirma(entrega.id);
+});
+/* Trae las confirmaciones hechas desde los celulares y las marca en el historial */
+async function sincronizarConfirmaciones(){
+  const pend = entregas.filter(e=>e.confirmToken && !e.confirmacion && !e.firma);
+  if(!pend.length || !supabaseAPI) return;
+  try{
+    const { data, error } = await supabaseAPI.from(TABLA_STORAGE).select('key,value').in('key', pend.map(e=>'confirma_'+e.confirmToken));
+    if(error || !data) return;
+    let n = 0;
+    data.forEach(r=>{ try{ const v = JSON.parse(r.value); if(v.estado==='confirmada'){ const e = pend.find(x=>'confirma_'+x.confirmToken===r.key); if(e){ e.confirmacion = {fecha:v.confirmadaEn, metodo:'PIN personal desde el celular', dispositivo:v.dispositivo||''}; n++; } } }catch(_){} });
+    if(n){ await saveEntregas(); renderEntregasHistory(); showToast(n+' entrega(s) confirmada(s) desde el celular.'); }
+  }catch(e){ console.warn('confirmaciones', e); }
+}
+document.querySelectorAll('#module-inventario nav.tabs button[data-invview]').forEach(b=>b.addEventListener('click', sincronizarConfirmaciones));
+setInterval(()=>{ if(!document.hidden) sincronizarConfirmaciones(); }, 60000);
 
 /* ============================================================
    INIT
@@ -15447,6 +15525,7 @@ async function init(){
 
   document.getElementById('loadingScreen').style.display='none';
   if(storageAPI.clearCache) storageAPI.clearCache();
+  sincronizarConfirmaciones();
   document.getElementById('app').style.display='block';
   showSelector();
 }
