@@ -9660,7 +9660,7 @@ function logCalcularSemanas(personaId, mesISO, desc){
       cum += t.neto;
       const c = logClasificarTurno(t, extra);
       Object.keys(ext).forEach(k=>{ ext[k]+=c.ext[k]; ord[k]+=c.ord[k]; });
-      /* cada tramo se liquida en el día calendario en que cae (mes de 12 a.m. del día 1 a 12 a.m. del mes siguiente) */
+      /* cada tramo se liquida con el % y el valor hora del día calendario en que cae, pero se asigna al MES en que empieza su turno (un turno que cruza la medianoche del último día del mes cuenta completo en ese mes) */
       Object.keys(c.dias).forEach(dia=>{
         const dd = c.dias[dia], dr = logRecargoDom(dia);
         const fe = {ordinaria:1.25, nocturna:1.75, dominical:1.25+dr, nocturnaDominical:1.75+dr};
@@ -9670,7 +9670,7 @@ function logCalcularSemanas(personaId, mesISO, desc){
         Object.keys(ext).forEach(k=>{ ve[k] = dd.ext[k]*(fe[k]-(desc?fo[k]:0))*valorHora; vo[k] = dd.ord[k]*fo[k]*valorHora; vt += ve[k] + vo[k]; });
         valor += vt;
         const neto = Object.keys(ext).reduce((a,k)=>a+dd.ord[k]+dd.ext[k],0);
-        detalle.push({fecha:dia, neto, ord:dd.ord, ext:dd.ext, valor:vt, vo, ve, valorHora});
+        detalle.push({fecha:dia, mes:t.fecha.slice(0,7), neto, ord:dd.ord, ext:dd.ext, valor:vt, vo, ve, valorHora});
       });
     });
     Object.keys(ext).forEach(k=>{ ext[k]=r2(ext[k]); ord[k]=r2(ord[k]); });
@@ -9698,7 +9698,7 @@ const LOG_CONCEPTOS = [
 function logPersonasSel(){ return logData.personal; }
 function logLiqFiltro(){ return {mes:document.getElementById('heLogLiqPeriodo').value, ext:document.getElementById('heLogLiqExt').checked, rec:document.getElementById('heLogLiqRec').checked}; }
 function logConceptosActivos(){ const f = logLiqFiltro(); return LOG_CONCEPTOS.filter(c=>c[0]==='e' ? f.ext : f.rec); }
-function logDetallesFiltrados(id){ const f = logLiqFiltro(); return logCalcularSemanas(id, null, !f.rec).flatMap(w=>w.detalle).filter(d=>!f.mes || d.fecha.slice(0,7)===f.mes); }
+function logDetallesFiltrados(id){ const f = logLiqFiltro(); return logCalcularSemanas(id, null, !f.rec).flatMap(w=>w.detalle).filter(d=>!f.mes || d.mes===f.mes); }
 function logValorDet(d){ return logConceptosActivos().reduce((s,c)=>s+(c[0]==='o'?d.vo:d.ve)[c[1]],0); }
 function logLiquidar(personaId){
   const per = {A:{}, B:{}};
@@ -9734,7 +9734,7 @@ const LOG_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','ago
 function logPorMes(personaId){
   const m = {};
   logDetallesFiltrados(personaId).forEach(d=>{
-    const k = d.fecha.slice(0,7);
+    const k = d.mes;
     const r = m[k] = m[k] || {tot:0, c:{}, v:0};
     r.tot += d.neto; r.v += logValorDet(d);
     logConceptosActivos().forEach(c=>{ const key = c[0]+c[1]; r.c[key] = (r.c[key]||0) + (c[0]==='o'?d.ord:d.ext)[c[1]]; });
@@ -9777,7 +9777,7 @@ function logResumenGeneral(estilos){
 function logTablaComparacion(personaId, estilos){
   const th = estilos.th, td = estilos.td, m = {};
   logCalcularSemanas(personaId, null).flatMap(w=>w.detalle).forEach(d=>{
-    const k = d.fecha.slice(0,7), r = m[k] = m[k] || {h:0, x:0};
+    const k = d.mes, r = m[k] = m[k] || {h:0, x:0};
     r.h += d.neto; r.x += Object.values(d.ext).reduce((a,b)=>a+b,0);
   });
   const meses = Object.keys(m).sort();
@@ -9840,7 +9840,7 @@ function logLiqMensualHTML(id, e){
   const ext = document.getElementById('heLogMesExt').checked, rec = document.getElementById('heLogMesRec').checked;
   logDescRec = !rec;
   const m = {}, mesSel = document.getElementById('heLogMesMes').value, conc = {};
-  logCalcularSemanas(id, null, !rec).flatMap(w=>w.detalle).filter(d=>!mesSel || d.fecha.slice(0,7)===mesSel).forEach(d=>{
+  logCalcularSemanas(id, null, !rec).flatMap(w=>w.detalle).filter(d=>!mesSel || d.mes===mesSel).forEach(d=>{
     LOG_CONCEPTOS.forEach((c,ci)=>{
       if(c[0]==='e' ? !ext : !rec) return;
       const h = (c[0]==='o'?d.ord:d.ext)[c[1]]; if(h<=0.004) return;
@@ -9848,7 +9848,7 @@ function logLiqMensualHTML(id, e){
       const o = conc[k] = conc[k] || {ci, pct, vh:d.valorHora, h:0, v:0};
       o.h += h; o.v += (c[0]==='o'?d.vo:d.ve)[c[1]];
     });
-    const r = m[d.fecha.slice(0,7)] = m[d.fecha.slice(0,7)] || {he:0, ve:0, hr:0, vr:0};
+    const r = m[d.mes] = m[d.mes] || {he:0, ve:0, hr:0, vr:0};
     LOG_CONCEPTOS.forEach(c=>{
       const h = (c[0]==='o'?d.ord:d.ext)[c[1]], v = (c[0]==='o'?d.vo:d.ve)[c[1]];
       if(c[0]==='e'){ r.he += h; r.ve += v; } else { r.hr += h; r.vr += v; }
@@ -9946,7 +9946,7 @@ function renderLogisticaHE(){
   renderLogLiquidacion();
   // horas laboradas según la norma (por turnos del mes)
   const filasN = logData.personal.map(p=>{
-    const dets = logCalcularSemanas(p.id, mes).flatMap(w=>w.detalle).filter(x=>x.fecha.slice(0,7)===mes);
+    const dets = logCalcularSemanas(p.id, mes).flatMap(w=>w.detalle).filter(x=>x.mes===mes);
     const o = {ordinaria:0,nocturna:0,dominical:0,nocturnaDominical:0}, e = {...o}; let valor = 0, vExt = 0, vRec = 0;
     dets.forEach(x=>{ Object.keys(o).forEach(k=>{ o[k]+=x.ord[k]; e[k]+=x.ext[k]; vExt+=x.ve[k]; vRec+=x.vo[k]; }); valor += x.valor; });
     const tot = Object.keys(o).reduce((s,k)=>s+o[k]+e[k],0);
@@ -10365,7 +10365,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-23-1040';
+const APP_VERSION = '2026-11-23-1246';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
