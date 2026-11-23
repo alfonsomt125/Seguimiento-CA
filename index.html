@@ -609,6 +609,19 @@
   .he-switch{display:inline-flex;gap:4px;padding:4px;background:var(--primary-soft);border-radius:12px;margin:0 0 14px;}
   .he-switch button{border:none;background:transparent;padding:8px 18px;border-radius:9px;font-size:14px;font-weight:500;color:var(--gray);cursor:pointer;font-family:inherit;}
   .he-switch button.active{background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(1,22,50,.12);}
+  .hd-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:0 0 12px;}
+  .hd-tiles div{background:#fff;border:1px solid var(--line,#E1E7F0);border-radius:10px;padding:8px 10px;font-size:11px;color:var(--gray,#5D6B82);}
+  .hd-tiles b{display:block;font-size:17px;font-weight:600;color:var(--navy);line-height:1.3;}.hd-tiles b.r{color:var(--red);}.hd-tiles b.o{color:var(--orange);}
+  .hd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 12px;}.hd-wide{grid-column:1/-1;}
+  .hd-card{background:#fff;border:1px solid var(--line,#E1E7F0);border-radius:12px;padding:12px 14px;}.hd-card h4{margin:0 0 10px;font-size:13px;color:var(--navy);font-weight:600;}
+  .hd-days{display:flex;align-items:flex-end;gap:3px;height:110px;}.hd-days i{flex:1;background:var(--blue,#03459B);border-radius:3px 3px 0 0;min-height:2px;}.hd-days i.pk{background:var(--orange);}
+  .hd-dl{display:flex;justify-content:space-between;font-size:10px;color:var(--gray);margin-top:4px;}
+  .hd-r{display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0;}.hd-r .n{width:92px;flex-shrink:0;}.hd-r .v{min-width:44px;text-align:right;font-weight:600;}
+  .hd-b{flex:1;height:7px;background:#E8EDF5;border-radius:4px;overflow:hidden;}.hd-b i{display:block;height:100%;background:var(--blue,#03459B);}.hd-b i.w{background:var(--orange);}.hd-b i.d{background:var(--red);}
+  [data-hd]{cursor:pointer;}[data-hd]:hover{filter:brightness(.97);}.hd-tiles [data-hd]:hover{border-color:#F29622;}
+  .hd-mes{display:flex;align-items:flex-end;gap:10px;height:130px;}.hd-mes>div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;font-size:10px;color:var(--gray);text-align:center;}.hd-mes i{display:block;width:70%;max-width:56px;background:var(--blue,#03459B);border-radius:4px 4px 0 0;min-height:2px;}.hd-mes .cur i{background:var(--orange);}.hd-mes b{font-size:11px;color:var(--navy);font-weight:600;}.hd-mes .up{color:var(--red);}.hd-mes .dn{color:#2e7d32;}
+  .hd-rank td{cursor:pointer;}.hd-rank tr:hover td{background:#F6F8FC;}
+  @media(max-width:700px){.hd-grid{grid-template-columns:1fr;}}
   .he-bar{overflow:visible;}.he-bar .ps-side{border-radius:16px;}
   .he-ctl{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;}.he-ctl2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
   .he-chips{background:none!important;border:0!important;padding:0!important;box-shadow:none!important;margin:0!important;}
@@ -2196,11 +2209,16 @@
     <div class="panel he-right" id="heDetallePanel"></div>
   </div>
   <div id="heVistaResumen">
-  <div class="panel">
-    <h2 style="margin:0 0 4px;">📊 Dashboard de horas extras</h2>
-    <p class="hint" style="margin:0 0 14px;">Del período seleccionado arriba.</p>
-    <h3 style="font-size:14px;color:var(--navy);margin:0 0 10px;">Valor total liquidado por persona</h3>
-    <div id="heDashBarsValor"></div>
+  <div class="hd-tiles" id="heTiles"></div>
+  <div class="hd-grid">
+    <div class="hd-card hd-wide"><h4>Comparativa de meses</h4><div id="heChartMeses"></div></div>
+    <div class="hd-card"><h4>Por tipo de hora</h4><div id="heChartTipos"></div></div>
+    <div class="hd-card"><h4>Por día de la semana</h4><div id="heChartSemana"></div></div>
+    <div class="hd-card"><h4>Atención con el límite</h4><div id="heChartAtencion"></div></div>
+  </div>
+  <div class="hd-card" id="heDrill" style="display:none;margin:0 0 12px;border-color:#F29622;"></div>
+  <div class="hd-card" style="margin:0 0 14px;"><h4>Ranking por persona</h4>
+    <div class="table-wrap"><table class="hd-rank"><thead><tr><th>Persona</th><th>Horas</th><th style="width:34%;">Uso del límite</th><th style="text-align:right;">Valor</th></tr></thead><tbody id="heRankBody"></tbody></table></div>
   </div>
 
   <div class="panel">
@@ -8964,6 +8982,34 @@ function renderHePendientes(){
       <td colspan="4">${r2(pendientes.reduce((s,h)=>s+Number(h.horas||0),0))}h</td>
     </tr>` : '';
 }
+let heDash = null, heDr = null;
+function renderHeDrill(){
+  const box = document.getElementById('heDrill'); if(!box) return;
+  if(!heDr || !heDash){ box.style.display='none'; return; }
+  const [k,v] = heDr, D = heDash, nt = {ordinaria:'Ordinaria',nocturna:'Nocturna',dominical:'Dominical',nocturnaDominical:'Noct. dominical'};
+  const dn = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'], MN = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  let lista = D.enr, tit = 'Todos los registros del período', persona = null;
+  if(k==='tipo'){ lista = D.enr.filter(e=>e.c[v]>0); tit = 'Horas '+nt[v].toLowerCase(); }
+  else if(k==='sem'){ lista = D.enr.filter(e=>(new Date(e.h.fecha+'T12:00:00').getDay()+6)%7===+v); tit = 'Registros de los '+dn[+v]; }
+  else if(k==='dia'){ lista = D.enr.filter(e=>e.h.fecha===v); tit = 'Registros del '+fmtDate(v); }
+  else if(k==='mes'){ lista = D.all.filter(e=>e.h.fecha.slice(0,7)===v); tit = 'Registros de '+MN[+v.slice(5)-1]+' '+v.slice(0,4); }
+  else if(k==='pers'){ const ids = D[v]; lista = D.enr.filter(e=>ids.includes(e.h.trabajadorId)); tit = v==='sobre'?'Personas sobre el límite':'Personas cerca del límite'; }
+  else if(k==='pend'){ lista = D.pend; tit = 'Pendientes de pago'; }
+  else if(k==='p'){ lista = D.enr.filter(e=>e.h.trabajadorId===v); persona = v; tit = 'Registros de '+((trabajadoresHE().find(t=>t.id===v)||{}).nombre||''); }
+  lista = [...lista].sort((a,b)=>(b.h.fecha||'').localeCompare(a.h.fecha||''));
+  const tH = r2(lista.reduce((x,e)=>x+e.hh,0)), tV = lista.reduce((x,e)=>x+e.val,0);
+  box.style.display = '';
+  box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><h4 style="margin:0;">${tit} · ${lista.length} registro(s) · ${tH}h · $${Math.round(tV).toLocaleString('es-CO')}</h4><span>${persona?`<button class="ghost" id="heDrillFicha">Abrir ficha</button> `:''}<button class="ghost" id="heDrillX">✕ Cerrar</button></span></div>
+  <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Persona</th><th>Horario</th><th>Horas</th><th>Tipo</th><th style="text-align:right;">Valor</th><th>Motivo</th></tr></thead><tbody>${lista.length?lista.map(e=>`<tr data-hdreg="${e.h.id}" style="cursor:pointer;"><td>${fmtDate(e.h.fecha)}</td><td>${esc(e.h.trabajadorNombre)}</td><td>${esc(e.h.horaInicio||'')}–${esc(e.h.horaFin||'')}</td><td>${r2(e.hh)}h</td><td>${Object.keys(nt).filter(x=>e.c[x]>0).map(x=>nt[x]).join(' + ')}</td><td style="text-align:right;">$${Math.round(e.val).toLocaleString('es-CO')}</td><td>${esc(e.h.motivo)||'—'}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">Sin registros.</td></tr>'}</tbody></table></div><p class="hint" style="margin:6px 0 0;font-size:11px;">Toca un registro para editarlo.</p>`;
+  document.getElementById('heDrillX').onclick = ()=>{ heDr = null; renderHeDrill(); };
+  const fi = document.getElementById('heDrillFicha'); if(fi) fi.onclick = ()=>{ heSel = persona; heVista = 'persona'; heAbierto = true; renderHorasExtra(); };
+  box.querySelectorAll('[data-hdreg]').forEach(tr=>tr.onclick = ()=>{ const h = horasExtras.find(x=>x.id===tr.dataset.hdreg); if(h) abrirHEModal(h); });
+}
+document.getElementById('heVistaResumen').addEventListener('click', e=>{
+  const el = e.target.closest('[data-hd]'); if(!el) return;
+  heDr = el.dataset.hd.split(':'); if(heDr[0]==='dia'||heDr[0]==='mes'||heDr[0]==='p') heDr = [heDr[0], el.dataset.hd.slice(heDr[0].length+1)];
+  renderHeDrill(); document.getElementById('heDrill').scrollIntoView({behavior:'smooth', block:'nearest'});
+});
 function renderHeDashboard(desde, hasta){
   const datos = calcularHEPorPersona(desde, hasta);
   const conHoras = datos.filter(d=>d.totalHoras>0).sort((a,b)=>b.totalHoras-a.totalHoras);
@@ -8971,20 +9017,45 @@ function renderHeDashboard(desde, hasta){
   document.getElementById('heLiquidacionHint').textContent = `Usa el salario mínimo 2026 por defecto, salvo que hayas guardado uno distinto exportando con la liquidación activada. Quien supere ${tope}h en el período aparece en rojo, con una columna aparte mostrando cuánto sería si se limitara a ${tope}h — priorizando las horas dominicales y/o nocturnas (las de mayor recargo) sobre las ordinarias.`;
   document.getElementById('heColTope').textContent = `Liquidado hasta ${tope}h`;
 
-  const conValor = [...conHoras].sort((a,b)=>b.totalPagar-a.totalPagar);
-  const maxValor = Math.max(1, ...conValor.map(d=>d.totalPagar));
-  document.getElementById('heDashBarsValor').innerHTML = conValor.length ? conValor.map(d=>{
-    const pct = Math.min(100, d.totalPagar/maxValor*100);
-    const color = d.excede ? 'var(--red)' : 'var(--orange)';
-    return `
-    <div class="he-bar-row" title="${esc(d.t.nombre)}: $${d.totalPagar.toLocaleString('es-CO')}">
-      <span class="name" style="width:150px;flex-shrink:0;font-weight:600;${d.excede?'color:var(--red);':''}">${esc(d.t.nombre)}${d.excede?' ⚠':''}</span>
-      <div class="he-bar-track">
-        <div class="he-bar-fill" style="width:${Math.max(pct,6)}%;background:${color};"></div>
-      </div>
-      <span class="count" style="width:auto;min-width:100px;text-align:right;font-weight:700;${d.excede?'color:var(--red);':''}">$${d.totalPagar.toLocaleString('es-CO')}</span>
-    </div>`;
-  }).join('') : '<p class="empty">Sin datos en este período.</p>';
+  const fmtM = n=>'$'+Math.round(n).toLocaleString('es-CO');
+  const regs = horasExtras.filter(heEnArea).filter(h=>h.fecha>=desde && h.fecha<=hasta && (h.estadoPago||'normal')==='normal');
+  const porDia = {}, tipos = {ordinaria:[0,0], nocturna:[0,0], dominical:[0,0], nocturnaDominical:[0,0]}, sem = [0,0,0,0,0,0,0];
+  const enrich = h=>{ const t = trabajadoresHE().find(x=>x.id===h.trabajadorId), c = clasificarHorasExtra(h.fecha,h.horaInicio,h.horaFin,h.horas), v = heValorRegistro(h.fecha,c,t&&t.salario);
+    return {h, c, v, hh:Object.values(c).reduce((x,y)=>x+y,0), val:Object.values(v).reduce((x,y)=>x+y,0)}; };
+  heDash = {desde, hasta, tope, enr:[], all:horasExtras.filter(heEnArea).filter(h=>(h.estadoPago||'normal')==='normal').map(enrich), sobre:[], cerca:[], pend:horasExtras.filter(heEnArea).filter(h=>h.estadoPago==='pendiente').map(enrich)};
+  regs.forEach(h=>{
+    const e = enrich(h), c = e.c, v = e.v, hh = e.hh; heDash.enr.push(e);
+    porDia[h.fecha] = (porDia[h.fecha]||0)+hh;
+    Object.keys(tipos).forEach(k=>{ tipos[k][0]+=c[k]; tipos[k][1]+=v[k]; });
+    sem[(new Date(h.fecha+'T12:00:00').getDay()+6)%7] += hh;
+  });
+  const dias = []; for(let d=new Date(desde+'T12:00:00'), f=new Date(hasta+'T12:00:00'); d<=f && dias.length<62; d.setDate(d.getDate()+1)) dias.push(d.toISOString().slice(0,10));
+  const totH = r2(conHoras.reduce((x,d)=>x+d.totalHoras,0)), totV = conHoras.reduce((x,d)=>x+d.totalPagar,0);
+  const mxD = Math.max(0, ...dias.map(d=>porDia[d]||0)), diaPico = mxD>0 ? dias.find(d=>(porDia[d]||0)===mxD) : null;
+  const sobre = conHoras.filter(d=>d.excede), cerca = conHoras.filter(d=>!d.excede && d.totalHoras>=tope*0.8);
+  heDash.sobre = sobre.map(d=>d.t.id); heDash.cerca = cerca.map(d=>d.t.id);
+  const pend = horasExtras.filter(heEnArea).filter(h=>h.estadoPago==='pendiente').length;
+  const dn = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  document.getElementById('heTiles').innerHTML = [
+    [totH+'h','Horas del período','','all:'],[fmtM(totV),'Valor liquidado','','all:'],[conHoras.length,'Personas con horas','','all:'],[regs.length,'Registros','','all:'],
+    [dias.length?r2(totH/dias.length)+'h':'—','Promedio por día','','all:'],[diaPico?fmtDate(diaPico).slice(0,5):'—','Día pico','o',diaPico?'dia:'+diaPico:''],
+    [cerca.length,'Cerca del límite',cerca.length?'o':'','pers:cerca'],[sobre.length,'Sobre el límite',sobre.length?'r':'','pers:sobre'],[pend,'Pendientes de pago','','pend:']
+  ].map(t=>`<div${t[3]?` data-hd="${t[3]}"`:''}><b class="${t[2]}">${t[0]}</b>${t[1]}</div>`).join('');
+  const MN = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const baseM = hasta > todayISO() ? todayISO() : hasta, ks = []; { let y = +baseM.slice(0,4), m = +baseM.slice(5,7); for(let i=0;i<6;i++){ ks.unshift(y+'-'+String(m).padStart(2,'0')); m--; if(m<1){ m=12; y--; } } }
+  const mes = {}; ks.forEach(k=>mes[k]=[0,0]);
+  heDash.all.forEach(e=>{ const k = e.h.fecha.slice(0,7); if(mes[k]){ mes[k][0]+=e.hh; mes[k][1]+=e.val; } });
+  const mxM = Math.max(1, ...ks.map(k=>mes[k][0]));
+  document.getElementById('heChartMeses').innerHTML = `<div class="hd-mes">${ks.map((k,i)=>{
+    const hh = r2(mes[k][0]), prev = i>0 ? mes[ks[i-1]][0] : 0, dl = i>0 && prev>0 ? Math.round((mes[k][0]-prev)/prev*100) : null;
+    return `<div data-hd="mes:${k}" class="${k===baseM.slice(0,7)?'cur':''}" title="${MN[+k.slice(5)-1]} ${k.slice(0,4)}: ${hh}h · ${fmtM(mes[k][1])}"><b>${hh}h</b><i style="height:${Math.max(2,mes[k][0]/mxM*80)}%"></i><span>${MN[+k.slice(5)-1]}</span><span class="${dl==null?'':dl>0?'up':dl<0?'dn':''}">${dl==null?'·':(dl>0?'▲ ':dl<0?'▼ ':'')+Math.abs(dl)+'%'}</span></div>`; }).join('')}</div><p class="hint" style="margin:8px 0 0;font-size:11px;">Toca un mes para ver sus registros. El % compara con el mes anterior.</p>`;
+  const mxT = Math.max(1, ...Object.values(tipos).map(x=>x[0])), nt = {ordinaria:'Ordinaria',nocturna:'Nocturna',dominical:'Dominical',nocturnaDominical:'Noct. dom.'};
+  document.getElementById('heChartTipos').innerHTML = Object.keys(tipos).map(k=>`<div class="hd-r" data-hd="tipo:${k}"><span class="n">${nt[k]}</span><span class="hd-b"><i style="width:${tipos[k][0]/mxT*100}%"></i></span><span class="v">${r2(tipos[k][0])}h</span></div>`).join('');
+  const mxS = Math.max(1, ...sem);
+  document.getElementById('heChartSemana').innerHTML = sem.map((x,i)=>`<div class="hd-r" data-hd="sem:${i}"><span class="n" style="width:36px;">${dn[i]}</span><span class="hd-b"><i class="${i>=5?'w':''}" style="width:${x/mxS*100}%"></i></span><span class="v">${r2(x)}h</span></div>`).join('');
+  document.getElementById('heChartAtencion').innerHTML = (sobre.length||cerca.length) ? [...sobre.map(d=>[d,'d']),...cerca.map(d=>[d,'w'])].map(([d,c])=>`<div class="hd-r" data-hd="p:${d.t.id}"><span class="n" style="width:120px;">${esc(d.t.nombre)}</span><span class="hd-b"><i class="${c}" style="width:${Math.min(100,d.totalHoras/tope*100)}%"></i></span><span class="v">${d.totalHoras.toFixed(1)}h</span></div>`).join('') : '<p class="empty" style="margin:0;">Nadie cerca del límite de '+tope+'h.</p>';
+  document.getElementById('heRankBody').innerHTML = conHoras.length ? conHoras.map(d=>`<tr data-hd="p:${d.t.id}"><td${d.excede?' style="color:var(--red);"':''}>${esc(d.t.nombre)}${d.excede?' ⚠':''}</td><td>${d.totalHoras.toFixed(1)}h</td><td><span class="hd-b" style="display:block;"><i class="${d.excede?'d':d.totalHoras>=tope*0.8?'w':''}" style="width:${Math.min(100,d.totalHoras/tope*100)}%"></i></span></td><td style="text-align:right;font-weight:600;">${fmtM(d.totalPagar)}</td></tr>`).join('') : '<tr><td colspan="4" class="empty">Sin datos en este período.</td></tr>';
+  renderHeDrill();
 
   document.getElementById('heLiquidacionBody').innerHTML = conHoras.length ? conHoras.map(d=>`
     <tr${d.excede?' style="color:var(--red);"':''}>
@@ -10249,7 +10320,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-2040';
+const APP_VERSION = '2026-11-22-2046';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
