@@ -609,7 +609,12 @@
   .he-switch{display:inline-flex;gap:4px;padding:4px;background:var(--primary-soft);border-radius:12px;margin:0 0 14px;}
   .he-switch button{border:none;background:transparent;padding:8px 18px;border-radius:9px;font-size:14px;font-weight:500;color:var(--gray);cursor:pointer;font-family:inherit;}
   .he-switch button.active{background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(1,22,50,.12);}
-  .hd-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 12px;}
+  .hd-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px;}.hd-grid2>.hd-card{margin:0!important;min-width:0;}
+  .hd-acc{background:#fff;border:1px solid var(--line,#E1E7F0);border-radius:12px;margin:0 0 8px;}.hd-acc>summary{cursor:pointer;padding:11px 14px;font-size:13px;font-weight:500;color:var(--navy);list-style:none;display:flex;justify-content:space-between;}
+  .hd-acc>summary::after{content:'▾';color:var(--gray);}.hd-acc[open]>summary::after{content:'▴';}.hd-acc>summary::-webkit-details-marker{display:none;}
+  .hd-acc>.panel{border:0;box-shadow:none;margin:0;}.hd-acc>.hd-grid{padding:0 10px 10px;}
+  @media(max-width:700px){.hd-grid2{grid-template-columns:1fr;}}
+  .hd-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:0 0 12px;}
   .hd-k{background:#fff;border:1px solid var(--line,#E1E7F0);border-radius:12px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0;}
   .hd-k:hover{border-color:#F29622;}.hd-k.on{border-color:#F29622;background:#FFF8EE;}
   .hd-k small{font-size:10px;color:var(--gray,#5D6B82);letter-spacing:.03em;display:flex;justify-content:space-between;}.hd-k b{font-size:18px;font-weight:600;color:var(--navy);line-height:1.25;}.hd-k b.r{color:var(--red);}
@@ -2218,15 +2223,21 @@
   </div>
   <div id="heVistaResumen">
   <div class="hd-cards" id="heCards"></div>
-  <div class="hd-card hd-det" data-hdet="meses"><h4>Comparativa de meses</h4><div id="heChartMeses"></div></div>
-  <div class="hd-card hd-det" data-hdet="tipo"><h4>Por tipo de hora</h4><div id="heChartTipos"></div></div>
-  <div class="hd-card hd-det" data-hdet="sem"><h4>Por día de la semana</h4><div id="heChartSemana"></div></div>
-  <div class="hd-card hd-det" data-hdet="lim"><h4>Atención con el límite</h4><div id="heChartAtencion"></div></div>
-  <div class="hd-card hd-det" data-hdet="rank" style="margin:0 0 14px;"><h4>Ranking por persona</h4>
+  <div class="hd-grid2">
+  <div class="hd-card"><h4>Comparativa de meses</h4><div id="heChartMeses"></div></div>
+  <div class="hd-card" style="margin:0 0 14px;"><h4>Ranking por persona</h4>
     <div class="table-wrap"><table class="hd-rank"><thead><tr><th>Persona</th><th>Horas</th><th style="width:34%;">Uso del límite</th><th style="text-align:right;">Valor</th></tr></thead><tbody id="heRankBody"></tbody></table></div>
   </div>
 
-  <div class="panel hd-det" data-hdet="liq">
+  </div>
+  <div class="hd-card" id="heDrill" style="display:none;margin:0 0 12px;border-color:#F29622;"></div>
+  <details class="hd-acc"><summary>Más análisis: tipo de hora, día de la semana y límite</summary><div class="hd-grid">
+  <div class="hd-card"><h4>Por tipo de hora</h4><div id="heChartTipos"></div></div>
+  <div class="hd-card"><h4>Por día de la semana</h4><div id="heChartSemana"></div></div>
+  <div class="hd-card"><h4>Atención con el límite</h4><div id="heChartAtencion"></div></div>
+  </div></details>
+  <details class="hd-acc"><summary>Detalle de liquidación</summary>
+  <div class="panel">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
       <h2 style="margin:0;">Detalle de liquidación por persona</h2>
       <button class="ghost" id="btnExportarLiquidacionHE">⬇ Exportar a PDF</button>
@@ -2241,7 +2252,9 @@
     </div>
   </div>
 
-  <div class="panel hd-det" data-hdet="pend">
+  </details>
+  <details class="hd-acc"><summary>Horas pendientes de pago</summary>
+  <div class="panel">
     <h2 style="margin:0 0 4px;">🕓 Horas pendientes de pago</h2>
     <p class="hint" style="margin:0 0 14px;">Registros marcados como "Pago pendiente para el próximo corte" en cualquier período, que aún no se han cruzado (al cruzarlos con un período o con tiempo libre salen de esta lista) — no cuenta las compensatorias, esas se resuelven con tiempo libre, no con dinero.</p>
     <div class="table-wrap">
@@ -2253,7 +2266,7 @@
     </div>
     <div class="hint" id="hePendCruzadasInfo" style="margin-top:12px;"></div>
   </div>
-  <div class="hd-card" id="heDrill" style="display:none;margin:0 0 12px;border-color:#F29622;"></div>
+  </details>
 
   </div>
   </div>
@@ -8988,7 +9001,7 @@ function renderHePendientes(){
       <td colspan="4">${r2(pendientes.reduce((s,h)=>s+Number(h.horas||0),0))}h</td>
     </tr>` : '';
 }
-let heDash = null, heDr = null, heOpen = null;
+let heDash = null, heDr = null, heOpen = null, heTotValor = '$0';
 function aplicarHeOpen(){ document.querySelectorAll('[data-hdet]').forEach(e=>e.style.display = e.dataset.hdet===heOpen ? 'block' : 'none'); document.querySelectorAll('#heCards [data-hdc]').forEach(c=>c.classList.toggle('on', c.dataset.hdc===heOpen)); }
 function renderHeDrill(){
   const box = document.getElementById('heDrill'); if(!box) return;
@@ -9061,18 +9074,13 @@ function renderHeDashboard(desde, hasta){
   const mH = ks.map(k=>mes[k][0]), mM = Math.max(1,...mH), dMes = mH.length>1 && mH[mH.length-2]>0 ? Math.round((mH[mH.length-1]-mH[mH.length-2])/mH[mH.length-2]*100) : null;
   const tc = ['#03459B','#5D88D6','#F29622','#C0392B'], tt = Object.keys(tipos), tT = Math.max(0.0001, tt.reduce((x,k)=>x+tipos[k][0],0));
   const K = (id,lab,val,sub,extra,cls)=>`<div class="hd-k" data-hdc="${id}"><small>${lab}<span>▾</span></small><b class="${cls||''}">${val}</b><em>${sub}</em>${extra||''}</div>`;
+  document.getElementById('heCards').style.cssText = '';
   document.getElementById('heCards').innerHTML = [
-    `<div class="hd-k" data-hd="all:"><small>HORAS Y VALOR<span>▸</span></small><b>${totH}h</b><em>${fmtM(totV)} · ${regs.length} registros</em></div>`,
-    K('meses','MESES',dMes==null?'—':(dMes>0?'▲ ':dMes<0?'▼ ':'')+Math.abs(dMes)+'%','frente al mes anterior',`<div class="hd-mini">${mH.map((x,i)=>`<i class="${i===mH.length-1?'o':''}" style="height:${Math.max(8,x/mM*100)}%"></i>`).join('')}</div>`),
-    K('rank','RANKING',conHoras.length+' personas',conHoras[0]?esc(conHoras[0].t.nombre)+' · '+conHoras[0].totalHoras.toFixed(1)+'h':'Sin datos'),
-    K('tipo','TIPO DE HORA',r2(tipos.ordinaria[0])+'h ordinarias',r2(tipos.nocturna[0]+tipos.dominical[0]+tipos.nocturnaDominical[0])+'h con recargo',`<div class="hd-stk">${tt.map((k,i)=>`<i style="width:${tipos[k][0]/tT*100}%;background:${tc[i]}"></i>`).join('')}</div>`),
-    K('sem','DÍA DE LA SEMANA',dTop>=0?dnS[dTop]:'—',dTop>=0?r2(mxSm)+'h · el más cargado':'Sin datos'),
-    K('lim','LÍMITE',sobre.length+' sobre',cerca.length+' cerca de '+tope+'h',null,sobre.length?'r':''),
-    K('liq','LIQUIDACIÓN',fmtM(totV),'detalle por persona'),
-    K('pend','PENDIENTES',pend+' registros','por pagar o cruzar')
-  ].join('');
-  document.querySelectorAll('#heCards [data-hdc]').forEach(c=>c.addEventListener('click', ()=>{ heOpen = heOpen===c.dataset.hdc ? null : c.dataset.hdc; heDr = null; renderHeDrill(); aplicarHeOpen(); const d = document.querySelector('[data-hdet="'+heOpen+'"]'); if(d) d.scrollIntoView({behavior:'smooth', block:'nearest'}); }));
-  aplicarHeOpen();
+    [dMes==null?'—':(dMes>0?'▲ ':dMes<0?'▼ ':'')+Math.abs(dMes)+'%','Vs. mes anterior',''],
+    [dias.length?r2(totH/dias.length)+'h':'—','Promedio por día','all:'],
+    [cerca.length,'Cerca del límite','pers:cerca'],[sobre.length,'Sobre el límite','pers:sobre',sobre.length?'r':''],[pend,'Pendientes de pago','pend:']
+  ].map(t=>`<div class="hd-k"${t[2]?` data-hd="${t[2]}"`:''}><b class="${t[3]||''}">${t[0]}</b><em>${t[1]}</em></div>`).join('');
+  heTotValor = fmtM(totV);
   renderHeDrill();
 
   document.getElementById('heLiquidacionBody').innerHTML = conHoras.length ? conHoras.map(d=>`
@@ -9451,7 +9459,7 @@ function renderHorasExtra(){
   const totH = r2(filas.reduce((x,f)=>x+f.total,0)), nSobre = filas.filter(f=>f.excedido).length, nCerca = filas.filter(f=>!f.excedido && f.pct>=80).length, nCon = filas.filter(f=>f.total>0).length;
   document.getElementById('heTotBig').textContent = totH+'h';
   document.getElementById('hePerLbl').textContent = fmtDate(desde)+' – '+fmtDate(hasta);
-  document.getElementById('heTotInfo').innerHTML = `<b>${nCon}</b> personas con horas · <b>${nCerca}</b> cerca del límite · <b>${nSobre}</b> sobre el límite`;
+  document.getElementById('heTotInfo').innerHTML = `<b>${nCon}</b> personas con horas · <b>${nCerca}</b> cerca del límite · <b>${nSobre}</b> sobre el límite · <b>${heTotValor}</b> liquidado`;
   const busqueda = document.getElementById('heBuscar').value.toLowerCase().trim();
   const lista = busqueda ? filas.filter(f=>f.t.nombre.toLowerCase().includes(busqueda)) : filas;
   resumenWrap.innerHTML = lista.length ? lista.map(f=>`
@@ -10338,7 +10346,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-2111';
+const APP_VERSION = '2026-11-22-2114';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
