@@ -5282,12 +5282,15 @@ function renderResumen(){
 
   const paRows = gruposPA.map(x=>`<div class="rd-row"><span class="n" title="${esc(x.g.n)}">${esc(x.g.n)}</span><div class="rd-trk"><i style="width:${x.pct*100}%;background:${x.pct>=CFG.verde/100?'#1F7A5C':x.pct>=CFG.ambar/100?'#F29622':'#B3261E'}"></i></div><b>${Math.round(x.pct*100)}%</b></div>`).join('');
 
+  const causas = {}; activities0.filter(a=>a.reprogA).forEach(a=>{ const c = (a.reprogMotivo||'').trim() || 'Sin causa'; causas[c] = (causas[c]||0)+1; });
+  const causasK = Object.keys(causas).sort((x,y)=>causas[y]-causas[x]), maxC = Math.max(1,...Object.values(causas)), nRep = activities0.filter(a=>a.reprogA).length;
+  const causaCard = nRep ? `<div class="rd-c w"><h3>REPROGRAMADAS POR CAUSA · ${nRep}</h3>${causasK.map(c=>`<div class="rd-row rd-pick${resDrill&&resDrill.t==='causa'&&resDrill.v===c?' sel':''}" data-rcausa="${esc(c)}"><span class="n" title="${esc(c)}">${esc(c)}</span><div class="rd-trk"><i style="width:${causas[c]/maxC*100}%;background:#F29622"></i></div><b>${causas[c]}</b></div>`).join('')}<p class="hint" style="margin:8px 0 0;">Cuentan con el avance en que quedaron. Toca una causa para ver las actividades.</p></div>` : '';
   let drillHTML = '';
   if(resDrill && resTab==='act'){
     const d = resDrill, mesDe = a=>{ const x = a.fechaInicio || a.fechaFin; return (x && x.slice(0,4)===mY) ? +x.slice(5,7)-1 : -1; };
-    const lst = activities0.filter(a=> d.t==='estado' ? a.estado===d.v : d.t==='mes' ? mesDe(a)===d.v : (a.area||'Sin área')===d.v)
+    const lst = activities0.filter(a=> d.t==='estado' ? a.estado===d.v : d.t==='mes' ? mesDe(a)===d.v : d.t==='causa' ? (a.reprogA && ((a.reprogMotivo||'').trim()||'Sin causa')===d.v) : (a.area||'Sin área')===d.v)
       .sort((x,y)=>(x.fechaFin||x.fechaInicio||'9').localeCompare(y.fechaFin||y.fechaInicio||'9') || x.proyecto.localeCompare(y.proyecto));
-    const tit = d.t==='estado' ? d.v : d.t==='mes' ? ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][d.v]+' '+mY : d.v;
+    const tit = d.t==='causa' ? 'Reprogramadas · '+d.v : d.t==='estado' ? d.v : d.t==='mes' ? ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][d.v]+' '+mY : d.v;
     drillHTML = `<div class="rd-c w rd-hl" id="rdDrill"><h3>${esc(tit).toUpperCase()} · ${lst.length} ACTIVIDADES <button type="button" class="rd-x" id="rdDrillX" aria-label="Cerrar">✕</button></h3>${lst.map(a=>`<div class="rd-ar" data-ract="${a.id}"><div class="rd-art"><b>${esc(a.proyecto)}</b><small>${[esc(a.area||''), a.estado, a.fechaInicio?fmtDate(a.fechaInicio)+(a.fechaFin?' → '+fmtDate(a.fechaFin):''):(a.fechaFin?'Fin '+fmtDate(a.fechaFin):'')].filter(Boolean).join(' · ')}</small></div><span class="rd-arp">${Number(a.avance)||0}%</span><i>›</i></div>`).join('')||'<p class="empty">Sin actividades.</p>'}<p class="hint" style="margin:8px 0 0;">Toca una actividad para ver su detalle.</p></div>`;
   }
   const sw0 = `<div class="he-switch" id="resSwitch">${[['act','Actividades'],['plan','Plan anual']].map(x=>`<button data-rt="${x[0]}"${x[0]===resTab?' class="active"':''}>${x[1]}</button>`).join('')}</div>`;
@@ -5301,6 +5304,7 @@ function renderResumen(){
       <div class="rd-c"><h3>ACTIVIDADES POR MES · ${mY}${resSem?' · '+resSem+(resSem===1?'.er':'.º')+' SEMESTRE':''}</h3>${cols}${contadas<total?`<p class="hint" style="margin:8px 0 0;">${contadas} de ${total} con fecha en ${mY}. Las demás son de otros años o no tienen fecha.</p>`:''}</div>
       ${drillHTML}
       <div class="rd-c w"><h3>ÁREAS CON MÁS ACTIVIDADES</h3>${areasAll.length?areaRows(areasShow):'<p class="empty">Sin datos aún.</p>'}${areasAll.length>6?`<button class="rd-more" id="rdMore">${window._rdAreasAbiertas?'Ver menos':'Ver las '+areasAll.length+' áreas'}</button>`:''}</div>
+      ${causaCard}
     </div></div>`;
   } else if(resTab==='plan'){
     let R0=null,R1=null,pm=new Array(12).fill(0),dm=new Array(12).fill(0),tP=0,tD=0;
@@ -5353,6 +5357,7 @@ function renderResumen(){
   const drill = (t,v)=>{ resDrill = (resDrill && resDrill.t===t && resDrill.v===v) ? null : {t,v}; renderResumen(); const el = document.getElementById('rdDrill'); if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'}); };
   document.querySelectorAll('#resDash [data-rest]').forEach(x=>x.addEventListener('click', ()=>drill('estado', x.dataset.rest)));
   document.querySelectorAll('#resDash [data-rmes]').forEach(x=>x.addEventListener('click', ()=>drill('mes', +x.dataset.rmes)));
+  document.querySelectorAll('#resDash [data-rcausa]').forEach(x=>x.addEventListener('click', ()=>drill('causa', x.dataset.rcausa)));
   document.querySelectorAll('#resDash [data-rarea]').forEach(x=>x.addEventListener('click', ()=>drill('area', x.dataset.rarea)));
   document.querySelectorAll('#resDash [data-ract]').forEach(x=>x.addEventListener('click', ()=>openModal(x.dataset.ract)));
   const dx = document.getElementById('rdDrillX'); if(dx) dx.addEventListener('click', ()=>{ resDrill = null; renderResumen(); });
@@ -5608,7 +5613,7 @@ function renderActivitiesTable(){
     const open_ = actOpen[est]!==undefined ? actOpen[est] : !cerrado;
     return `<div class="ac-g"><button type="button" class="ac-gh" data-acg="${esc(est)}" aria-expanded="${open_}"><i class="pa-chev${open_?' on':''}">›</i><span class="pill pill-${String(est).replace(/ /g,'_')}">${esc(est)}</span><span class="ac-n">${list.length}</span></button>${open_ ? list.map(a=>`
       <div class="ac-r" data-edit="${a.id}">
-        <div class="ac-t"><div class="ac-name">${esc(a.proyecto)}</div><div class="ac-sub">${[esc(a.area), esc(a.responsable), a.prioridad==='Alta'?'<b class="pri-Alta">Prioridad alta</b>':''].filter(Boolean).join(' · ')}${a.reprogA?` · <b class="ac-tag">↻ Reprogramada</b>`:''}${a.reprogDe?` · <b class="ac-tag">↻ Reprogramación</b>`:''}${a.obs?` · ${esc(a.obs)}`:''}</div></div>
+        <div class="ac-t"><div class="ac-name">${esc(a.proyecto)}</div><div class="ac-sub">${[esc(a.area), esc(a.responsable), a.prioridad==='Alta'?'<b class="pri-Alta">Prioridad alta</b>':''].filter(Boolean).join(' · ')}${a.reprogA?` · <b class="ac-tag">↻ Reprogramada (${Number(a.reprogAvance!=null?a.reprogAvance:a.avance)||0}%)${a.reprogMotivo?' · '+esc(a.reprogMotivo):''}</b>`:''}${a.reprogDe?` · <b class="ac-tag">↻ Reprogramación</b>`:''}${a.obs?` · ${esc(a.obs)}`:''}</div></div>
         ${(!a.reprogA && (a.estado==='No ejecutado'||a.estado==='No completado'||(getOrdenEstado(a)==='Abierta' && a.fechaFin && a.fechaFin<todayISO()))) ? `<button type="button" class="ghost ac-rep" data-rep="${a.id}" title="Reprogramar: crea una nueva fecha y conserva esta como incumplida" aria-label="Reprogramar">↻</button>` : ''}
         <span class="prog-mini"><span class="prog-mini-fill" style="width:${a.avance}%"></span></span><span class="ac-pc">${a.avance}%</span>
         <button class="ghost danger ac-del" data-del="${a.id}" title="Eliminar" aria-label="Eliminar">✕</button>
@@ -6011,7 +6016,7 @@ let repId = null;
   const bg = document.createElement('div'); bg.className = 'modal-bg'; bg.id = 'repModal';
   bg.innerHTML = `<div class="modal"><h3>Reprogramar actividad</h3><p class="hint" id="repNom" style="margin:0 0 12px;"></p>
     <div class="grid-2"><div class="field"><label>Nueva fecha de inicio (opcional)</label><input type="date" id="repIni"></div><div class="field"><label>Nueva fecha de fin</label><input type="date" id="repFin"></div></div>
-    <div class="field"><label>Motivo (opcional)</label><input type="text" id="repMot" placeholder="Ej: falta de presupuesto, lluvias…"></div>
+    <div class="field"><label>Motivo (opcional)</label><input type="text" id="repMot" list="repCausas" placeholder="Elige o escribe la causa"><datalist id="repCausas"><option value="Presupuesto"><option value="Clima"><option value="Proveedor"><option value="Cambio de prioridad"><option value="Falta de personal"><option value="Acceso a la zona"></datalist></div>
     <p class="hint">La actividad original no cambia: sigue contando como no cumplida en su periodo. Se crea una nueva actividad con las nuevas fechas que continúa desde el avance en que quedó.</p>
     <div class="modal-actions"><button class="ghost" id="repCan" type="button">Cancelar</button><button class="primary" id="repOk" type="button">Reprogramar</button></div></div>`;
   document.body.appendChild(bg);
@@ -6026,7 +6031,7 @@ let repId = null;
     const nuevo = {...o, id:uid(), estado: av>0 ? 'En proceso' : 'Pendiente', avance:av, presupEjec:0, fechaInicio:ini, fechaFin:fin, reprogDe:o.id,
       obs: ('Reprogramada'+(o.fechaFin?' (fin original '+fmtDate(o.fechaFin)+')':'')+(mot?': '+mot:'')).slice(0,200)};
     delete nuevo.reprogA; delete nuevo.reprogFecha;
-    o.reprogA = nuevo.id; o.reprogFecha = todayISO();
+    o.reprogA = nuevo.id; o.reprogFecha = todayISO(); o.reprogMotivo = mot; o.reprogAvance = av;
     activities.push(nuevo);
     await saveActivities(); bg.classList.remove('active');
     populateFilterOptions(); populateGanttFilters(); renderActivitiesTable(); renderGantt(); renderResumen();
@@ -10346,7 +10351,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-22-2114';
+const APP_VERSION = '2026-11-22-2133';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
