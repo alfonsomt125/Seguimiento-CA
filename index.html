@@ -5267,7 +5267,7 @@ document.getElementById('lightboxBg').addEventListener('click',(e)=>{ if(e.targe
    ============================================================ */
 let resTab = 'act', resPlanSem = null, resSem = 0, resDrill = null;
 let resLay = {}, resLayCargado = false, resEdit = false;
-const RES_CARDS = [['ACTIVIDADES POR ESTADO','est','Por estado'],['CUMPLIDAS','pmes','Cumplidas por mes'],['PROMEDIO POR SEMESTRE','sem','Promedio por semestre'],['ACTIVIDADES POR MES','mes','Actividades por mes'],['ÁREAS CON MÁS','area','Áreas con más actividades'],['REPROGRAMADAS','causa','Reprogramadas por causa'],['POR ÁREA','parea','Por área']];
+const RES_CARDS = [['ACTIVIDADES POR ESTADO','est','Por estado'],['CUMPLIDAS','pmes','Cumplidas por mes'],['PROMEDIO POR SEMESTRE','sem','Promedio por semestre'],['INDICADOR TRIMESTRAL','ptri','Indicador trimestral'],['ACTIVIDADES POR MES','mes','Actividades por mes'],['ÁREAS CON MÁS','area','Áreas con más actividades'],['REPROGRAMADAS','causa','Reprogramadas por causa'],['POR ÁREA','parea','Por área']];
 function resGuardarLay(){ try{ storageAPI.set('res_layout', JSON.stringify(resLay)); }catch(e){} }
 function renderResumen(){
   const resumenAnoF = document.getElementById('resumenAno').dataset.value || '';
@@ -5384,6 +5384,14 @@ function renderResumen(){
     <div class="rd-main">
       <div class="rd-c w"><h3>CUMPLIDAS / PROGRAMADAS POR MES${resPlanSem!==null?' · '+(resPlanSem?'2.º':'1.er')+' SEMESTRE':''}</h3>${py?colsP:'<p class="empty">Sin plan anual.</p>'}</div>
       ${R0?`<div class="rd-c"><h3>PROMEDIO POR SEMESTRE</h3>${semRow('1.er semestre',R0,0)}${semRow('2.º semestre',R1,1)}<p class="hint" style="margin:10px 0 0;">${resPlanSem===null?'Toca un semestre para ver sus áreas.':'<button class="rd-more" id="rdTodo">Ver todo el año</button>'}</p></div>`:''}
+      ${(()=>{
+        const DT = indDatos(py), RO = ['T1 · ene–mar','T2 · abr–jun','T3 · jul–sep','T4 · oct–dic'];
+        const qs = [0,1,2,3].filter(q=>resPlanSem===null || Math.floor(q/2)===resPlanSem);
+        const tt = qs.reduce((t,q)=>{ const d = DT[q]; if(d){ t.p += d.p.reduce((a,b)=>a+b,0); t.e += d.e.reduce((a,b)=>a+b,0); } return t; },{p:0,e:0});
+        const gv = tt.p ? tt.e/tt.p : null;
+        return `<div class="rd-c${resPlanSem!==null?' rd-hl':''}"><h3>INDICADOR TRIMESTRAL · ${resPlanSem===null?'AÑO '+py:(resPlanSem?'2.º':'1.er')+' SEMESTRE '+py}</h3>${qs.map(q=>{ const d = DT[q], v = indPct(d), P = d?d.p.reduce((a,b)=>a+b,0):0, E = d?d.e.reduce((a,b)=>a+b,0):0;
+          return `<div class="rd-row rd-pick" data-indopen="1" title="Ver ficha del indicador"><span class="n">${RO[q]} <small style="font-weight:400;color:var(--gray)">${d?E+'/'+P:''}</small></span><div class="rd-trk" style="position:relative;"><i style="width:${(v||0)*100}%;background:${indCol(v)}"></i><u style="position:absolute;left:90%;top:-2px;bottom:-2px;border-left:1.5px dashed #2e9e6b;"></u></div><b style="color:${indCol(v)}">${pc(v)}</b></div>`; }).join('')}
+          <p class="hint" style="margin:10px 0 0;">Ejecutadas ÷ planificadas = <b>${tt.p?tt.e+' / '+tt.p+' = '+pc(gv):'—'}</b> · meta 90 %. <button type="button" class="rd-more" data-indopen="1">Ver ficha completa</button></p></div>`; })()}
       <div class="rd-c${R0?'':' w'}${resPlanSem!==null?' rd-hl':''}"><h3>${areaTit}</h3>${areaRows||'<p class="empty">Sin datos aún.</p>'}</div>
     </div></div>`;
   } else {
@@ -10433,7 +10441,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1757';
+const APP_VERSION = '2026-11-24-1759';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
