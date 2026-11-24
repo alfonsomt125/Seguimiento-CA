@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1844';
+const APP_VERSION = '2026-11-24-1847';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15262,7 +15262,20 @@ function renderIndicador(){
   const filas = anos.map(y=>DA[y].map((d,q)=>{ const v = indPct(d); return `<tr><td><b>${y}-${RO[q]}</b></td>${[0,1,2].map(k=>`<td>${d?d.p[k]:'—'}</td>`).join('')}${[0,1,2].map(k=>`<td>${d?d.e[k]:'—'}</td>`).join('')}<td><span style="display:inline-block;padding:2px 10px;border-radius:99px;font-weight:700;font-size:12px;color:#fff;background:${indCol(v)}">${pc(v)}</span></td></tr>`; }).join('')).join('');
   // análisis por año
   const nivel = v => v===null ? '' : v>=.9 ? 'sobresaliente' : v>=.6 ? 'adecuado' : 'deficiente';
-  const auto = y => { const t = yTot(y); if(!t.p) return 'Sin actividades programadas a la fecha de corte.'; const v = t.e/t.p, qs = DA[y].map((d,q)=>({q,v:indPct(d)})).filter(x=>x.v!==null); return `A la fecha de corte, el indicador acumula un cumplimiento del ${Math.round(v*100)} % (${t.e} de ${t.p} actividades programadas ejecutadas), ubicándose en un nivel ${nivel(v)}. Por trimestre: ${qs.map(x=>RO[x.q]+' '+Math.round(x.v*100)+' %').join(', ')}. ${v>=.9?'Se cumple la meta institucional del 90 %.':'Aún no se alcanza la meta institucional del 90 %; se priorizan las actividades pendientes.'}`; };
+  const auto = y => {
+    const t = yTot(y); if(!t.p) return 'Sin actividades programadas a la fecha de corte.';
+    const qs = DA[y].map((d,q)=>({q,d,v:indPct(d)})).filter(x=>x.v!==null), g = yPct(y), NS = ['infraestructura','equipos','mobiliario'];
+    const mejor = qs.reduce((a,b)=>b.v>a.v?b:a), peor = qs.reduce((a,b)=>b.v<a.v?b:a), ult = qs[qs.length-1];
+    const seg = NS.map((n,k)=>{ const P = qs.reduce((a,x)=>a+x.d.p[k],0), E = qs.reduce((a,x)=>a+x.d.e[k],0); return {n,P,E,v:P?E/P:null}; }).filter(x=>x.v!==null);
+    const sMej = seg.reduce((a,b)=>b.v>a.v?b:a), sPeor = seg.reduce((a,b)=>b.v<a.v?b:a);
+    const pend = t.p - t.e, PU = SUM(ult.d.p), EU = SUM(ult.d.e), falta = Math.max(0, Math.ceil(PU*.9) - EU);
+    const prev = DA[y-1] && indPct(DA[y-1][ult.q]);
+    const sig = ult.q<3 ? 'el trimestre '+y+'-'+RO[ult.q+1] : 'el año '+(y+1);
+    const logros = `Se ejecutaron ${t.e} de ${t.p} actividades programadas (${Math.round(g*100)} %, nivel ${nivel(g)}). El mejor resultado fue el trimestre ${RO[mejor.q]} (${Math.round(mejor.v*100)} %)${seg.length>1?` y el segmento con mejor ejecución fue ${sMej.n} (${Math.round(sMej.v*100)} %)`:''}${prev!==null&&prev!==undefined?`; el último trimestre medido (${RO[ult.q]}) ${ult.v>=prev?'mejora':'baja'} frente al mismo trimestre de ${y-1} (${Math.round(prev*100)} % → ${Math.round(ult.v*100)} %)`:''}.`;
+    const mejora = g>=.9 && pend===0 ? 'Mantener el nivel alcanzado.' : `${qs.length>1&&peor.v<.9?`El trimestre ${RO[peor.q]} fue el más bajo (${Math.round(peor.v*100)} %). `:''}${seg.length>1&&sPeor.v<.9?`${sPeor.n[0].toUpperCase()+sPeor.n.slice(1)} es el segmento con menor ejecución (${sPeor.E} de ${sPeor.P}, ${Math.round(sPeor.v*100)} %). `:''}Hay ${pend} actividades programadas sin ejecutar${g<.9?' y el cumplimiento está por debajo de la meta del 90 %':''}.`;
+    const proy = `${ult.v<.9&&falta>0?`Para alcanzar la meta en ${RO[ult.q]} faltan ${falta} actividades por ejecutar. `:''}Para ${sig}: ${ult.q<3?`priorizar las ${pend} pendientes (reprogramándolas dentro del mismo periodo)${seg.length>1&&sPeor.v<.9?`, empezando por ${sPeor.n}`:''}, `:`${seg.length>1&&sPeor.v<.9?`reforzar ${sPeor.n}, `:''}`}asegurar los recursos antes de cada trimestre y programar solo lo que pueda ejecutarse para sostener el indicador en 90 % o más.`;
+    return `<b style="color:#2e9e6b">Lo logrado.</b> ${logros}<br><b style="color:#c98a00">Por mejorar.</b> ${mejora}<br><b style="color:#03459B">Proyección.</b> ${proy}`;
+  };
   const grupos = (planAnual[yAct]||[]), segs = [['inf','Infraestructura'],['eq','Equipos'],['mob','Mobiliario']];
   document.getElementById('indBody').innerHTML = `
     <div style="background:#011632;color:#fff;padding:20px 24px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
