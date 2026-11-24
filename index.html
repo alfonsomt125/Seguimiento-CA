@@ -10406,7 +10406,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1212';
+const APP_VERSION = '2026-11-24-1214';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14089,6 +14089,18 @@ document.getElementById('btnVaciarMovCarrito').addEventListener('click', async (
   renderMovCarrito();
 });
 
+let entradaPend = false;
+function flushEntrada(){
+  if(!entradaPend) return Promise.resolve();
+  entradaPend = false;
+  return Promise.all([saveInsumos(), saveMovimientos()]).then(()=>showToast('Entradas guardadas.'));
+}
+document.addEventListener('click', e=>{
+  const b = e.target.closest('#module-inventario nav.tabs button, .module-back');
+  if(entradaPend && b && b.dataset.invview!=='movimientos') flushEntrada();
+}, true);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') flushEntrada(); });
+window.addEventListener('beforeunload', e=>{ if(entradaPend){ flushEntrada(); e.preventDefault(); e.returnValue=''; } });
 document.getElementById('btnConfirmarMovCarrito').addEventListener('click', async ()=>{
   if(!entradaCarrito.length) return;
   const fecha = document.getElementById('movFecha').value || todayISO();
@@ -14102,9 +14114,9 @@ document.getElementById('btnConfirmarMovCarrito').addEventListener('click', asyn
     movimientos.push({id: uid(), insumoId: item.insumoId, tipo:'entrada', cantidad: item.cantidad, fecha, motivo, createdAt: new Date().toISOString()});
     totalRegistrado++;
   });
-  /* Se actualiza la pantalla de inmediato y los dos guardados viajan en paralelo
-     (antes se esperaba uno tras otro, y cada uno sube el JSON completo). */
-  const guardado = Promise.all([saveInsumos(), saveMovimientos()]);
+  /* La pantalla se actualiza de inmediato; el guardado en la nube se hace una sola vez
+     al cerrar el ingreso (salir de esta pestaña, volver a Módulos o cerrar la página). */
+  entradaPend = true;
 
   entradaCarrito = [];
   document.getElementById('movMotivo').value = '';
@@ -14114,9 +14126,7 @@ document.getElementById('btnConfirmarMovCarrito').addEventListener('click', asyn
   renderPanelCards();
   renderMovimientosTable();
   renderMovimientosAllTable();
-  showToast(`Registrando ${totalRegistrado} entrada(s)…`);
-  await guardado;
-  showToast(`Se registraron ${totalRegistrado} entrada(s) de insumos.`);
+  showToast(`Se registraron ${totalRegistrado} entrada(s). Se guardan al salir de esta pestaña.`);
 });
 
 document.getElementById('movFiltroInsumo').addEventListener('change', renderMovimientosTable);
