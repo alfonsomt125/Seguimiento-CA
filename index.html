@@ -5364,7 +5364,7 @@ function renderResumen(){
     }
     const pc = v=>v===null||v===undefined?'—':Math.round(v*100)+'%';
     const avg = arr=>{ const v = arr.filter(x=>x!==null&&x!==undefined); return v.length ? v.reduce((x,y)=>x+y,0)/v.length : null; };
-    const anual = R0 ? avg([R0.global,R1.global]) : null;
+    const anual = R0 ? avg([...R0.qv,...R1.qv]) : null;
     const mx = Math.max(1,...pm.filter((_,i)=>resPlanSem===null||(i<6?0:1)===resPlanSem));
     const colsP = `<div class="rd-col">${pm.map((n,i)=>resPlanSem!==null&&(i<6?0:1)!==resPlanSem?'':`<div class="${i===mHoy?'hoy':''}"><em>${n?dm[i]+'/'+n:''}</em><i style="height:${n/mx*70}%;background:${n&&dm[i]===n?'#1F7A5C':''}"></i>${PA_MESES[i][0]}</div>`).join('')}</div>`;
     const semRow = (t,R,k)=>`<div class="rd-row rd-pick${resPlanSem===k?' sel':''}" data-rps="${k}" title="Toca para ver sus áreas"><span class="n">${t}</span><div class="rd-trk"><i style="width:${(R.global||0)*100}%"></i></div><b>${pc(R.global)}</b></div>`;
@@ -5391,7 +5391,7 @@ function renderResumen(){
         const gv = vq.length ? vq.reduce((a,b)=>a+b,0)/vq.length : null;
         return `<div class="rd-c${resPlanSem!==null?' rd-hl':''}"><h3>INDICADOR TRIMESTRAL · ${resPlanSem===null?'AÑO '+py:(resPlanSem?'2.º':'1.er')+' SEMESTRE '+py}</h3>${qs.map(q=>{ const d = DT[q], v = indPct(d), P = d?d.p.reduce((a,b)=>a+b,0):0, E = d?d.e.reduce((a,b)=>a+b,0):0;
           return `<div class="rd-row rd-pick" data-ptri="${q}" title="Ir al cronograma de este trimestre"><span class="n">${RO[q]} <small style="font-weight:400;color:var(--gray)">${d?E+'/'+P:''}</small></span><div class="rd-trk" style="position:relative;"><i style="width:${(v||0)*100}%;background:${indCol(v)}"></i><u style="position:absolute;left:90%;top:-2px;bottom:-2px;border-left:1.5px dashed #2e9e6b;"></u></div><b style="color:${indCol(v)}">${pc(v)}</b></div>`; }).join('')}
-          <p class="hint" style="margin:10px 0 0;">${resPlanSem===null?'Promedio de los trimestres':'Ejecutadas ÷ planificadas'} = <b>${resPlanSem===null?pc(gv):(R0&&R1?(()=>{ const r = resPlanSem?R1:R0; return r.totD+' / '+r.totP+' = '+pc(r.global); })():'—')}</b> · meta 90 %. <button type="button" class="rd-more" data-indopen="1">Ver indicador</button></p></div>`; })()}
+          <p class="hint" style="margin:10px 0 0;">Promedio de los trimestres = <b>${pc(gv)}</b> · meta 90 %. <button type="button" class="rd-more" data-indopen="1">Ver indicador</button></p></div>`; })()}
       <div class="rd-c${R0?'':' w'}${resPlanSem!==null?' rd-hl':''}"><h3>${areaTit}</h3>${areaRows||'<p class="empty">Sin datos aún.</p>'}</div>
     </div></div>`;
   } else {
@@ -10441,7 +10441,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1830';
+const APP_VERSION = '2026-11-24-1831';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15309,11 +15309,12 @@ async function savePlanAnual(){ try{ await storageAPI.set('planAnualMant', JSON.
 function paCalc(grupos, corteGlob, sem){
   const lo = sem*24, corte = Math.min(corteGlob, lo+23);
   let gs = [], sumG = 0, nG = 0, totP = 0, totD = 0, vencidas = 0, anualP = 0, anualD = 0, repN = 0, repOk = 0;
+  const qP = [0,0], qD = [0,0];
   grupos.forEach(g=>{
     let sumA = 0, nA = 0;
     const acts = g.a.map(a=>{
       let pr = 0, ok = 0;
-      for(let i=lo;i<lo+24;i++){ if(a.p[i]==='1'){ anualP++; if(a.h[i]==='1') anualD++; if(i<=corte){ pr++; if(a.h[i]==='1') ok++; } } }
+      for(let i=lo;i<lo+24;i++){ if(a.p[i]==='1'){ anualP++; if(a.h[i]==='1') anualD++; if(i<=corte){ pr++; const h = a.h[i]==='1'; if(h) ok++; qP[(i-lo)<12?0:1]++; if(h) qD[(i-lo)<12?0:1]++; } } }
       const pct = pr ? ok/pr : null; if(pct!==null){ sumA += pct; nA++; }
       totP += pr; totD += ok; vencidas += pr-ok;
       (a.rp||[]).forEach(x=>{ if(x.o>=lo && x.o<=corte){ repN++; if(x.d) repOk++; } });
@@ -15323,7 +15324,8 @@ function paCalc(grupos, corteGlob, sem){
     const pct = gP ? gD/gP : null; if(pct!==null){ sumG += pct; nG++; }
     gs.push({g, acts, pct});
   });
-  return {gs, global: totP ? totD/totP : null, totP, totD, vencidas, anualP, anualD, repN, repOk};
+  const qv = [0,1].map(k=>qP[k] ? qD[k]/qP[k] : null), qvv = qv.filter(v=>v!==null);
+  return {gs, qv, global: qvv.length ? qvv.reduce((x,y)=>x+y,0)/qvv.length : null, totP, totD, vencidas, anualP, anualD, repN, repOk};
 }
 const paPct = v => v===null ? '—' : Math.round(v*100)+'%';
 function renderPlanAnual(){
