@@ -891,6 +891,8 @@
   .pa-t td.pa-c.m0{scroll-snap-align:start;}
   .pa-scroll{scroll-snap-type:x proximity;scroll-padding-left:152px;}
   .pa-t td.pa-c.m0{border-left:1px solid var(--line);}
+  .pa-t .q2{border-left:2.5px solid #011632 !important;}
+  .ps-trk u:nth-child(4){border-left:2.5px solid #011632;}.ps-rul span:nth-child(4){border-left:2.5px solid #011632;}
   .pa-cell{display:block;width:26px;height:26px;border-radius:7px;margin:auto;border:1px solid transparent;cursor:default;padding:0;font-size:14px;line-height:24px;color:#fff;background:transparent;font-family:inherit;}
   .pa-cell.p{background:#dbe9f8;border-color:#9ec2ea;cursor:pointer;}
   .pa-cell.d{background:#2e9e6b;border-color:#2e9e6b;cursor:pointer;}
@@ -5785,7 +5787,7 @@ const GG_CSS = `.gg-hd,.gg-row{display:flex;align-items:center;gap:10px}
   .gg-r b{font-size:13px;color:#03459B}
   .gg-trk{position:relative;flex:1;height:28px;background:#F7F9FC;border-radius:6px;overflow:hidden}
   .gg-in{position:absolute;left:8px;right:8px;top:0;bottom:0}
-  .gg-in u{position:absolute;top:0;bottom:0;background:transparent}.gg-in u.b{background:#E9EFF8}
+  .gg-in u{position:absolute;top:0;bottom:0;background:transparent}.gg-in u.b{background:#E9EFF8}.gg-in u.q{border-left:2px solid #011632}.gg-rul span.q{border-left:2px solid #011632}
   .gg-ln{position:absolute;top:50%;height:4px;margin-top:-2px;border-radius:2px;background:#c9d6ea}
   .gg-lf{position:absolute;top:0;bottom:0;border-radius:2px;background:#03459B}
   .gg-dt{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;box-sizing:border-box;background:#03459B}
@@ -5828,7 +5830,7 @@ function ggPista(r, D){
   const span = D.pE - D.pS, fr = d=>Math.min(1,Math.max(0,(d-D.pS)/span))*100;
   const ini = fr(r.i), fin = fr(r.f), av = Math.max(0,Math.min(100,Number(r.a.avance)||0));
   const cerr = D.cerrada(r.a), ven = !cerr && r.f-1 < D.hoyD;
-  const bands = Array.from({length:D.nM},(_,k)=>`<u class="${k%2?'b':''}" style="left:${k/D.nM*100}%;width:${100/D.nM}%"></u>`).join('');
+  const bands = Array.from({length:D.nM},(_,k)=>`<u class="${k%2?'b':''}${k>0&&(D.m0+k)%3===0?' q':''}" style="left:${k/D.nM*100}%;width:${100/D.nM}%"></u>`).join('');
   const hoy = (D.hoyD>=D.pS && D.hoyD<D.pE) ? `<i class="gg-hoy" style="left:${fr(D.hoyD)}%"></i>` : '';
   return `<div class="gg-trk"><div class="gg-in">${bands}${hoy}<div class="gg-ln" style="left:${ini}%;width:${Math.max(fin-ini,.8)}%"><i class="gg-lf" style="left:0;width:${av}%"></i></div>${r.i>=D.pS?`<i class="gg-dt" style="left:${ini}%"></i>`:''}${r.f<=D.pE?`<i class="gg-dt ${cerr?'':(ven?'ov':'pe')}" style="left:${fin}%"></i>`:''}</div></div>`;
 }
@@ -5862,7 +5864,7 @@ function renderGantt(){
     <div class="ps-mid"><div class="ps-big">${st.avance===null?'—':st.avance+'%'}</div><div><div class="ps-bl">Avance promedio</div>
     <div class="ps-bs"><b>${st.n}</b> actividades · <b>${st.fin}</b> finalizados · <b>${st.curso}</b> en curso${st.venc?` · <b>${st.venc}</b> vencidos`:''}</div></div></div>
     <div class="ps-leg"><div><i class="dt ok"></i>Cumplido</div><div><i class="dt fu"></i>Fin en curso</div><div><i class="dt ov"></i>Fin vencido</div><div><i class="dt" style="background:#F29622;width:3px;border-radius:0"></i>Hoy</div></div></div>`;
-  const main = `<div class="ps-main" id="ggMain"><div class="gg-hd"><span class="gg-hn">Actividad</span><div class="gg-rul">${D.meses.map(m=>`<span>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>${st.n?ggFilas(D,true):'<p class="ps-tip">Ninguna actividad con fecha en este periodo.</p>'}<p class="ps-tip">Toca una actividad para editarla.</p></div>`;
+  const main = `<div class="ps-main" id="ggMain"><div class="gg-hd"><span class="gg-hn">Actividad</span><div class="gg-rul">${D.meses.map((m,k)=>`<span${k>0&&(D.m0+k)%3===0?' class="q"':''}>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>${st.n?ggFilas(D,true):'<p class="ps-tip">Ninguna actividad con fecha en este periodo.</p>'}<p class="ps-tip">Toca una actividad para editarla.</p></div>`;
   document.getElementById('ganttChart').innerHTML = `<div class="ps-wrap gg">${side}${main}</div>`;
 }
 document.getElementById('ganttChart').addEventListener('click', e=>{ const r = e.target.closest('[data-ggid]'); if(r) openModal(r.dataset.ggid); });
@@ -5883,7 +5885,7 @@ function ggConstruirPDF(){
     <div class="big">${st.avance===null?'—':st.avance+'%'}</div><div class="bl">Avance promedio</div><div class="bs">${st.n} actividades · ${st.fin} finalizados · ${st.curso} en curso${st.venc?` · ${st.venc} vencidos`:''}</div>
     <div class="leg"><div><i class="gg-dt" style="position:static;margin:0;display:inline-block"></i>Inicio / fin cumplido</div><div><i class="gg-dt pe" style="position:static;margin:0;display:inline-block"></i>Fin en curso</div><div><i class="gg-dt ov" style="position:static;margin:0;display:inline-block"></i>Fin vencido</div><div><i style="display:inline-block;width:3px;height:12px;background:#F29622"></i>Hoy</div></div>
     <div class="foot"><div class="el"><b>Elaboró</b><br>Alfonso Monserrat Tejada<br>Líder de Servicios Generales<br><span>Emitido el ${hoyStr}</span></div><div class="pn"></div></div></div>`;
-  const hd = `<div class="gg-hd"><span class="gg-hn">Actividad</span><div class="gg-rul">${D.meses.map(m=>`<span>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>`;
+  const hd = `<div class="gg-hd"><span class="gg-hn">Actividad</span><div class="gg-rul">${D.meses.map((m,k)=>`<span${k>0&&(D.m0+k)%3===0?' class="q"':''}>${m.slice(0,3).toUpperCase()}</span>`).join('')}</div><span class="gg-hr">Avance</span></div>`;
   const css = paPdfCss() + GG_CSS + `.blk{margin:0}.gg-row{padding:6px 0}.gg-n,.gg-hn{width:200px}.gg-trk{height:24px}.gg-n b{font-size:10.5px}.gg-n small{font-size:8.5px}.gg-gh{padding:10px 0 3px;font-size:9.5px}.gg-hd{margin-bottom:2px}.pn{margin-top:10px;font-size:9px;color:#8fa3c4}#src{width:716px}`;
   return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>
   <div id="src">${ggFilas(D,false,true)}</div><div id="panel" style="display:none">${panel}</div><div id="hd" style="display:none">${hd}</div><div id="out"></div></body></html>`;
@@ -10441,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1831';
+const APP_VERSION = '2026-11-24-1844';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15372,7 +15374,7 @@ function renderPlanAnual(){
     return;
   }
   const mm = PA_MESES.slice(paSem*6, paSem*6+6);
-  const hdr = `<tr><th class="pa-n" rowspan="2"></th>${mm.map(m=>`<th class="pa-m" colspan="4">${m}</th>`).join('')}</tr><tr>${mm.map((_,mi)=>[1,2,3,4].map(w=>`<th class="pa-w${(paSem*24+mi*4+w-1)===hoy?' cur':''}">${w}</th>`).join('')).join('')}</tr>`;
+  const hdr = `<tr><th class="pa-n" rowspan="2"></th>${mm.map((m,mi)=>`<th class="pa-m${mi===3?' q2':''}" colspan="4">${m}</th>`).join('')}</tr><tr>${mm.map((_,mi)=>[1,2,3,4].map(w=>`<th class="pa-w${(paSem*24+mi*4+w-1)===hoy?' cur':''}${(mi===3&&w===1)?' q2':''}">${w}</th>`).join('')).join('')}</tr>`;
   let out = `<button type="button" class="pa-back" data-pback="1">‹ Todas las áreas</button>${paRepro?'<p class="hint" style="margin:0 0 10px;">Reprogramar: toca una semana pendiente y luego la nueva semana. La original sigue contando como no cumplida; la nueva no cambia el porcentaje. Toca de nuevo una reprogramada para deshacerla.</p>':''}${paEdit?'<p class="hint" style="margin:0 0 10px;">Modo edición: toca las semanas para programarlas o quitarlas, y cambia nombres, responsables y actividades.</p>':''}<div class="pa-leyenda"><span class="l-d">Cumplida</span><span class="l-p">Programada</span><span class="l-o">Vencida sin cumplir</span><span class="l-r">Reprogramada (no cambia el %)</span></div>`;
   R.gs.filter(x=>x.g.id===paDet).forEach(({g,acts,pct})=>{
     const gp = acts.reduce((x,y)=>x+y.pr,0), gd = acts.reduce((x,y)=>x+y.ok,0);
@@ -15387,7 +15389,7 @@ function renderPlanAnual(){
         if(!p && rn) c = 'r'+(rn.d?' d':'');
         if(p && ro) c += ' rp';
         if(paSel && paSel.aid===a.id && paSel.idx===i) c += ' sel';
-        cells += `<td class="pa-c${i%4===0?' m0':''}"><button type="button" class="pa-cell ${c}" data-pa="${g.id}|${a.id}|${i}" aria-label="${PA_MESES[Math.floor(i/4)]} semana ${i%4+1}">${d?'✓':(!p&&rn)?(rn.d?'✓':'↺'):(p&&ro)?'↪':''}</button></td>`;
+        cells += `<td class="pa-c${i%4===0?' m0':''}${(i-lo)===12?' q2':''}"><button type="button" class="pa-cell ${c}" data-pa="${g.id}|${a.id}|${i}" aria-label="${PA_MESES[Math.floor(i/4)]} semana ${i%4+1}">${d?'✓':(!p&&rn)?(rn.d?'✓':'↺'):(p&&ro)?'↪':''}</button></td>`;
       }
       out += `<tr><td class="pa-n">${paEdit ? `<textarea class="pa-in" rows="3" data-pe="at|${g.id}|${a.id}" placeholder="Nombre de la actividad">${esc(a.t)}</textarea><button type="button" class="pa-x" data-pact="dela|${g.id}|${a.id}">Eliminar</button>` : `${esc(a.t)}<small class="pa-s" style="color:${col(ap)}">${ok}/${pr} · ${paPct(ap)}</small>`}</td>${cells}</tr>`;
     });
