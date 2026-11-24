@@ -986,6 +986,7 @@
   .ent-ok{background:#F29622;color:#011632;border:0;border-radius:10px;padding:12px;font:700 13px Poppins,sans-serif;cursor:pointer;}
   .ent-ok:disabled{opacity:.5;cursor:not-allowed;}.ent-x{background:none;border:0;color:#b9c6dc;font:12px Poppins,sans-serif;cursor:pointer;margin-top:8px;}
   @media(max-width:860px){.ent{grid-template-columns:1fr;}.ent-l,.ent-r{padding:18px;}}
+  .ps-ind{margin-top:14px;background:#F29622;color:#011632;border:0;border-radius:8px;padding:8px 12px;font:700 12px Poppins,sans-serif;cursor:pointer;}
   .rd-more{background:none;border:0;color:#03459B;font-size:12px;cursor:pointer;padding:4px 0;font-family:inherit;}
   @media(max-width:860px){.rd{grid-template-columns:1fr;}.rd-main{grid-template-columns:1fr;padding:14px;}.rd-c.w{grid-column:auto;}.rd-side{padding:20px;}}
 
@@ -1158,6 +1159,11 @@
 </div>
 
 <!-- Modal: PIN de acceso al módulo -->
+<div class="modal-bg" id="indModalBg">
+  <div class="modal" style="max-width:860px;width:100%;max-height:92vh;overflow:auto;padding:0;">
+    <div id="indBody"></div>
+  </div>
+</div>
 <div class="modal-bg" id="pinModalBg">
   <div class="modal" style="max-width:340px;text-align:center;">
     <h3 id="pinModalTitle">Ingresa el PIN</h3>
@@ -5374,7 +5380,7 @@ function renderResumen(){
       }).filter(x=>x.pct!==null);
       areaRows = lst.map(x=>`<div class="rd-row"><span class="n" title="${esc(x.n)}">${esc(x.n)}</span><div class="rd-trk"><i style="width:${x.pct*100}%;background:${x.pct>=CFG.verde/100?'#1F7A5C':x.pct>=CFG.ambar/100?'#F29622':'#B3261E'}"></i></div><b>${Math.round(x.pct*100)}% <small style="font-weight:400;color:var(--gray)">${x.c[0]}/${x.c[1]}</small></b></div>`).join('');
     }
-    body = `<div class="rd">${side('Plan anual '+(py||''), pc(resPlanSem===null||!R0?anual:(resPlanSem?R1:R0).global), resPlanSem===null?'Promedio del año '+(py||''):'Promedio '+(resPlanSem?'2.º':'1.er')+' semestre '+(py||''), `<div class="ps-bs" style="margin-top:12px;">1.er semestre <b>${R0?pc(R0.global):'—'}</b><br>2.º semestre <b>${R1?pc(R1.global):'—'}</b></div><div class="ps-bs" style="margin-top:12px;"><b>${tD}</b> tareas cumplidas de <b>${tP}</b> programadas en el año</div>`)}
+    body = `<div class="rd">${side('Plan anual '+(py||''), pc(resPlanSem===null||!R0?anual:(resPlanSem?R1:R0).global), resPlanSem===null?'Promedio del año '+(py||''):'Promedio '+(resPlanSem?'2.º':'1.er')+' semestre '+(py||''), `<div class="ps-bs" style="margin-top:12px;">1.er semestre <b>${R0?pc(R0.global):'—'}</b><br>2.º semestre <b>${R1?pc(R1.global):'—'}</b></div><div class="ps-bs" style="margin-top:12px;"><b>${tD}</b> tareas cumplidas de <b>${tP}</b> programadas en el año</div><button type="button" class="ps-ind" data-indopen="1">Ver indicador trimestral →</button>`)}
     <div class="rd-main">
       <div class="rd-c w"><h3>CUMPLIDAS / PROGRAMADAS POR MES${resPlanSem!==null?' · '+(resPlanSem?'2.º':'1.er')+' SEMESTRE':''}</h3>${py?colsP:'<p class="empty">Sin plan anual.</p>'}</div>
       ${R0?`<div class="rd-c"><h3>PROMEDIO POR SEMESTRE</h3>${semRow('1.er semestre',R0,0)}${semRow('2.º semestre',R1,1)}<p class="hint" style="margin:10px 0 0;">${resPlanSem===null?'Toca un semestre para ver sus áreas.':'<button class="rd-more" id="rdTodo">Ver todo el año</button>'}</p></div>`:''}
@@ -10427,7 +10433,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1318';
+const APP_VERSION = '2026-11-24-1757';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15199,6 +15205,70 @@ async function loadPlanAnual(){
   paCorte = paHoyIdx(); paSem = paCorte>=24 ? 1 : 0;
   if(CFG.corte==='fin') paCorte = paSem*24+23;
 }
+
+/* Indicador: Ejecución del Plan de Mantenimiento Preventivo (ficha FOR-EXC-04, medición trimestral) */
+const IND_HIST = {2024:[[23,11,24,19,11,21],[11,9,12,10,5,9],[12,8,11,9,7,8],[16,10,11,12,8,11]], 2025:[[23,10,27,22,10,25],[11,9,13,9,7,10],[12,8,11,10,7,8],[16,9,11,13,9,10]]};
+const IND_TXT = {2024:'Durante 2024, el indicador alcanzó un cumplimiento global del 81 %, ubicándose en un nivel adecuado. Ninguno de los trimestres alcanzó la meta institucional del 90 %.', 2025:'En 2025 el indicador mejoró frente al año anterior y alcanzó un cumplimiento global del 85 %. Se destaca el primer trimestre (95 %), que superó la meta institucional.'};
+let indAno = null;
+const indSeg = g => g.seg || (/silla|puesto|mobiliario|mueble/i.test(g.n) ? 'mob' : /aire|equipo/i.test(g.n) ? 'eq' : 'inf');
+function indDatos(y){
+  if(IND_HIST[y]) return IND_HIST[y].map(r=>({p:[r[0],r[1],r[2]], e:[r[3],r[4],r[5]], real:true}));
+  const gr = planAnual[y] || [], out = [];
+  for(let q=0;q<4;q++){
+    const lo = q*12, p=[0,0,0], e=[0,0,0], idx={inf:0,eq:1,mob:2};
+    const corte = String(y)===String(paAno) ? paCorte : paHoyIdx();
+    if(lo>corte){ out.push(null); continue; }
+    gr.forEach(g=>{ const k = idx[indSeg(g)]; g.a.forEach(a=>{ for(let i=lo;i<lo+12 && i<=corte;i++){ if(a.p[i]==='1'){ p[k]++; if(a.h[i]==='1') e[k]++; } } }); });
+    out.push({p,e,real:false});
+  }
+  return out;
+}
+const indPct = d => { if(!d) return null; const P = d.p.reduce((a,b)=>a+b,0); return P ? d.e.reduce((a,b)=>a+b,0)/P : null; };
+const indCol = v => v===null ? '#8a96a8' : v>=.9 ? '#2e9e6b' : v>=.6 ? '#c98a00' : '#c0392b';
+const indSem = v => v===null ? 'Sin datos' : v>=.9 ? 'Sobresaliente' : v>=.6 ? 'Adecuado' : 'Deficiente';
+function abrirIndicador(){
+  indAno = indAno || Number(paAno) || new Date().getFullYear();
+  const bg = document.getElementById('indModalBg'); bg.classList.add('active'); renderIndicador();
+}
+function renderIndicador(){
+  const anos = [...new Set([2024, 2025, ...Object.keys(planAnual).map(Number)])].sort();
+  const D = indDatos(indAno), pc = v => v===null ? '—' : Math.round(v*100)+'%';
+  const tot = D.reduce((t,d)=>{ if(d){ t.p += d.p.reduce((a,b)=>a+b,0); t.e += d.e.reduce((a,b)=>a+b,0); } return t; },{p:0,e:0});
+  const glob = tot.p ? tot.e/tot.p : null;
+  const RO = ['I','II','III','IV'];
+  const filas = D.map((d,q)=>{ const v = indPct(d); return `<tr><td><b>${indAno}-${RO[q]}</b></td>${[0,1,2].map(k=>`<td>${d?d.e[k]+' / '+d.p[k]:'—'}</td>`).join('')}<td><b>${d?d.e.reduce((a,b)=>a+b,0)+' / '+d.p.reduce((a,b)=>a+b,0):'—'}</b></td><td><span style="display:inline-block;padding:2px 10px;border-radius:99px;font-weight:700;font-size:12px;color:#fff;background:${indCol(v)}">${pc(v)}</span> <small style="color:${indCol(v)}">${indSem(v)}</small></td></tr>`; }).join('');
+  const bars = RO.map((r,q)=>`<div style="flex:1;min-width:0;text-align:center;"><div style="display:flex;align-items:flex-end;justify-content:center;gap:4px;height:130px;border-bottom:1px solid #d5dcea;position:relative;">${[2024,2025,indAno].filter((y,i,a)=>a.indexOf(y)===i).map(y=>{ const v = indPct(indDatos(y)[q]); return `<div title="${y}-${r}: ${pc(v)}" style="width:22px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;"><small style="font-size:9px;font-weight:700;color:#011632">${v===null?'':Math.round(v*100)}</small><div style="width:100%;height:${Math.round((v||0)*100*1.2)}px;background:${y===2024?'#5D88D6':y===2025?'#03459B':'#F29622'};border-radius:4px 4px 0 0;"></div></div>`; }).join('')}<div style="position:absolute;left:0;right:0;bottom:${Math.round(90*1.2)+1}px;border-top:1.5px dashed #2e9e6b;"></div></div><small style="color:#5b6b85">Trimestre ${r}</small></div>`).join('');
+  const segs = [['inf','Infraestructura'],['eq','Equipos'],['mob','Mobiliario']];
+  const grupos = (planAnual[indAno]||[]);
+  document.getElementById('indBody').innerHTML = `
+    <div style="background:#011632;color:#fff;padding:20px 24px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+      <div style="min-width:0;flex:1;"><div style="font-size:11px;letter-spacing:.8px;color:#F29622;font-weight:600;">INDICADOR · EFQM 5.5b</div>
+        <div style="font-size:18px;font-weight:700;margin:6px 0 4px;">Ejecución del Plan de Mantenimiento Preventivo</div>
+        <div style="font-size:12px;color:#b9c6dc;line-height:1.5;">Mide el grado de ejecución del plan preventivo frente a las actividades programadas trimestralmente, para asegurar la conservación y disponibilidad de la infraestructura, equipos y mobiliario.</div></div>
+      <div style="text-align:right;"><div style="font-size:38px;font-weight:700;color:#F29622;line-height:1;">${pc(glob)}</div><div style="font-size:11px;color:#b9c6dc;margin-top:4px;">Cumplimiento ${indAno}</div><div style="font-size:11px;color:#b9c6dc;">Meta 90 % · ${tot.e} de ${tot.p}</div></div>
+    </div>
+    <div style="padding:18px 24px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">${anos.map(y=>`<button class="year-pill${y===indAno?' active':''}" data-indy="${y}">${y}</button>`).join('')}<span style="flex:1"></span><button class="ghost" id="indCerrar">Cerrar</button></div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.4px;color:#011632;margin-bottom:6px;">CUMPLIMIENTO TRIMESTRAL · ejecutadas / planificadas</div>
+      <div class="table-wrap"><table><thead><tr><th>Periodo</th><th>Infraestructura</th><th>Equipos</th><th>Mobiliario</th><th>Total</th><th>Cumplimiento</th></tr></thead><tbody>${filas}</tbody></table></div>
+      <p class="hint" style="margin:8px 0 0;">${IND_HIST[indAno]?'Datos de la ficha del indicador (FOR-EXC-04).':'Calculado desde el Plan anual: actividades programadas hasta la fecha de corte, agrupadas por trimestre (12 semanas).'}</p>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.4px;color:#011632;margin:18px 0 8px;">COMPARATIVO POR TRIMESTRE <span style="font-weight:400;color:#5b6b85;">· <i style="display:inline-block;width:8px;height:8px;background:#5D88D6"></i> 2024 <i style="display:inline-block;width:8px;height:8px;background:#03459B"></i> 2025 ${indAno>2025?`<i style="display:inline-block;width:8px;height:8px;background:#F29622"></i> ${indAno}`:''} · línea verde = meta 90 %</span></div>
+      <div style="display:flex;gap:10px;">${bars}</div>
+      ${IND_TXT[indAno]?`<p style="font-size:12.5px;line-height:1.6;color:#2b3a52;margin:16px 0 0;"><b>Análisis ${indAno}.</b> ${IND_TXT[indAno]}</p>`:''}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:16px;font-size:11.5px;">
+        <div style="border-left:4px solid #2e9e6b;padding:6px 10px;background:#f4faf7;"><b>90 % – 100 % · Sobresaliente</b><br>Cumplimiento satisfactorio del plan preventivo.</div>
+        <div style="border-left:4px solid #c98a00;padding:6px 10px;background:#fdf8ec;"><b>60 % – 89 % · Adecuado</b><br>Desviaciones: priorizar actividades pendientes.</div>
+        <div style="border-left:4px solid #c0392b;padding:6px 10px;background:#fbf0ee;"><b>0 % – 59 % · Deficiente</b><br>Requiere acciones correctivas y de seguimiento.</div>
+      </div>
+      ${grupos.length?`<details style="margin-top:16px;"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:#011632;">Segmento de cada área (infraestructura, equipos o mobiliario)</summary><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:8px;">${grupos.map(g=>`<label style="font-size:12px;display:flex;justify-content:space-between;gap:8px;align-items:center;">${esc(g.n)}<select data-indseg="${g.id}" style="width:auto;padding:4px 6px;">${segs.map(x=>`<option value="${x[0]}"${indSeg(g)===x[0]?' selected':''}>${x[1]}</option>`).join('')}</select></label>`).join('')}</div></details>`:''}
+    </div>`;
+  const body = document.getElementById('indBody');
+  body.querySelectorAll('[data-indy]').forEach(b=>b.addEventListener('click', ()=>{ indAno = Number(b.dataset.indy); renderIndicador(); }));
+  body.querySelectorAll('[data-indseg]').forEach(sel=>sel.addEventListener('change', async ()=>{ const g = grupos.find(x=>x.id===sel.dataset.indseg); if(g){ g.seg = sel.value; await savePlanAnual(); renderIndicador(); } }));
+  document.getElementById('indCerrar').addEventListener('click', ()=>document.getElementById('indModalBg').classList.remove('active'));
+}
+document.getElementById('indModalBg').addEventListener('click', e=>{ if(e.target.id==='indModalBg') e.target.classList.remove('active'); });
+document.addEventListener('click', e=>{ if(e.target.closest('[data-indopen]')) abrirIndicador(); });
 async function savePlanAnual(){ try{ await storageAPI.set('planAnualMant', JSON.stringify(planAnual)); }catch(e){ console.warn('plan anual', e); } }
 function paCalc(grupos, corteGlob, sem){
   const lo = sem*24, corte = Math.min(corteGlob, lo+23);
@@ -15257,7 +15327,8 @@ function renderPlanAnual(){
       <div class="ps-big">${paPct(R.global)}</div><div class="ps-bl">${sinIniciar?'Semestre sin iniciar':'Cumplimiento al '+PA_MESES[Math.floor(corte/4)].toLowerCase()+', semana '+(corte%4+1)}</div>
       <div class="ps-bs">${R.totD} de ${R.totP} programadas cumplidas${R.vencidas?` · <b>${R.vencidas}</b> pendientes vencidas`:''}${R.repN?` · <b>${R.repN}</b> reprogramadas (${R.repOk} cumplidas)`:''}</div>
       <div class="ps-leg"><div><i class="dt ok"></i>Cumplida</div><div><i class="dt ov"></i>Programada y pendiente</div><div><i class="dt fu"></i>Programada a futuro</div></div>
-      <div class="ps-bs" style="margin-top:14px;">Por semestre: 1.er <b>${paPct(R0.global)}</b> · 2.º <b>${paPct(R1.global)}</b></div></div>`;
+      <div class="ps-bs" style="margin-top:14px;">Por semestre: 1.er <b>${paPct(R0.global)}</b> · 2.º <b>${paPct(R1.global)}</b></div>
+      <button type="button" class="ps-ind" data-indopen="1">Ver indicador trimestral →</button></div>`;
     document.getElementById('paGrupos').innerHTML = `${paEdit?'<p class="hint" style="margin:0 0 10px;">Modo edición: entra a un área para programar semanas y cambiar sus actividades.</p>':''}<div class="ps-wrap">${side}<div class="ps-main"><div class="ps-hd"><span class="ps-hn">Área</span><div class="ps-rul">${MES3.map(m=>`<span>${m}</span>`).join('')}</div><span class="ps-hr">Cumplido</span></div>${filas}${paEdit?'<button type="button" class="btn-sec pa-add" data-pact="addg">+ Agregar grupo</button>':'<p class="ps-tip">Toca un área para ver y marcar sus actividades.</p>'}</div></div>`;
     return;
   }
