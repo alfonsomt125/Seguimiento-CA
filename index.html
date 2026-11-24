@@ -5380,18 +5380,18 @@ function renderResumen(){
       }).filter(x=>x.pct!==null);
       areaRows = lst.map(x=>`<div class="rd-row"><span class="n" title="${esc(x.n)}">${esc(x.n)}</span><div class="rd-trk"><i style="width:${x.pct*100}%;background:${x.pct>=CFG.verde/100?'#1F7A5C':x.pct>=CFG.ambar/100?'#F29622':'#B3261E'}"></i></div><b>${Math.round(x.pct*100)}% <small style="font-weight:400;color:var(--gray)">${x.c[0]}/${x.c[1]}</small></b></div>`).join('');
     }
-    body = `<div class="rd">${side('Plan anual '+(py||''), pc(resPlanSem===null||!R0?anual:(resPlanSem?R1:R0).global), resPlanSem===null?'Promedio del año '+(py||''):'Promedio '+(resPlanSem?'2.º':'1.er')+' semestre '+(py||''), `<div class="ps-bs" style="margin-top:12px;">1.er semestre <b>${R0?pc(R0.global):'—'}</b><br>2.º semestre <b>${R1?pc(R1.global):'—'}</b></div><div class="ps-bs" style="margin-top:12px;"><b>${tD}</b> tareas cumplidas de <b>${tP}</b> programadas en el año</div><button type="button" class="ps-ind" data-indopen="1">Ver indicador trimestral →</button>`)}
+    body = `<div class="rd">${side('Plan anual '+(py||''), pc(resPlanSem===null||!R0?anual:(resPlanSem?R1:R0).global), resPlanSem===null?'Promedio del año '+(py||''):'Promedio '+(resPlanSem?'2.º':'1.er')+' semestre '+(py||''), `<div class="ps-bs" style="margin-top:12px;">1.er semestre <b>${R0?pc(R0.global):'—'}</b><br>2.º semestre <b>${R1?pc(R1.global):'—'}</b></div><div class="ps-bs" style="margin-top:12px;"><b>${tD}</b> tareas cumplidas de <b>${tP}</b> programadas en el año</div><button type="button" class="ps-ind" data-indopen="1">Ver indicador</button>`)}
     <div class="rd-main">
       <div class="rd-c w"><h3>CUMPLIDAS / PROGRAMADAS POR MES${resPlanSem!==null?' · '+(resPlanSem?'2.º':'1.er')+' SEMESTRE':''}</h3>${py?colsP:'<p class="empty">Sin plan anual.</p>'}</div>
       ${R0?`<div class="rd-c"><h3>PROMEDIO POR SEMESTRE</h3>${semRow('1.er semestre',R0,0)}${semRow('2.º semestre',R1,1)}<p class="hint" style="margin:10px 0 0;">${resPlanSem===null?'Toca un semestre para ver sus áreas.':'<button class="rd-more" id="rdTodo">Ver todo el año</button>'}</p></div>`:''}
       ${(()=>{
-        const DT = indDatos(py), RO = ['T1 · ene–mar','T2 · abr–jun','T3 · jul–sep','T4 · oct–dic'];
+        const DT = indDatos(py), RO = ['T1','T2','T3','T4'];
         const qs = [0,1,2,3].filter(q=>resPlanSem===null || Math.floor(q/2)===resPlanSem);
-        const tt = qs.reduce((t,q)=>{ const d = DT[q]; if(d){ t.p += d.p.reduce((a,b)=>a+b,0); t.e += d.e.reduce((a,b)=>a+b,0); } return t; },{p:0,e:0});
-        const gv = tt.p ? tt.e/tt.p : null;
+        const vq = qs.map(q=>indPct(DT[q])).filter(v=>v!==null);
+        const gv = vq.length ? vq.reduce((a,b)=>a+b,0)/vq.length : null;
         return `<div class="rd-c${resPlanSem!==null?' rd-hl':''}"><h3>INDICADOR TRIMESTRAL · ${resPlanSem===null?'AÑO '+py:(resPlanSem?'2.º':'1.er')+' SEMESTRE '+py}</h3>${qs.map(q=>{ const d = DT[q], v = indPct(d), P = d?d.p.reduce((a,b)=>a+b,0):0, E = d?d.e.reduce((a,b)=>a+b,0):0;
-          return `<div class="rd-row rd-pick" data-indopen="1" title="Ver ficha del indicador"><span class="n">${RO[q]} <small style="font-weight:400;color:var(--gray)">${d?E+'/'+P:''}</small></span><div class="rd-trk" style="position:relative;"><i style="width:${(v||0)*100}%;background:${indCol(v)}"></i><u style="position:absolute;left:90%;top:-2px;bottom:-2px;border-left:1.5px dashed #2e9e6b;"></u></div><b style="color:${indCol(v)}">${pc(v)}</b></div>`; }).join('')}
-          <p class="hint" style="margin:10px 0 0;">Ejecutadas ÷ planificadas = <b>${tt.p?tt.e+' / '+tt.p+' = '+pc(gv):'—'}</b> · meta 90 %. <button type="button" class="rd-more" data-indopen="1">Ver ficha completa</button></p></div>`; })()}
+          return `<div class="rd-row rd-pick" data-ptri="${q}" title="Ir al cronograma de este trimestre"><span class="n">${RO[q]} <small style="font-weight:400;color:var(--gray)">${d?E+'/'+P:''}</small></span><div class="rd-trk" style="position:relative;"><i style="width:${(v||0)*100}%;background:${indCol(v)}"></i><u style="position:absolute;left:90%;top:-2px;bottom:-2px;border-left:1.5px dashed #2e9e6b;"></u></div><b style="color:${indCol(v)}">${pc(v)}</b></div>`; }).join('')}
+          <p class="hint" style="margin:10px 0 0;">Promedio de los trimestres = <b>${pc(gv)}</b> · meta 90 %. <button type="button" class="rd-more" data-indopen="1">Ver indicador</button></p></div>`; })()}
       <div class="rd-c${R0?'':' w'}${resPlanSem!==null?' rd-hl':''}"><h3>${areaTit}</h3>${areaRows||'<p class="empty">Sin datos aún.</p>'}</div>
     </div></div>`;
   } else {
@@ -10441,7 +10441,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1816';
+const APP_VERSION = '2026-11-24-1824';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15244,7 +15244,7 @@ function renderIndicador(){
   const RO = ['I','II','III','IV'], SUM = a => a.reduce((x,y)=>x+y,0);
   const DA = {}; anos.forEach(y=>{ DA[y] = indDatos(y); });
   const yTot = y => DA[y].reduce((t,d)=>{ if(d){ t.p += SUM(d.p); t.e += SUM(d.e); } return t; },{p:0,e:0});
-  const yPct = y => { const t = yTot(y); return t.p ? t.e/t.p : null; };
+  const yPct = y => { const vq = DA[y].map(indPct).filter(v=>v!==null); return vq.length ? vq.reduce((a,b)=>a+b,0)/vq.length : null; };
   const yAct = anos.slice().reverse().find(y=>yTot(y).p>0) || anos[anos.length-1];
   const tAct = yTot(yAct), gAct = yPct(yAct);
   const card = (k,v)=>`<div style="border:1px solid #e3e8f2;border-radius:10px;padding:8px 10px;min-width:0;"><div style="font-size:10.5px;color:#5b6b85;">${k}</div><b style="font-size:12.5px;color:#011632;">${v}</b></div>`;
@@ -15266,7 +15266,7 @@ function renderIndicador(){
     <div style="background:#011632;color:#fff;padding:20px 24px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
       <div style="min-width:0;flex:1;"><div style="font-size:11px;letter-spacing:.8px;color:#F29622;font-weight:600;">IRE-OPR-01 · FICHA DE INDICADORES FOR-EXC-04</div>
         <div style="font-size:18px;font-weight:700;margin:6px 0 0;">Ejecución del Plan de Mantenimiento Preventivo</div></div>
-      <div style="text-align:right;"><div style="font-size:38px;font-weight:700;color:#F29622;line-height:1;">${pc(gAct)}</div><div style="font-size:11px;color:#b9c6dc;margin-top:4px;">Cumplimiento ${yAct} · meta 90 %</div><div style="font-size:11px;color:#b9c6dc;">${tAct.e} de ${tAct.p} actividades</div></div>
+      <div style="text-align:right;"><div style="font-size:38px;font-weight:700;color:#F29622;line-height:1;">${pc(gAct)}</div><div style="font-size:11px;color:#b9c6dc;margin-top:4px;">Cumplimiento ${yAct} · meta 90 %</div><div style="font-size:11px;color:#b9c6dc;">Promedio de los trimestres · ${tAct.e} de ${tAct.p} actividades</div></div>
     </div>
     <div style="padding:16px 24px 22px;">
       <div style="display:flex;justify-content:flex-end;"><button class="ghost" id="indCerrar">Cerrar</button></div>
@@ -15299,7 +15299,12 @@ function renderIndicador(){
   document.getElementById('indCerrar').addEventListener('click', ()=>document.getElementById('indModalBg').classList.remove('active'));
 }
 document.getElementById('indModalBg').addEventListener('click', e=>{ if(e.target.id==='indModalBg') e.target.classList.remove('active'); });
-document.addEventListener('click', e=>{ if(e.target.closest('[data-indopen]')) abrirIndicador(); });
+const resAnoPlan = ()=>{ const f = document.getElementById('resumenAno').dataset.value || ''; return (f && planAnual[f]) ? f : paAno; };
+document.addEventListener('click', e=>{
+  if(e.target.closest('[data-indopen]')) abrirIndicador();
+  const t = e.target.closest('[data-ptri]');
+  if(t){ const q = +t.dataset.ptri; if(String(resAnoPlan())!==String(paAno)) paAno = String(resAnoPlan()); paSem = Math.floor(q/2); paDet = null; document.querySelector('#mantSubActividades nav.tabs button[data-view="cronograma"]').click(); try{ renderPlanAnual(); }catch(_){} }
+});
 async function savePlanAnual(){ try{ await storageAPI.set('planAnualMant', JSON.stringify(planAnual)); }catch(e){ console.warn('plan anual', e); } }
 function paCalc(grupos, corteGlob, sem){
   const lo = sem*24, corte = Math.min(corteGlob, lo+23);
@@ -15359,7 +15364,7 @@ function renderPlanAnual(){
       <div class="ps-bs">${R.totD} de ${R.totP} programadas cumplidas${R.vencidas?` · <b>${R.vencidas}</b> pendientes vencidas`:''}${R.repN?` · <b>${R.repN}</b> reprogramadas (${R.repOk} cumplidas)`:''}</div>
       <div class="ps-leg"><div><i class="dt ok"></i>Cumplida</div><div><i class="dt ov"></i>Programada y pendiente</div><div><i class="dt fu"></i>Programada a futuro</div></div>
       <div class="ps-bs" style="margin-top:14px;">Por semestre: 1.er <b>${paPct(R0.global)}</b> · 2.º <b>${paPct(R1.global)}</b></div>
-      <button type="button" class="ps-ind" data-indopen="1">Ver indicador trimestral →</button></div>`;
+      <button type="button" class="ps-ind" data-indopen="1">Ver indicador</button></div>`;
     document.getElementById('paGrupos').innerHTML = `${paEdit?'<p class="hint" style="margin:0 0 10px;">Modo edición: entra a un área para programar semanas y cambiar sus actividades.</p>':''}<div class="ps-wrap">${side}<div class="ps-main"><div class="ps-hd"><span class="ps-hn">Área</span><div class="ps-rul">${MES3.map(m=>`<span>${m}</span>`).join('')}</div><span class="ps-hr">Cumplido</span></div>${filas}${paEdit?'<button type="button" class="btn-sec pa-add" data-pact="addg">+ Agregar grupo</button>':'<p class="ps-tip">Toca un área para ver y marcar sus actividades.</p>'}</div></div>`;
     return;
   }
