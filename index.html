@@ -3023,6 +3023,7 @@
         <button class="primary" id="btnNewTrabajador" style="white-space:nowrap;">+ Nuevo trabajador</button>
       </div>
       <p class="hint" style="margin:0 0 14px;">Toca un trabajador para iniciar su entrega.</p>
+      <div class="year-pills" id="trabGrupoTabs" style="margin:0 0 14px;"></div>
       <div class="tile-grid" id="trabajadorCards"></div>
 
       <div class="panel" style="margin-top:22px;">
@@ -10415,7 +10416,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1234';
+const APP_VERSION = '2026-11-24-1237';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14415,6 +14416,7 @@ document.getElementById('btnSaveMovEdit').addEventListener('click', async ()=>{
    ============================================================ */
 
 /* --- Trabajadores --- */
+let entGrupo = '';
 function renderTrabajadorTiles(){
   const search = document.getElementById('trabSearch').value.toLowerCase().trim();
   const rows = trabajadores.filter(t=>!search || t.nombre.toLowerCase().includes(search))
@@ -14427,11 +14429,20 @@ function renderTrabajadorTiles(){
     </div>`;
 
   const grid = document.getElementById('trabajadorCards');
-  grid.innerHTML = otraPersonaTile + (rows.length ? rows.map(t=>`
+  const idsMant = new Set([...horMant.personal.map(p=>p.trabajadorId).filter(Boolean), ...(heAutorizados||[]), ...horasExtras.filter(h=>(h.area||'mantenimiento')==='mantenimiento').map(h=>h.trabajadorId)]);
+  const nomMant = new Set(horMant.personal.map(p=>trabSinTilde(p.nombre)));
+  const esMant = t=> t.grupo ? t.grupo==='man' : (idsMant.has(t.id) || nomMant.has(trabSinTilde(t.nombre)) || trabSinTilde(t.nombre)==='mantenimiento');
+  const gm = rows.filter(esMant), ga = rows.filter(t=>!esMant(t));
+  const tabs = document.getElementById('trabGrupoTabs');
+  tabs.innerHTML = [['','Todos',rows.length],['man','🔧 Mantenimiento',gm.length],['adm','🗂️ Administrativo',ga.length]].map(x=>`<button class="year-pill${entGrupo===x[0]?' active':''}" data-trabgrupo="${x[0]}">${x[1]} · ${x[2]}</button>`).join('');
+  tabs.querySelectorAll('[data-trabgrupo]').forEach(b=>b.addEventListener('click', ()=>{ entGrupo = b.dataset.trabgrupo; renderTrabajadorTiles(); }));
+  const tile = t=>`
     <div class="tile-card" data-trabtile="${t.id}">
       <div class="tc-name">${esc(t.nombre)}</div>
       <div class="tc-sub">${esc(t.cargo)||esc(t.area)||''}</div>
-    </div>`).join('') : '');
+    </div>`;
+  const sec = (tit,l)=>l.length ? `<div style="grid-column:1/-1;font-size:11px;font-weight:600;letter-spacing:.4px;color:var(--navy);margin-top:6px;">${tit} · ${l.length}</div>`+l.map(tile).join('') : '';
+  grid.innerHTML = otraPersonaTile + (entGrupo==='man' ? gm.map(tile).join('') : entGrupo==='adm' ? ga.map(tile).join('') : sec('MANTENIMIENTO',gm)+sec('ADMINISTRATIVO',ga));
 
   document.getElementById('tileOtraPersona').addEventListener('click', ()=>{
     document.getElementById('opNombre').value = '';
