@@ -978,6 +978,7 @@
   .rd-ar{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line);cursor:pointer;}.rd-ar:hover{background:#F3F7FC;}
   .rd-art{flex:1;min-width:0;}.rd-art b{display:block;font-size:13px;font-weight:500;}.rd-art small{color:var(--gray);font-size:11.5px;}
   .rd-arp{font-weight:600;font-size:13px;}.rd-ar i{font-style:normal;color:var(--gray);}
+  .rd-c{position:relative;}.rd-ed{position:absolute;top:8px;right:8px;display:flex;gap:4px;z-index:2;}.rd-ed button{width:26px;height:26px;border:1px solid #d5dcea;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;}.rd-ed button:disabled{opacity:.35;cursor:default;}
   .rd-more{background:none;border:0;color:#03459B;font-size:12px;cursor:pointer;padding:4px 0;font-family:inherit;}
   @media(max-width:860px){.rd{grid-template-columns:1fr;}.rd-main{grid-template-columns:1fr;padding:14px;}.rd-c.w{grid-column:auto;}.rd-side{padding:20px;}}
 
@@ -5237,6 +5238,9 @@ document.getElementById('lightboxBg').addEventListener('click',(e)=>{ if(e.targe
    RENDER: RESUMEN
    ============================================================ */
 let resTab = 'act', resPlanSem = null, resSem = 0, resDrill = null;
+let resLay = {}, resLayCargado = false, resEdit = false;
+const RES_CARDS = [['ACTIVIDADES POR ESTADO','est','Por estado'],['CUMPLIDAS','pmes','Cumplidas por mes'],['PROMEDIO POR SEMESTRE','sem','Promedio por semestre'],['ACTIVIDADES POR MES','mes','Actividades por mes'],['ÁREAS CON MÁS','area','Áreas con más actividades'],['REPROGRAMADAS','causa','Reprogramadas por causa'],['POR ÁREA','parea','Por área']];
+function resGuardarLay(){ try{ storageAPI.set('res_layout', JSON.stringify(resLay)); }catch(e){} }
 function renderResumen(){
   const resumenAnoF = document.getElementById('resumenAno').dataset.value || '';
   const act_y = resumenAnoF ? activities.filter(a=>{
@@ -5389,6 +5393,31 @@ function renderResumen(){
       renderActivitiesTable();
     });
   });
+  // Personalizar: reordenar y ocultar tarjetas (por pestaña)
+  if(!resLayCargado){ resLayCargado = true; storageAPI.get('res_layout').then(r=>{ resLay = JSON.parse(r.value)||{}; renderResumen(); }).catch(()=>{}); }
+  const rm = document.querySelector('#resDash .rd-main');
+  if(rm && (resTab==='act'||resTab==='plan')){
+    const L = resLay[resTab] = resLay[resTab] || {o:[],h:[]};
+    const cards = [...rm.children].filter(c=>c.id!=='rdDrill').map(c=>{ const t = (c.querySelector('h3')||{}).textContent||''; const d = RES_CARDS.find(x=>t.startsWith(x[0])); c.dataset.cid = d?d[1]:''; return c; }).filter(c=>c.dataset.cid);
+    const ids = cards.map(c=>c.dataset.cid);
+    L.o = L.o.filter(i=>ids.includes(i)).concat(ids.filter(i=>!L.o.includes(i)));
+    L.o.forEach(i=>{ const c = cards.find(x=>x.dataset.cid===i); rm.appendChild(c); });
+    const drillEl = document.getElementById('rdDrill'); if(drillEl) rm.insertBefore(drillEl, rm.firstChild);
+    const vis = L.o.filter(i=>!L.h.includes(i));
+    cards.forEach(c=>{
+      const i = c.dataset.cid;
+      if(L.h.includes(i)){ c.style.display = 'none'; return; }
+      if(resEdit){ const k = vis.indexOf(i); c.insertAdjacentHTML('afterbegin', `<div class="rd-ed"><button data-mv="-1" data-cid="${i}"${k===0?' disabled':''} aria-label="Subir">↑</button><button data-mv="1" data-cid="${i}"${k===vis.length-1?' disabled':''} aria-label="Bajar">↓</button><button data-hide="${i}" aria-label="Quitar">✕</button></div>`); }
+    });
+    const bar = document.querySelector('#resDash > div'), eb = document.createElement('button');
+    eb.className = 'btn-ghost'; eb.id = 'rdEditBtn'; eb.textContent = resEdit ? 'Listo' : 'Personalizar'; eb.style.cssText = 'padding:6px 12px;border:1px solid #d5dcea;border-radius:8px;background:#fff;font:600 12px Poppins,sans-serif;cursor:pointer;';
+    if(bar) bar.appendChild(eb);
+    eb.addEventListener('click', ()=>{ resEdit = !resEdit; renderResumen(); });
+    if(resEdit && L.h.length){ rm.insertAdjacentHTML('beforeend', `<div class="rd-c w"><h3>OCULTAS</h3>${L.h.map(i=>`<button class="rd-more" data-show="${i}" style="margin-right:14px;">+ ${(RES_CARDS.find(x=>x[1]===i)||[])[2]||i}</button>`).join('')}</div>`); }
+    rm.querySelectorAll('[data-mv]').forEach(b=>b.addEventListener('click', ()=>{ const i = b.dataset.cid, d = +b.dataset.mv, a = vis.indexOf(i), o = vis[a+d]; if(!o) return; const p = L.o.indexOf(i), q = L.o.indexOf(o); L.o[p] = o; L.o[q] = i; resGuardarLay(); renderResumen(); }));
+    rm.querySelectorAll('[data-hide]').forEach(b=>b.addEventListener('click', ()=>{ const i = b.dataset.hide; L.h.push(i); if(i==='sem'){ resSem = 0; resPlanSem = null; } resGuardarLay(); renderResumen(); }));
+    rm.querySelectorAll('[data-show]').forEach(b=>b.addEventListener('click', ()=>{ L.h = L.h.filter(i=>i!==b.dataset.show); resGuardarLay(); renderResumen(); }));
+  }
   const mb = document.getElementById('rdMore');
   if(mb) mb.addEventListener('click', ()=>{ window._rdAreasAbiertas = !window._rdAreasAbiertas; renderResumen(); });
 
@@ -10368,7 +10397,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-23-2037';
+const APP_VERSION = '2026-11-23-2039';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
