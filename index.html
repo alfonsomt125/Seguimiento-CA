@@ -980,6 +980,12 @@
   .rd-arp{font-weight:600;font-size:13px;}.rd-ar i{font-style:normal;color:var(--gray);}
   .rd-c{position:relative;}.rd-ed{position:absolute;top:8px;right:8px;display:flex;gap:4px;z-index:2;}.rd-ed button{width:26px;height:26px;border:1px solid #d5dcea;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;}.rd-ed button:disabled{opacity:.35;cursor:default;}
   .rd-c.rd-sz{display:flex;flex-direction:column;overflow:auto;}.rd-c.rd-sz h3{flex:none;}.rd-c.rd-sz .rd-col{flex:1;height:auto;min-height:60px;}.rd-c.rd-sz .rd-don svg{width:clamp(70px,38%,220px);height:auto;flex:none;}.rd-rz{position:absolute;right:2px;bottom:2px;width:18px;height:18px;cursor:ns-resize;touch-action:none;background:linear-gradient(135deg,transparent 55%,#8fa3c4 55%,#8fa3c4 62%,transparent 62%,transparent 75%,#8fa3c4 75%,#8fa3c4 82%,transparent 82%);}
+  .ent{display:grid;grid-template-columns:minmax(0,1fr) 290px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px;}
+  .ent-l{padding:22px;min-width:0;}.ent-r{background:#011632;color:#fff;padding:22px;display:flex;flex-direction:column;}
+  .ent-r .bar-row{border-bottom:1px solid #1d3a66;color:#fff;}.ent-r .bar-row .count,.ent-r .bar-row .name{color:#fff;}.ent-r .empty{color:#b9c6dc;font-size:12px;font-style:normal;}
+  .ent-ok{background:#F29622;color:#011632;border:0;border-radius:10px;padding:12px;font:700 13px Poppins,sans-serif;cursor:pointer;}
+  .ent-ok:disabled{opacity:.5;cursor:not-allowed;}.ent-x{background:none;border:0;color:#b9c6dc;font:12px Poppins,sans-serif;cursor:pointer;margin-top:8px;}
+  @media(max-width:860px){.ent{grid-template-columns:1fr;}.ent-l,.ent-r{padding:18px;}}
   .rd-more{background:none;border:0;color:#03459B;font-size:12px;cursor:pointer;padding:4px 0;font-family:inherit;}
   @media(max-width:860px){.rd{grid-template-columns:1fr;}.rd-main{grid-template-columns:1fr;padding:14px;}.rd-c.w{grid-column:auto;}.rd-side{padding:20px;}}
 
@@ -2949,7 +2955,8 @@
   <!-- ENTRADA DE INSUMOS -->
   <section class="view" id="view-inv-movimientos">
     <div id="invTop-entrada"></div>
-    <div class="panel">
+    <div class="ent">
+      <div class="ent-l">
       <h2>Registrar entrada de insumos</h2>
       <p class="hint" style="margin:0 0 14px;">Agrega todos los productos que llegaron (por ejemplo, de una misma compra) y regístralos todos juntos al final.</p>
       <div class="grid-2">
@@ -2961,7 +2968,6 @@
           <label>Cantidad</label>
           <input type="number" id="movCantidad" min="1" step="1" value="1">
         </div>
-        <div class="field"></div>
         <div class="field">
           <label>Fecha (para todos los que agregues)</label>
           <input type="date" id="movFecha">
@@ -2972,16 +2978,16 @@
         </div>
       </div>
       <div class="modal-actions" style="justify-content:flex-start;margin-top:4px;">
-        <button class="ghost" id="btnAgregarMovCarrito">+ Agregar a la lista</button>
+        <button class="primary" id="btnAgregarMovCarrito">+ Agregar a la lista</button>
       </div>
-
-      <div id="movCarritoWrap" style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px;">
-        <h3 style="margin:0 0 10px;font-size:14px;color:var(--navy);">Productos por registrar (<span id="movCarritoCount">0</span>)</h3>
-        <div id="movCarritoLista"></div>
-        <div class="modal-actions" style="justify-content:flex-start;margin-top:10px;">
-          <button class="primary" id="btnConfirmarMovCarrito">✔ Registrar todas las entradas</button>
-          <button class="ghost" id="btnVaciarMovCarrito">Vaciar lista</button>
-        </div>
+      </div>
+      <div class="ent-r" id="movCarritoWrap">
+        <div class="ps-kick">POR REGISTRAR</div>
+        <div class="ps-big" style="margin-top:12px;"><span id="movCarritoCount">0</span></div>
+        <div class="ps-bl">productos en la lista</div>
+        <div id="movCarritoLista" style="margin:12px 0;flex:1;overflow:auto;max-height:260px;"></div>
+        <button class="ent-ok" id="btnConfirmarMovCarrito">Confirmar entrada</button>
+        <button class="ent-x" id="btnVaciarMovCarrito">Vaciar lista</button>
       </div>
     </div>
 
@@ -10409,7 +10415,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1230';
+const APP_VERSION = '2026-11-24-1234';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
