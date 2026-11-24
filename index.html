@@ -2962,7 +2962,8 @@
       <div class="grid-2">
         <div class="field" style="grid-column:1/-1;">
           <label>Insumo</label>
-          <select id="movInsumo"></select>
+          <input type="text" id="movBuscar" placeholder="Escribe para buscar el insumo…" autocomplete="off" style="margin-bottom:6px;">
+          <select id="movInsumo" size="6" style="height:auto;"></select>
         </div>
         <div class="field">
           <label>Cantidad</label>
@@ -10416,7 +10417,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1240';
+const APP_VERSION = '2026-11-24-1249';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14016,8 +14017,10 @@ function populateMovSelects(){
     .map(i=>`<option value="${i.id}">${esc(i.nombre)} (disp: ${i.cantidad} ${esc(i.unidad)||''})</option>`).join('');
   const movSel = document.getElementById('movInsumo');
   const prevMov = movSel.value;
-  movSel.innerHTML = opts;
-  if(insumos.some(i=>i.id===prevMov)) movSel.value = prevMov;
+  const qMov = trabSinTilde(document.getElementById('movBuscar').value);
+  movSel.innerHTML = insumos.filter(i=>!qMov || trabSinTilde(i.nombre).includes(qMov)).sort((a,b)=>a.nombre.localeCompare(b.nombre))
+    .map(i=>`<option value="${i.id}">${esc(i.nombre)} (disp: ${i.cantidad} ${esc(i.unidad)||''})</option>`).join('');
+  if(movSel.querySelector(`option[value="${prevMov}"]`)) movSel.value = prevMov; else if(qMov && movSel.options.length) movSel.selectedIndex = 0;
 
   const filtSel = document.getElementById('movFiltroInsumo');
   const prevFilt = filtSel.value;
@@ -14125,6 +14128,10 @@ function renderMovCarrito(){
   btnVaciar.style.display = entradaCarrito.length ? 'inline-block' : 'none';
 }
 
+document.getElementById('movBuscar').addEventListener('input', populateMovSelects);
+document.getElementById('movBuscar').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const c = document.getElementById('movCantidad'); c.focus(); c.select(); } });
+document.getElementById('movInsumo').addEventListener('change', ()=>{ const c = document.getElementById('movCantidad'); c.focus(); c.select(); });
+document.getElementById('movCantidad').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('btnAgregarMovCarrito').click(); document.getElementById('movBuscar').focus(); } });
 document.getElementById('btnAgregarMovCarrito').addEventListener('click', ()=>{
   const insumoId = document.getElementById('movInsumo').value;
   const cantidad = Number(document.getElementById('movCantidad').value)||0;
@@ -14136,6 +14143,7 @@ document.getElementById('btnAgregarMovCarrito').addEventListener('click', ()=>{
   else{ entradaCarrito.push({insumoId, cantidad}); }
 
   document.getElementById('movCantidad').value = 1;
+  document.getElementById('movBuscar').value = ''; populateMovSelects();
   renderMovCarrito();
   showToast('Agregado a la lista. Puedes seguir agregando más productos.');
 });
