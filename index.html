@@ -5248,6 +5248,8 @@ function renderResumen(){
   const activityIds0 = new Set(activities0.map(a=>a.id));
   const bitacora0 = resumenAnoF ? bitacora.filter(e=>!e.actividadId || activityIds0.has(e.actividadId)) : bitacora;
 
+  const avgDe = l=>l.length?Math.round(l.reduce((t,a)=>t+Number(a.avance||0),0)/l.length):null;
+  const aS1 = act_y.filter(a=>semDe(a)===1), aS2 = act_y.filter(a=>semDe(a)===2), avgAnual = avgDe(act_y), avS1 = avgDe(aS1), avS2 = avgDe(aS2);
   const total = activities0.length;
   const avgAvance = total ? Math.round(activities0.reduce((s,a)=>s+Number(a.avance||0),0)/total) : 0;
   const hoyISO = todayISO();
@@ -5308,13 +5310,14 @@ function renderResumen(){
     drillHTML = `<div class="rd-c w rd-hl" id="rdDrill"><h3>${esc(tit).toUpperCase()} · ${lst.length} ACTIVIDADES <button type="button" class="rd-x" id="rdDrillX" aria-label="Cerrar">✕</button></h3>${lst.map(a=>`<div class="rd-ar" data-ract="${a.id}"><div class="rd-art"><b>${esc(a.proyecto)}</b><small>${[esc(a.area||''), a.estado, a.fechaInicio?fmtDate(a.fechaInicio)+(a.fechaFin?' → '+fmtDate(a.fechaFin):''):(a.fechaFin?'Fin '+fmtDate(a.fechaFin):'')].filter(Boolean).join(' · ')}</small></div><span class="rd-arp">${Number(a.avance)||0}%</span><i>›</i></div>`).join('')||'<p class="empty">Sin actividades.</p>'}<p class="hint" style="margin:8px 0 0;">Toca una actividad para ver su detalle.</p></div>`;
   }
   const sw0 = `<div class="he-switch" id="resSwitch">${[['act','Actividades'],['plan','Plan anual']].map(x=>`<button data-rt="${x[0]}"${x[0]===resTab?' class="active"':''}>${x[1]}</button>`).join('')}</div>`;
-  const sw = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">' + sw0 + (resTab==='act' ? `<div class="he-switch" id="resSemSw">${[[0,'Todo el año'],[1,'1.er semestre'],[2,'2.º semestre']].map(x=>`<button data-rsem="${x[0]}"${x[0]===resSem?' class="active"':''}>${x[1]}</button>`).join('')}</div>` : '') + '</div>';
+  const sw = '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">' + sw0 + (false ? `<div class="he-switch" id="resSemSw">${[[0,'Todo el año'],[1,'1.er semestre'],[2,'2.º semestre']].map(x=>`<button data-rsem="${x[0]}"${x[0]===resSem?' class="active"':''}>${x[1]}</button>`).join('')}</div>` : '') + '</div>';
   const side = (k,big,bl,extra)=>`<div class="rd-side"><div class="ps-kick">${k}</div><div class="ps-big" style="margin-top:14px;">${big}</div><div class="ps-bl">${bl}</div>${extra}</div>`;
   let body = '';
   if(resTab==='act'){
-    body = `<div class="rd">${side('Actividades', avgAvance+'%', 'Avance promedio', `<div class="ps-bs"><b>${total}</b> actividades · <b>${cerradas}</b> cerradas</div><div class="rd-ord"><button data-ordencat="Abierta"><b>${abiertas}</b><span>Abiertas</span></button><button class="v" data-ordencat="Vencida"><b>${vencidas}</b><span>Vencidas</span></button></div>`)}
+    body = `<div class="rd">${side('Actividades', (avgAnual||0)+'%', 'Promedio del año'+(mY?' '+mY:''), `<div class="ps-bs" style="margin-top:12px;">1.er semestre <b>${avS1===null?'—':avS1+'%'}</b><br>2.º semestre <b>${avS2===null?'—':avS2+'%'}</b></div><div class="ps-bs" style="margin-top:12px;"><b>${total}</b> actividades · <b>${cerradas}</b> cerradas</div><div class="rd-ord"><button data-ordencat="Abierta"><b>${abiertas}</b><span>Abiertas</span></button><button class="v" data-ordencat="Vencida"><b>${vencidas}</b><span>Vencidas</span></button></div>`)}
     <div class="rd-main">
       <div class="rd-c"><h3>ACTIVIDADES POR ESTADO</h3>${donut}<p class="hint" style="margin:8px 0 0;">Toca un estado para ver sus actividades.</p></div>
+      <div class="rd-c"><h3>PROMEDIO POR SEMESTRE</h3>${[[1,'1.er semestre',avS1,aS1.length],[2,'2.º semestre',avS2,aS2.length]].map(x=>`<div class="rd-row rd-pick${resSem===x[0]?' sel':''}" data-rsem="${x[0]}" title="Toca para filtrar"><span class="n">${x[1]} <small style="font-weight:400;color:var(--gray)">${x[3]}</small></span><div class="rd-trk"><i style="width:${x[2]||0}%"></i></div><b>${x[2]===null?'—':x[2]+'%'}</b></div>`).join('')}<p class="hint" style="margin:10px 0 0;">${resSem===0?'Toca un semestre para filtrar los demás gráficos.':'<button class="rd-more" data-rsem="0">Ver todo el año</button>'}</p></div>
       <div class="rd-c"><h3>ACTIVIDADES POR MES · ${mY}${resSem?' · '+resSem+(resSem===1?'.er':'.º')+' SEMESTRE':''}</h3>${cols}${contadas<total?`<p class="hint" style="margin:8px 0 0;">${contadas} de ${total} con fecha en ${mY}. Las demás son de otros años o no tienen fecha.</p>`:''}</div>
       ${drillHTML}
       <div class="rd-c w"><h3>ÁREAS CON MÁS ACTIVIDADES</h3>${areasAll.length?areaRows(areasShow):'<p class="empty">Sin datos aún.</p>'}${areasAll.length>6?`<button class="rd-more" id="rdMore">${window._rdAreasAbiertas?'Ver menos':'Ver las '+areasAll.length+' áreas'}</button>`:''}</div>
@@ -5375,7 +5378,7 @@ function renderResumen(){
   document.querySelectorAll('#resDash [data-rarea]').forEach(x=>x.addEventListener('click', ()=>drill('area', x.dataset.rarea)));
   document.querySelectorAll('#resDash [data-ract]').forEach(x=>x.addEventListener('click', ()=>openModal(x.dataset.ract)));
   const dx = document.getElementById('rdDrillX'); if(dx) dx.addEventListener('click', ()=>{ resDrill = null; renderResumen(); });
-  document.querySelectorAll('#resSemSw button').forEach(bt=>bt.addEventListener('click', ()=>{ resSem = +bt.dataset.rsem; resDrill = null; renderResumen(); }));
+  document.querySelectorAll('[data-rsem]').forEach(bt=>bt.addEventListener('click', ()=>{ const k = +bt.dataset.rsem; resSem = (resSem===k && k) ? 0 : k; resDrill = null; renderResumen(); }));
   document.querySelectorAll('#resDash [data-rps]').forEach(r=>r.addEventListener('click', ()=>{ const k = +r.dataset.rps; resPlanSem = resPlanSem===k ? null : k; renderResumen(); }));
   const rt = document.getElementById('rdTodo'); if(rt) rt.addEventListener('click', ()=>{ resPlanSem = null; renderResumen(); });
   document.querySelectorAll('#resSwitch button').forEach(bt=>bt.addEventListener('click', ()=>{ resTab = bt.dataset.rt; resDrill = null; renderResumen(); }));
@@ -10365,7 +10368,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-23-2022';
+const APP_VERSION = '2026-11-23-2037';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
