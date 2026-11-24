@@ -2948,6 +2948,7 @@
 
   <!-- ENTRADA DE INSUMOS -->
   <section class="view" id="view-inv-movimientos">
+    <div id="invTop-entrada"></div>
     <div class="panel">
       <h2>Registrar entrada de insumos</h2>
       <p class="hint" style="margin:0 0 14px;">Agrega todos los productos que llegaron (por ejemplo, de una misma compra) y regístralos todos juntos al final.</p>
@@ -3003,6 +3004,7 @@
 
   <!-- SALIDA DE INSUMOS -->
   <section class="view" id="view-inv-entrega">
+    <div id="invTop-salida"></div>
 
     <!-- Paso 1: elegir trabajador -->
     <div id="entregaStepWorker">
@@ -3057,6 +3059,7 @@
 
   <!-- MOVIMIENTOS (unificado, editable) -->
   <section class="view" id="view-inv-movtab">
+    <div id="invTop-todos"></div>
     <div class="filters" style="margin-bottom:14px;">
       <div class="field" style="flex:2;min-width:200px;">
         <label>Insumo</label>
@@ -10406,7 +10409,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1227';
+const APP_VERSION = '2026-11-24-1230';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -13119,6 +13122,52 @@ function renderPanelCards(){
 /* Dashboard de disponibilidad: KPIs, consumo mes a mes (barras) y
    consumido-vs-disponible (torta). Se basa en las salidas registradas
    en movimientos (incluye las de Salida de Insumos / Entrega Digital). */
+
+/* Paneles de resumen (estilo Mantenimiento) para cada pestaña del inventario */
+function renderInvTops(k){
+  const mesAct = todayISO().slice(0,7);
+  const nom = id=>{ const i = insumos.find(x=>x.id===id); return i ? i.nombre : '(insumo eliminado)'; };
+  const aplica = i=>invAplicaFalt(i);
+  const bajos = insumos.filter(i=>aplica(i) && Number(i.cantidad)<=Number(i.stockMin));
+  const agot = insumos.filter(i=>aplica(i) && Number(i.cantidad||0)<=0);
+  const side = (kick,big,lbl,sub,tiles)=>`<div class="rd-side"><div class="ps-kick">${kick}</div><div class="ps-big" style="margin-top:14px;">${big}</div><div class="ps-bl">${lbl}</div><div class="ps-bs" style="margin-top:12px;">${sub}</div><div class="rd-ord">${tiles}</div></div>`;
+  const row = (n,w,b,col)=>`<div class="rd-row"><span class="n" title="${esc(n)}">${esc(n)}</span><div class="rd-trk"><i style="width:${w}%;${col?'background:'+col:''}"></i></div><b>${b}</b></div>`;
+  // Inv. Disponible
+  const porCat = {};
+  insumos.forEach(i=>{ const c = i.categoria||'Sin categoría'; porCat[c] = (porCat[c]||0) + Number(i.cantidad||0); });
+  const cats = Object.keys(porCat).sort((a,b)=>porCat[b]-porCat[a]), maxC = Math.max(1,...Object.values(porCat));
+  const rep_ = bajos.slice().sort((a,b)=>(Number(a.cantidad)/(Number(a.stockMin)||1))-(Number(b.cantidad)/(Number(b.stockMin)||1))).slice(0,6);
+  const el = document.getElementById('invKpiRow');
+  el.className = '';
+  el.innerHTML = `<div class="rd">${side('Inventario',k.totalDisponible,'Unidades en stock',`<b>${k.totalProductos}</b> productos · <b>${k.consumoMes}</b> consumidas este mes`,`<button data-invf="bajo"><b>${bajos.length}</b><span>Stock bajo</span></button><button class="v" data-invf="faltante"><b>${agot.length}</b><span>Agotados</span></button>`)}
+    <div class="rd-main">
+      <div class="rd-c"><h3>UNIDADES POR CATEGORÍA</h3>${cats.map(c=>`<div class="rd-row rd-pick" data-invcat="${esc(c)}"><span class="n" title="${esc(c)}">${esc(c)}</span><div class="rd-trk"><i style="width:${porCat[c]/maxC*100}%"></i></div><b>${porCat[c]}</b></div>`).join('')||'<p class="empty">Sin datos.</p>'}<p class="hint" style="margin:8px 0 0;">Toca una categoría para filtrar el listado.</p></div>
+      <div class="rd-c"><h3>POR REPONER</h3>${rep_.map(i=>`<div class="rd-row rd-pick" data-invprod="${i.id}"><span class="n" title="${esc(i.nombre)}">${esc(i.nombre)}</span><b style="color:${Number(i.cantidad)<=0?'#B3261E':'#F29622'}">${i.cantidad} / ${i.stockMin}</b></div>`).join('')||'<p class="empty">Nada por reponer.</p>'}</div>
+    </div></div>`;
+  el.querySelectorAll('[data-invf]').forEach(b=>b.addEventListener('click', ()=>{ document.getElementById('panelStockFilter').value = b.dataset.invf; renderPanelCards(); document.getElementById('invPtLista').scrollIntoView({behavior:'smooth',block:'start'}); }));
+  el.querySelectorAll('[data-invcat]').forEach(b=>b.addEventListener('click', ()=>{ panelModuloActual = panelModuloActual===b.dataset.invcat ? '' : b.dataset.invcat; renderPanelCards(); }));
+  el.querySelectorAll('[data-invprod]').forEach(b=>b.addEventListener('click', ()=>openPanelDetail(b.dataset.invprod)));
+  // Entradas / Salidas / Todos
+  const mk = (id,tipo,kick,lbl,tit1,tit2)=>{
+    const box = document.getElementById(id); if(!box) return;
+    const lst = movimientos.filter(m=>(!tipo||m.tipo===tipo));
+    const mes = lst.filter(m=>m.fecha && m.fecha.slice(0,7)===mesAct);
+    const uni = mes.reduce((t,m)=>t+Number(m.cantidad||0),0);
+    const hoy = lst.filter(m=>m.fecha===todayISO()).length;
+    const ult = lst.slice().sort((a,b)=>(b.fecha+b.createdAt).localeCompare(a.fecha+a.createdAt)).slice(0,5);
+    const top = {}; mes.forEach(m=>{ top[m.insumoId] = (top[m.insumoId]||0)+Number(m.cantidad||0); });
+    const tk = Object.keys(top).sort((a,b)=>top[b]-top[a]).slice(0,5), mx = Math.max(1,...Object.values(top));
+    const sub = tipo ? `<b>${mes.length}</b> registros este mes` : `<b>${lst.length}</b> movimientos en total`;
+    const tiles = tipo ? `<button type="button"><b>${hoy}</b><span>Hoy</span></button><button type="button"><b>${lst.length}</b><span>Histórico</span></button>` : `<button type="button"><b>${movimientos.filter(m=>m.tipo==='entrada'&&m.fecha&&m.fecha.slice(0,7)===mesAct).length}</b><span>Entradas mes</span></button><button type="button" class="v"><b>${movimientos.filter(m=>m.tipo==='salida'&&m.fecha&&m.fecha.slice(0,7)===mesAct).length}</b><span>Salidas mes</span></button>`;
+    box.innerHTML = `<div class="rd">${side(kick,uni,lbl,sub,tiles)}<div class="rd-main">
+      <div class="rd-c"><h3>${tit1}</h3>${ult.map(m=>`<div class="rd-row"><span class="n" title="${esc(nom(m.insumoId))}">${esc(nom(m.insumoId))}</span><b>${m.tipo==='entrada'?'+':'−'}${m.cantidad}</b></div>`).join('')||'<p class="empty">Sin registros.</p>'}</div>
+      <div class="rd-c"><h3>${tit2}</h3>${tk.map(i=>row(nom(i),top[i]/mx*100,top[i])).join('')||'<p class="empty">Sin registros este mes.</p>'}</div>
+    </div></div>`;
+  };
+  mk('invTop-entrada','entrada','Entradas','Unidades recibidas este mes','ÚLTIMAS ENTRADAS','MÁS RECIBIDOS ESTE MES');
+  mk('invTop-salida','salida','Salidas','Unidades entregadas este mes','ÚLTIMAS SALIDAS','MÁS ENTREGADOS ESTE MES');
+  mk('invTop-todos',null,'Movimientos','Unidades movidas este mes','ÚLTIMOS MOVIMIENTOS','MÁS MOVIDOS ESTE MES');
+}
 function renderInvDashboard(){
   const totalProductos = insumos.length;
   const totalDisponible = insumos.reduce((s,i)=>s+Number(i.cantidad||0),0);
@@ -13128,11 +13177,7 @@ function renderInvDashboard(){
     .filter(m=>m.tipo==='salida' && m.fecha && m.fecha.slice(0,7)===mesActual)
     .reduce((s,m)=>s+Number(m.cantidad||0),0);
 
-  document.getElementById('invKpiRow').innerHTML = `
-    <div class="kpi"><div class="num">${totalProductos}</div><div class="lbl">Productos en inventario</div></div>
-    <div class="kpi"><div class="num">${totalDisponible}</div><div class="lbl">Unidades en stock (todas)</div></div>
-    <div class="kpi"><div class="num">${consumoMes}</div><div class="lbl">Consumo de este mes</div></div>
-  `;
+  renderInvTops({totalProductos, totalDisponible, consumoMes});
 
   // --- Barras: consumo (salidas) de los últimos 6 meses ---
   const meses = [];
@@ -15071,6 +15116,7 @@ async function sincronizarConfirmaciones(){
   }catch(e){ console.warn('confirmaciones', e); }
 }
 document.querySelectorAll('#module-inventario nav.tabs button[data-invview]').forEach(b=>b.addEventListener('click', sincronizarConfirmaciones));
+document.querySelectorAll('#module-inventario nav.tabs button[data-invview]').forEach(b=>b.addEventListener('click', ()=>{ try{ renderInvDashboard(); }catch(e){} }));
 setInterval(()=>{ if(!document.hidden) sincronizarConfirmaciones(); }, 60000);
 
 /* ============================================================
