@@ -164,16 +164,16 @@
   .mov-salida{background:var(--amber-bg);color:var(--amber);}
   .panel-row{cursor:pointer;}
   .panel-row:hover td{background:var(--paper-2);}
-  .tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+  .tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;}
   .tile-card{
-    position:relative;background:#fff;border-radius:12px;padding:16px 12px;text-align:center;cursor:pointer;
+    position:relative;background:#fff;border-radius:10px;padding:8px 8px;text-align:center;cursor:pointer;
     box-shadow:var(--shadow);border-bottom:3px solid var(--teal);transition:transform .15s, box-shadow .15s;
-    display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;min-height:64px;
+    display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;min-height:46px;border-bottom-width:2px;
   }
   .tile-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(1,22,50,.14);}
   .tile-card.low{border-bottom-color:var(--red);}
-  .tile-card .tc-name{font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.3;}
-  .tile-card .tc-sub{font-size:10.5px;color:var(--gray);}
+  .tile-card .tc-name{font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.3;}
+  .tile-card .tc-sub{font-size:10px;color:var(--gray);}
   .tile-card .tc-del{position:absolute;top:0;right:0;font-size:13px;color:var(--gray);line-height:1;padding:10px;cursor:pointer;}
   .tile-card .tc-del:hover{color:var(--red);}
   .carrito-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
@@ -10416,7 +10416,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1237';
+const APP_VERSION = '2026-11-24-1240';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
