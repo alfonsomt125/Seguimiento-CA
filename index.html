@@ -979,6 +979,7 @@
   .rd-art{flex:1;min-width:0;}.rd-art b{display:block;font-size:13px;font-weight:500;}.rd-art small{color:var(--gray);font-size:11.5px;}
   .rd-arp{font-weight:600;font-size:13px;}.rd-ar i{font-style:normal;color:var(--gray);}
   .rd-c{position:relative;}.rd-ed{position:absolute;top:8px;right:8px;display:flex;gap:4px;z-index:2;}.rd-ed button{width:26px;height:26px;border:1px solid #d5dcea;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;}.rd-ed button:disabled{opacity:.35;cursor:default;}
+  .rd-c.rd-sz{display:flex;flex-direction:column;overflow:auto;}.rd-c.rd-sz h3{flex:none;}.rd-c.rd-sz .rd-col{flex:1;height:auto;min-height:60px;}.rd-c.rd-sz .rd-don svg{width:clamp(70px,38%,220px);height:auto;flex:none;}.rd-rz{position:absolute;right:2px;bottom:2px;width:18px;height:18px;cursor:ns-resize;touch-action:none;background:linear-gradient(135deg,transparent 55%,#8fa3c4 55%,#8fa3c4 62%,transparent 62%,transparent 75%,#8fa3c4 75%,#8fa3c4 82%,transparent 82%);}
   .rd-more{background:none;border:0;color:#03459B;font-size:12px;cursor:pointer;padding:4px 0;font-family:inherit;}
   @media(max-width:860px){.rd{grid-template-columns:1fr;}.rd-main{grid-template-columns:1fr;padding:14px;}.rd-c.w{grid-column:auto;}.rd-side{padding:20px;}}
 
@@ -5404,10 +5405,13 @@ function renderResumen(){
     L.o.forEach(i=>{ const c = cards.find(x=>x.dataset.cid===i); rm.appendChild(c); });
     const drillEl = document.getElementById('rdDrill'); if(drillEl) rm.insertBefore(drillEl, rm.firstChild);
     const vis = L.o.filter(i=>!L.h.includes(i));
+    L.s = L.s || {};
     cards.forEach(c=>{
       const i = c.dataset.cid;
       if(L.h.includes(i)){ c.style.display = 'none'; return; }
-      if(resEdit){ const k = vis.indexOf(i); c.insertAdjacentHTML('afterbegin', `<div class="rd-ed"><button data-mv="-1" data-cid="${i}"${k===0?' disabled':''} aria-label="Subir">↑</button><button data-mv="1" data-cid="${i}"${k===vis.length-1?' disabled':''} aria-label="Bajar">↓</button><button data-hide="${i}" aria-label="Quitar">✕</button></div>`); }
+      const z = L.s[i];
+      if(z){ if(z.w) c.classList.toggle('w', z.w===2); if(z.h){ c.style.height = z.h+'px'; c.classList.add('rd-sz'); } }
+      if(resEdit){ const k = vis.indexOf(i); c.insertAdjacentHTML('afterbegin', `<div class="rd-ed"><button data-mv="-1" data-cid="${i}"${k===0?' disabled':''} aria-label="Subir">↑</button><button data-mv="1" data-cid="${i}"${k===vis.length-1?' disabled':''} aria-label="Bajar">↓</button><button data-wd="${i}" aria-label="Ancho" title="Ancho">⇔</button><button data-hide="${i}" aria-label="Quitar">✕</button></div><div class="rd-rz" data-rz="${i}" title="Arrastra para cambiar la altura"></div>`); }
     });
     const bar = document.querySelector('#resDash > div'), eb = document.createElement('button');
     eb.className = 'btn-ghost'; eb.id = 'rdEditBtn'; eb.textContent = resEdit ? 'Listo' : 'Personalizar'; eb.style.cssText = 'padding:6px 12px;border:1px solid #d5dcea;border-radius:8px;background:#fff;font:600 12px Poppins,sans-serif;cursor:pointer;';
@@ -5416,6 +5420,11 @@ function renderResumen(){
     if(resEdit && L.h.length){ rm.insertAdjacentHTML('beforeend', `<div class="rd-c w"><h3>OCULTAS</h3>${L.h.map(i=>`<button class="rd-more" data-show="${i}" style="margin-right:14px;">+ ${(RES_CARDS.find(x=>x[1]===i)||[])[2]||i}</button>`).join('')}</div>`); }
     rm.querySelectorAll('[data-mv]').forEach(b=>b.addEventListener('click', ()=>{ const i = b.dataset.cid, d = +b.dataset.mv, a = vis.indexOf(i), o = vis[a+d]; if(!o) return; const p = L.o.indexOf(i), q = L.o.indexOf(o); L.o[p] = o; L.o[q] = i; resGuardarLay(); renderResumen(); }));
     rm.querySelectorAll('[data-hide]').forEach(b=>b.addEventListener('click', ()=>{ const i = b.dataset.hide; L.h.push(i); if(i==='sem'){ resSem = 0; resPlanSem = null; } resGuardarLay(); renderResumen(); }));
+    rm.querySelectorAll('[data-wd]').forEach(b=>b.addEventListener('click', ()=>{ const i = b.dataset.wd, c = b.closest('.rd-c'); L.s[i] = Object.assign(L.s[i]||{}, {w: c.classList.contains('w')?1:2}); resGuardarLay(); renderResumen(); }));
+    rm.querySelectorAll('[data-rz]').forEach(g=>g.addEventListener('pointerdown', e=>{ e.preventDefault(); const c = g.closest('.rd-c'), i = g.dataset.rz, y0 = e.clientY, h0 = c.offsetHeight; c.classList.add('rd-sz'); g.setPointerCapture(e.pointerId);
+      const mv = ev=>{ c.style.height = Math.max(110, h0 + ev.clientY - y0) + 'px'; };
+      const up = ()=>{ g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); L.s[i] = Object.assign(L.s[i]||{}, {h: c.offsetHeight}); resGuardarLay(); };
+      g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); }));
     rm.querySelectorAll('[data-show]').forEach(b=>b.addEventListener('click', ()=>{ L.h = L.h.filter(i=>i!==b.dataset.show); resGuardarLay(); renderResumen(); }));
   }
   const mb = document.getElementById('rdMore');
@@ -10397,7 +10406,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-23-2039';
+const APP_VERSION = '2026-11-23-2044';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
