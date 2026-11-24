@@ -10406,7 +10406,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1148';
+const APP_VERSION = '2026-11-24-1212';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14102,18 +14102,20 @@ document.getElementById('btnConfirmarMovCarrito').addEventListener('click', asyn
     movimientos.push({id: uid(), insumoId: item.insumoId, tipo:'entrada', cantidad: item.cantidad, fecha, motivo, createdAt: new Date().toISOString()});
     totalRegistrado++;
   });
-  await saveInsumos();
-  await saveMovimientos();
+  /* Se actualiza la pantalla de inmediato y los dos guardados viajan en paralelo
+     (antes se esperaba uno tras otro, y cada uno sube el JSON completo). */
+  const guardado = Promise.all([saveInsumos(), saveMovimientos()]);
 
   entradaCarrito = [];
   document.getElementById('movMotivo').value = '';
   renderMovCarrito();
 
-  populateInvFilters();
   populateMovSelects();
   renderPanelCards();
   renderMovimientosTable();
   renderMovimientosAllTable();
+  showToast(`Registrando ${totalRegistrado} entrada(s)…`);
+  await guardado;
   showToast(`Se registraron ${totalRegistrado} entrada(s) de insumos.`);
 });
 
