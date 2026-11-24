@@ -10406,7 +10406,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1214';
+const APP_VERSION = '2026-11-24-1227';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -13994,6 +13994,9 @@ function goToMovimiento(insumoId){
   document.getElementById('movCantidad').select();
 }
 
+let movLimE = 100, movLimA = 100;
+const movMasFila = (n,tipo,cols)=>`<tr><td colspan="${cols}" style="text-align:center;"><button class="ghost" data-masmov="${tipo}">Mostrar 200 más (${n} restantes)</button></td></tr>`;
+function movMasHandler(tbody){ tbody.querySelectorAll('[data-masmov]').forEach(b=>b.addEventListener('click', ()=>{ if(b.dataset.masmov==='e'){ movLimE += 200; renderMovimientosTable(); } else { movLimA += 200; renderMovimientosAllTable(); } })); }
 function renderMovimientosTable(){
   const insF = document.getElementById('movFiltroInsumo').value;
   const rows = movimientos.filter(m=>{
@@ -14003,6 +14006,7 @@ function renderMovimientosTable(){
   }).sort((a,b)=> (b.fecha+b.createdAt).localeCompare(a.fecha+a.createdAt));
 
   const tbody = document.getElementById('movBody');
+  const nTot = rows.length; rows.length = Math.min(rows.length, movLimE);
   tbody.innerHTML = rows.length ? rows.map(m=>{
     const insumo = insumos.find(i=>i.id===m.insumoId);
     const nombre = insumo ? insumo.nombre : '(insumo eliminado)';
@@ -14015,7 +14019,8 @@ function renderMovimientosTable(){
       <td>${esc(m.motivo)||'—'}</td>
       <td><button class="ghost danger" data-delmov="${m.id}">Eliminar</button></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="5" class="empty">Aún no hay entradas registradas.</td></tr>`;
+  }).join('') + (nTot>rows.length ? movMasFila(nTot-rows.length,'e',5) : '') : `<tr><td colspan="5" class="empty">Aún no hay entradas registradas.</td></tr>`;
+  movMasHandler(tbody);
 
   tbody.querySelectorAll('[data-delmov]').forEach(b=>b.addEventListener('click', async ()=>{
     if(!await customConfirm('¿Eliminar esta entrada? Se revertirá su efecto sobre el stock disponible.')) return;
@@ -14158,6 +14163,7 @@ function movimientosFiltrados(){
 function renderMovimientosAllTable(){
   const rows = movimientosFiltrados();
   const tbody = document.getElementById('movAllBody');
+  const nTot = rows.length; rows.length = Math.min(rows.length, movLimA);
   tbody.innerHTML = rows.length ? rows.map(m=>{
     const insumo = insumos.find(i=>i.id===m.insumoId);
     const nombre = insumo ? insumo.nombre : '(insumo eliminado)';
@@ -14175,7 +14181,8 @@ function renderMovimientosAllTable(){
         <button class="ghost danger" data-delmovall="${m.id}">Eliminar</button>
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="7" class="empty">Aún no hay movimientos registrados.</td></tr>`;
+  }).join('') + (nTot>rows.length ? movMasFila(nTot-rows.length,'a',7) : '') : `<tr><td colspan="7" class="empty">Aún no hay movimientos registrados.</td></tr>`;
+  movMasHandler(tbody);
 
   tbody.querySelectorAll('[data-editmov]').forEach(b=>b.addEventListener('click', ()=>openMovEditModal(b.dataset.editmov)));
   tbody.querySelectorAll('[data-delmovall]').forEach(b=>b.addEventListener('click', async ()=>{
