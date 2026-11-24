@@ -3071,6 +3071,10 @@
     <div id="invTop-todos"></div>
     <div class="filters" style="margin-bottom:14px;">
       <div class="field" style="flex:2;min-width:200px;">
+        <label>Buscar insumo</label>
+        <input type="text" id="movAllBuscar" placeholder="Escribe el nombre para ver todos sus movimientos…" autocomplete="off">
+      </div>
+      <div class="field" style="flex:2;min-width:200px;">
         <label>Insumo</label>
         <select id="movAllFiltroInsumo"><option value="">Todos</option></select>
       </div>
@@ -3095,12 +3099,15 @@
         <button class="ghost" id="btnMovPdf">⬇ PDF</button>
       </div>
     </div>
-    <div class="table-wrap">
+    <details class="panel" id="movAllDet">
+    <summary style="cursor:pointer;font-weight:700;font-size:15px;color:var(--navy);list-style:none;">Listado de movimientos <span id="movAllCount" style="font-weight:400;font-size:12px;color:var(--gray);"></span> <span style="float:right;font-size:12px;font-weight:600;color:var(--teal);">Ver / ocultar ▾</span></summary>
+    <div class="table-wrap" style="margin-top:12px;">
       <table>
         <thead><tr><th>Fecha</th><th>Insumo</th><th>Tipo</th><th>Cantidad</th><th>Entregado a</th><th>Motivo</th><th></th></tr></thead>
         <tbody id="movAllBody"></tbody>
       </table>
     </div>
+    </details>
   </section>
   <section class="view" id="view-inv-activos">
   <div class="panel">
@@ -10418,7 +10425,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1308';
+const APP_VERSION = '2026-11-24-1315';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -14217,7 +14224,10 @@ function movimientosFiltrados(){
   const perF = perSel.value;
   const desdeF = document.getElementById('movAllDesde').value;
   const hastaF = document.getElementById('movAllHasta').value;
+  const qB = trabSinTilde(document.getElementById('movAllBuscar').value);
+  const idsB = qB ? new Set(insumos.filter(i=>trabSinTilde(i.nombre).includes(qB)).map(i=>i.id)) : null;
   const rows = movimientos.filter(m=>{
+    if(idsB && !idsB.has(m.insumoId)) return false;
     if(insF && m.insumoId!==insF) return false;
     if(tipoF && m.tipo!==tipoF) return false;
     if(perF && (m.entregadoA||'').trim()!==perF) return false;
@@ -14230,7 +14240,10 @@ function movimientosFiltrados(){
 function renderMovimientosAllTable(){
   const rows = movimientosFiltrados();
   const tbody = document.getElementById('movAllBody');
-  const nTot = rows.length; rows.length = Math.min(rows.length, movLimA);
+  const nTot = rows.length;
+  const sE = rows.filter(m=>m.tipo==='entrada').reduce((t,m)=>t+Number(m.cantidad||0),0), sS = rows.filter(m=>m.tipo==='salida').reduce((t,m)=>t+Number(m.cantidad||0),0);
+  const ca = document.getElementById('movAllCount'); if(ca) ca.textContent = '· '+nTot+' movimientos'+(document.getElementById('movAllBuscar').value.trim() ? ' · entradas +'+sE+' · salidas −'+sS : '');
+  rows.length = Math.min(rows.length, movLimA);
   tbody.innerHTML = rows.length ? rows.map(m=>{
     const insumo = insumos.find(i=>i.id===m.insumoId);
     const nombre = insumo ? insumo.nombre : '(insumo eliminado)';
@@ -14276,6 +14289,7 @@ function renderMovimientosAllTable(){
   }));
 }
 document.getElementById('movAllFiltroInsumo').addEventListener('change', renderMovimientosAllTable);
+document.getElementById('movAllBuscar').addEventListener('input', ()=>{ movLimA = 100; if(document.getElementById('movAllBuscar').value.trim()) document.getElementById('movAllDet').open = true; renderMovimientosAllTable(); });
 document.getElementById('movAllFiltroTipo').addEventListener('change', renderMovimientosAllTable);
 /* Exporta lo entregado (salidas) agrupado por persona, respetando los filtros de insumo, persona y fechas */
 function entregasPorPersona(){
