@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1929';
+const APP_VERSION = '2026-11-24-1930';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15314,7 +15314,7 @@ function renderIndicador(){
     </div>`;
   const body = document.getElementById('indBody');
   body.querySelectorAll('[data-indseg]').forEach(sel=>sel.addEventListener('change', async ()=>{ const g = grupos.find(x=>x.id===sel.dataset.indseg); if(g){ g.seg = sel.value; await savePlanAnual(); renderIndicador(); } }));
-  function txtAno(y){ return indTextos[y]!==undefined ? indTextos[y] : indPlano(IND_TXT[y] || auto(y)); }
+  function txtAno(y){ return indTextos[y]!==undefined ? indTextos[y] : indPlano((IND_TXT[y] ? IND_TXT[y]+'<br><br>' : '')+auto(y)); }
   function corto(y){
     if(IND_TXT[y]) return IND_TXT[y];
     const v = yPct(y); if(v===null || !yTot(y).p) return 'Sin actividades programadas a la fecha de corte.';
@@ -15330,7 +15330,7 @@ function renderIndicador(){
     let bg = document.getElementById('indDetBg'); if(!bg){ bg = document.createElement('div'); bg.id='indDetBg'; bg.className='modal-bg'; bg.style.zIndex=10001; document.body.appendChild(bg); bg.addEventListener('click', e=>{ if(e.target===bg){ indEditY=null; bg.classList.remove('active'); } }); }
     const pintar = ()=>{
       const man = indTextos[y]!==undefined, ed = indEditY===y;
-      bg.innerHTML = `<div class="modal" style="max-width:640px;width:calc(100% - 24px);"><h3 style="margin:0 0 10px;">Análisis de resultados ${y}</h3>${ed ? `<textarea id="indTa" style="width:100%;min-height:200px;font:inherit;padding:8px;border:1px solid #d5dcea;border-radius:8px;">${esc(txtAno(y))}</textarea>` : `<div style="font-size:13px;line-height:1.6;${man?'white-space:pre-line;':''}">${man ? esc(indTextos[y]) : (IND_TXT[y] || auto(y))}</div>${man?'<small style="color:#8a96a8">Editado a mano</small>':''}`}<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">${ed ? '<button class="primary" id="indDS">Guardar</button><button class="ghost" id="indDC">Cancelar</button>' : `<button class="ghost" id="indDE">Editar texto</button>${man?'<button class="ghost" id="indDR">Volver al texto automático</button>':''}<button class="primary" id="indDX">Cerrar</button>`}</div></div>`;
+      bg.innerHTML = `<div class="modal" style="max-width:640px;width:calc(100% - 24px);"><h3 style="margin:0 0 10px;">Análisis de resultados ${y}</h3>${ed ? `<textarea id="indTa" style="width:100%;min-height:200px;font:inherit;padding:8px;border:1px solid #d5dcea;border-radius:8px;">${esc(txtAno(y))}</textarea>` : `<div style="font-size:13px;line-height:1.6;${man?'white-space:pre-line;':''}">${man ? esc(indTextos[y]) : ((IND_TXT[y] ? IND_TXT[y]+'<br><br>' : '')+auto(y))}</div>${man?'<small style="color:#8a96a8">Editado a mano</small>':''}`}<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">${ed ? '<button class="primary" id="indDS">Guardar</button><button class="ghost" id="indDC">Cancelar</button>' : `<button class="ghost" id="indDE">Editar texto</button>${man?'<button class="ghost" id="indDR">Volver al texto automático</button>':''}<button class="primary" id="indDX">Cerrar</button>`}</div></div>`;
       const q = i=>bg.querySelector('#'+i), on = (i,f)=>{ const e=q(i); if(e) e.addEventListener('click', f); };
       on('indDE', ()=>{ indEditY=y; pintar(); });
       on('indDC', ()=>{ indEditY=null; pintar(); });
