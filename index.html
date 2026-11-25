@@ -1048,7 +1048,7 @@
   .ps-main{padding:22px 24px;min-width:0;}
   .ps-hd,.ps-row{display:flex;align-items:center;gap:10px;}
   .ps-hd{font-size:10px;font-weight:600;color:var(--gray);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px;}
-  .ps-hn,.ps-n{width:150px;flex:none;}.ps-hr,.ps-r{width:60px;flex:none;text-align:right;}
+  .ps-hn,.ps-n{width:150px;flex:none;}.ps-hr,.ps-r{width:84px;flex:none;text-align:right;}
   .ps-rul{flex:1;display:flex;}.ps-rul span{flex:1;padding-left:4px;}
   .ps-row{width:100%;border:none;background:transparent;border-bottom:1px solid var(--line);padding:12px 0;font:inherit;text-align:left;cursor:pointer;color:inherit;border-radius:0;}
   .ps-row:hover{background:var(--primary-soft);}
@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1906';
+const APP_VERSION = '2026-11-24-1912';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15336,21 +15336,24 @@ function paCalc(grupos, corteGlob, sem){
   grupos.forEach(g=>{
     let sumA = 0, nA = 0;
     const acts = g.a.map(a=>{
-      let pr = 0, ok = 0;
-      for(let i=lo;i<lo+24;i++){ if(a.p[i]==='1'){ anualP++; if(a.h[i]==='1') anualD++; if(i<=corte){ pr++; const h = a.h[i]==='1'; if(h) ok++; qP[(i-lo)<12?0:1]++; if(h) qD[(i-lo)<12?0:1]++; } } }
-      const pct = pr ? ok/pr : null; if(pct!==null){ sumA += pct; nA++; }
+      let pr = 0, ok = 0; const aP = [0,0], aD = [0,0];
+      for(let i=lo;i<lo+24;i++){ if(a.p[i]==='1'){ anualP++; if(a.h[i]==='1') anualD++; if(i<=corte){ pr++; const h = a.h[i]==='1'; if(h) ok++; aP[(i-lo)<12?0:1]++; if(h) aD[(i-lo)<12?0:1]++; qP[(i-lo)<12?0:1]++; if(h) qD[(i-lo)<12?0:1]++; } } }
+      const aq = [0,1].map(k=>aP[k] ? aD[k]/aP[k] : null), aqv = aq.filter(v=>v!==null);
+      const pct = aqv.length ? aqv.reduce((x,y)=>x+y,0)/aqv.length : null; if(pct!==null){ sumA += pct; nA++; }
       totP += pr; totD += ok; vencidas += pr-ok;
       (a.rp||[]).forEach(x=>{ if(x.o>=lo && x.o<=corte){ repN++; if(x.d) repOk++; } });
-      return {a, pr, ok, pct};
+      return {a, pr, ok, pct, aP, aD};
     });
     const gP = acts.reduce((t,x)=>t+x.pr,0), gD = acts.reduce((t,x)=>t+x.ok,0);
-    const pct = gP ? gD/gP : null; if(pct!==null){ sumG += pct; nG++; }
-    gs.push({g, acts, pct});
+    const gq = [0,1].map(k=>{ const p = acts.reduce((t,x)=>t+x.aP[k],0); return p ? acts.reduce((t,x)=>t+x.aD[k],0)/p : null; }), gqv = gq.filter(v=>v!==null);
+    const pct = gqv.length ? gqv.reduce((x,y)=>x+y,0)/gqv.length : null; if(pct!==null){ sumG += pct; nG++; }
+    gs.push({g, acts, pct, gq});
   });
   const qv = [0,1].map(k=>qP[k] ? qD[k]/qP[k] : null), qvv = qv.filter(v=>v!==null);
   return {gs, qv, global: qvv.length ? qvv.reduce((x,y)=>x+y,0)/qvv.length : null, totP, totD, vencidas, anualP, anualD, repN, repOk};
 }
 const paPct = v => v===null ? '—' : Math.round(v*100)+'%';
+const paTQ = (gq,sem) => gq ? `T${sem*2+1} ${paPct(gq[0])} · T${sem*2+2} ${paPct(gq[1])}` : '';
 function renderPlanAnual(){
   const grupos = planAnual[paAno] || [];
   const ys = Object.keys(planAnual).sort();
@@ -15381,9 +15384,9 @@ function renderPlanAnual(){
       }
       return `<div class="ps-trk">${[0,1,2,3,4,5].map(m=>`<u style="left:${m/6*100}%"></u>`).join('')}${dots}</div>`;
     };
-    const filas = R.gs.map(({g,acts,pct})=>{
+    const filas = R.gs.map(({g,acts,pct,gq})=>{
       const pr = acts.reduce((x,y)=>x+y.pr,0), ok = acts.reduce((x,y)=>x+y.ok,0);
-      return `<button type="button" class="ps-row" data-pg="${g.id}"><div class="ps-n"><b>${esc(g.n)}</b><small>${esc(g.r||'')}</small></div>${pista(g.a,true)}<div class="ps-r"><b>${paPct(pct)}</b><div class="ps-pb"><i style="width:${Math.round((pct||0)*100)}%"></i></div><small>${ok}/${pr}</small></div></button>`;
+      return `<button type="button" class="ps-row" data-pg="${g.id}"><div class="ps-n"><b>${esc(g.n)}</b><small>${esc(g.r||'')}</small></div>${pista(g.a,true)}<div class="ps-r"><b>${paPct(pct)}</b><div class="ps-pb"><i style="width:${Math.round((pct||0)*100)}%"></i></div><small>${ok}/${pr}</small><small style="display:block;white-space:nowrap;">${paTQ(gq,paSem)}</small></div></button>`;
     }).join('');
     const side = `<div class="ps-side"><div class="ps-kick">Mantenimiento preventivo</div><div class="ps-sem">${paSem===0?'1.er':'2.º'} semestre ${paAno}</div><div class="ps-rule"></div>
       <div class="ps-big">${paPct(R.global)}</div><div class="ps-bl">${sinIniciar?'Semestre sin iniciar':'Cumplimiento al '+PA_MESES[Math.floor(corte/4)].toLowerCase()+', semana '+(corte%4+1)}</div>
@@ -15397,9 +15400,9 @@ function renderPlanAnual(){
   const mm = PA_MESES.slice(paSem*6, paSem*6+6);
   const hdr = `<tr><th class="pa-n" rowspan="2"></th>${mm.map((m,mi)=>`<th class="pa-m${mi===3?' q2':''}" colspan="4">${m}</th>`).join('')}</tr><tr>${mm.map((_,mi)=>[1,2,3,4].map(w=>`<th class="pa-w${(paSem*24+mi*4+w-1)===hoy?' cur':''}${(mi===3&&w===1)?' q2':''}">${w}</th>`).join('')).join('')}</tr>`;
   let out = `<button type="button" class="pa-back" data-pback="1">‹ Todas las áreas</button>${paRepro?'<p class="hint" style="margin:0 0 10px;">Reprogramar: toca una semana pendiente y luego la nueva semana. La original sigue contando como no cumplida; la nueva no cambia el porcentaje. Toca de nuevo una reprogramada para deshacerla.</p>':''}${paEdit?'<p class="hint" style="margin:0 0 10px;">Modo edición: toca las semanas para programarlas o quitarlas, y cambia nombres, responsables y actividades.</p>':''}<div class="pa-leyenda"><span class="l-d">Cumplida</span><span class="l-p">Programada</span><span class="l-o">Vencida sin cumplir</span><span class="l-r">Reprogramada (no cambia el %)</span></div>`;
-  R.gs.filter(x=>x.g.id===paDet).forEach(({g,acts,pct})=>{
+  R.gs.filter(x=>x.g.id===paDet).forEach(({g,acts,pct,gq})=>{
     const gp = acts.reduce((x,y)=>x+y.pr,0), gd = acts.reduce((x,y)=>x+y.ok,0);
-    out += `<div class="panel pa-g${paEdit?' pa-edit':''}"><div class="pa-gh" style="cursor:default"><h3>${esc(g.n)}</h3><span class="pa-cnt">${gd}/${gp}</span><span class="pa-pct" style="color:${col(pct)}">${paPct(pct)}</span></div><div class="pa-bar"><i style="width:${Math.round((pct||0)*100)}%"></i></div>`;
+    out += `<div class="panel pa-g${paEdit?' pa-edit':''}"><div class="pa-gh" style="cursor:default"><h3>${esc(g.n)}</h3><span class="pa-cnt">${gd}/${gp}</span><span class="pa-pct" style="color:${col(pct)}">${paPct(pct)}</span><span class="pa-cnt">${paTQ(gq,paSem)}</span></div><div class="pa-bar"><i style="width:${Math.round((pct||0)*100)}%"></i></div>`;
     out += `${paEdit ? `<div class="pa-ge"><input class="pa-in" data-pe="gn|${g.id}" value="${esc(g.n)}" placeholder="Nombre del grupo"><input class="pa-in" data-pe="gr|${g.id}" value="${esc(g.r||'')}" placeholder="Responsables"><button type="button" class="pa-x" data-pact="delg|${g.id}">Eliminar grupo</button></div>` : `<div class="pa-resp">${esc(g.r||'')}</div>`}<div class="pa-scroll"><table class="pa-t"><thead>${hdr}</thead><tbody>`;
     acts.forEach(({a,pr,ok,pct:ap})=>{
       let cells = '';
