@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1927';
+const APP_VERSION = '2026-11-24-1929';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15316,14 +15316,15 @@ function renderIndicador(){
   body.querySelectorAll('[data-indseg]').forEach(sel=>sel.addEventListener('change', async ()=>{ const g = grupos.find(x=>x.id===sel.dataset.indseg); if(g){ g.seg = sel.value; await savePlanAnual(); renderIndicador(); } }));
   function txtAno(y){ return indTextos[y]!==undefined ? indTextos[y] : indPlano(IND_TXT[y] || auto(y)); }
   function corto(y){
+    if(IND_TXT[y]) return IND_TXT[y];
     const v = yPct(y); if(v===null || !yTot(y).p) return 'Sin actividades programadas a la fecha de corte.';
-    const qs = y2 => DA[y2] ? DA[y2].map(d=>indPct(d)).filter(x=>x!==null) : [];
-    const nm = y2 => qs(y2).filter(x=>x>=.9).length, P = n => Math.round(n*100);
-    const q = qs(y), pv = (DA[y-1] && yTot(y-1).p) ? yPct(y-1) : null;
-    let t = `${P(v)} % de promedio trimestral; meta cumplida en ${nm(y)} de ${q.length} trimestres`;
-    if(pv!==null){ const d = P(v)-P(pv); t += d===0 ? `, igual que ${y-1} (${P(pv)} %)` : `, ${Math.abs(d)} puntos ${d>0?'por encima':'por debajo'} de ${y-1} (${P(pv)} %, ${nm(y-1)} de ${qs(y-1).length})`; }
-    else t += ' (primer año medido)';
-    return t+'.';
+    const P = n => Math.round(n*100), RQ = DA[y].map((d,q)=>({q,v:indPct(d)})).filter(x=>x.v!==null);
+    const pv = (DA[y-1] && yTot(y-1).p) ? yPct(y-1) : null, ok = RQ.filter(x=>x.v>=.9), mej = RQ.reduce((a,b)=>b.v>a.v?b:a);
+    const comp = pv===null ? '' : P(v)>P(pv) ? ` mejoró frente a ${y-1} (${P(pv)} %) y` : P(v)<P(pv) ? ` bajó frente a ${y-1} (${P(pv)} %) y` : ` se mantuvo frente a ${y-1} (${P(pv)} %) y`;
+    const otros = Object.keys(DA).map(Number).filter(k=>k<y-1 && DA[k] && yTot(k).p && yPct(k)!==null).map(k=>`${k} en ${P(yPct(k))} %`);
+    let t = `En ${y} el indicador${comp||''} alcanzó un cumplimiento global del ${P(v)} %${otros.length?', con '+otros.join(' y ')+' antes':''}. `;
+    t += ok.length ? `Superaron la meta institucional del 90 % ${ok.map(x=>RO[x.q]).join(', ')}.` : `Se destaca el trimestre ${RO[mej.q]} (${P(mej.v)} %), pero ninguno alcanzó la meta institucional del 90 %.`;
+    return t;
   }
   function abrirDet(y){
     let bg = document.getElementById('indDetBg'); if(!bg){ bg = document.createElement('div'); bg.id='indDetBg'; bg.className='modal-bg'; bg.style.zIndex=10001; document.body.appendChild(bg); bg.addEventListener('click', e=>{ if(e.target===bg){ indEditY=null; bg.classList.remove('active'); } }); }
