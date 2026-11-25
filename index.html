@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1916';
+const APP_VERSION = '2026-11-24-1921';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15309,16 +15309,29 @@ function renderIndicador(){
         <div style="border-left:4px solid #c0392b;padding:8px 10px;background:#fbf0ee;"><b>0 % – 59 % · 🔴 Deficiente</b><br>El cumplimiento es insuficiente y puede afectar la disponibilidad, conservación y funcionamiento de los recursos institucionales, por lo que requiere acciones correctivas y de seguimiento.</div>
       </div>
       ${tit('ANÁLISIS DE RESULTADOS DEL INDICADOR')}
-      <div class="table-wrap"><table><thead><tr><th style="width:80px">Periodo</th><th>Análisis</th></tr></thead><tbody>${anos.slice().reverse().map(y=>`<tr><td><b>${y}</b></td><td style="white-space:normal;font-size:12.5px;line-height:1.55;">${indEditY===y ? `<textarea id="indTa" style="width:100%;min-height:150px;font:inherit;padding:8px;border:1px solid #d5dcea;border-radius:8px;">${esc(indTextos[y]!==undefined ? indTextos[y] : indPlano(IND_TXT[y] || auto(y)))}</textarea><div style="margin-top:6px;display:flex;gap:8px;"><button class="primary" data-indsave="${y}">Guardar</button><button class="ghost" data-indcancel="1">Cancelar</button></div>` : `<div${indTextos[y]!==undefined?' style="white-space:pre-line"':''}>${indTextos[y]!==undefined ? esc(indTextos[y]) : (IND_TXT[y] || auto(y))}</div><div style="margin-top:6px;"><button class="ghost" data-indedit="${y}">Editar texto</button>${indTextos[y]!==undefined?` <button class="ghost" data-indreset="${y}">Volver al texto automático</button> <small style="color:#8a96a8">(editado a mano)</small>`:''}</div>`}</td></tr>`).join('')}</tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th style="width:80px">Periodo</th><th>Análisis</th></tr></thead><tbody>${anos.slice().reverse().map(y=>`<tr><td><b>${y}</b></td><td style="white-space:normal;font-size:12.5px;line-height:1.5;"><div data-inddet="${y}" style="cursor:pointer;" title="Ver detalle">${esc(corto(y))} <b style="color:#03459B;white-space:nowrap;">Ver detalle ›</b></div></td></tr>`).join('')}</tbody></table></div>
       ${grupos.length?`<details style="margin-top:16px;"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:#011632;">Segmento de cada área en ${yAct} (infraestructura, equipos o mobiliario)</summary><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:8px;">${grupos.map(g=>`<label style="font-size:12px;display:flex;justify-content:space-between;gap:8px;align-items:center;">${esc(g.n)}<select data-indseg="${g.id}" style="width:auto;padding:4px 6px;">${segs.map(x=>`<option value="${x[0]}"${indSeg(g)===x[0]?' selected':''}>${x[1]}</option>`).join('')}</select></label>`).join('')}</div></details>`:''}
     </div>`;
   const body = document.getElementById('indBody');
   body.querySelectorAll('[data-indseg]').forEach(sel=>sel.addEventListener('change', async ()=>{ const g = grupos.find(x=>x.id===sel.dataset.indseg); if(g){ g.seg = sel.value; await savePlanAnual(); renderIndicador(); } }));
+  function txtAno(y){ return indTextos[y]!==undefined ? indTextos[y] : indPlano(IND_TXT[y] || auto(y)); }
+  function corto(y){ const t = txtAno(y).replace(/\s+/g,' ').trim().replace(/^(Lo logrado|Por mejorar|Proyección)\.\s*/i,''); const fr = t.split(/(?<=[.!?])\s+/); let o = fr[0]||''; if(o.length<90 && fr[1]) o += ' '+fr[1]; return o.length>170 ? o.slice(0,167).replace(/\s+\S*$/,'')+'…' : o; }
+  function abrirDet(y){
+    let bg = document.getElementById('indDetBg'); if(!bg){ bg = document.createElement('div'); bg.id='indDetBg'; bg.className='modal-bg'; bg.style.zIndex=10001; document.body.appendChild(bg); bg.addEventListener('click', e=>{ if(e.target===bg){ indEditY=null; bg.classList.remove('active'); } }); }
+    const pintar = ()=>{
+      const man = indTextos[y]!==undefined, ed = indEditY===y;
+      bg.innerHTML = `<div class="modal" style="max-width:640px;width:calc(100% - 24px);"><h3 style="margin:0 0 10px;">Análisis de resultados ${y}</h3>${ed ? `<textarea id="indTa" style="width:100%;min-height:200px;font:inherit;padding:8px;border:1px solid #d5dcea;border-radius:8px;">${esc(txtAno(y))}</textarea>` : `<div style="font-size:13px;line-height:1.6;${man?'white-space:pre-line;':''}">${man ? esc(indTextos[y]) : (IND_TXT[y] || auto(y))}</div>${man?'<small style="color:#8a96a8">Editado a mano</small>':''}`}<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">${ed ? '<button class="primary" id="indDS">Guardar</button><button class="ghost" id="indDC">Cancelar</button>' : `<button class="ghost" id="indDE">Editar texto</button>${man?'<button class="ghost" id="indDR">Volver al texto automático</button>':''}<button class="primary" id="indDX">Cerrar</button>`}</div></div>`;
+      const q = i=>bg.querySelector('#'+i), on = (i,f)=>{ const e=q(i); if(e) e.addEventListener('click', f); };
+      on('indDE', ()=>{ indEditY=y; pintar(); });
+      on('indDC', ()=>{ indEditY=null; pintar(); });
+      on('indDX', ()=>{ indEditY=null; bg.classList.remove('active'); });
+      on('indDS', async ()=>{ const v = q('indTa').value.trim(); if(v) indTextos[y]=v; else delete indTextos[y]; indEditY=null; await gTxt(); pintar(); renderIndicador(); });
+      on('indDR', async ()=>{ delete indTextos[y]; await gTxt(); pintar(); renderIndicador(); });
+    };
+    indEditY = null; pintar(); bg.classList.add('active');
+  }
   const gTxt = async()=>{ try{ await storageAPI.set('ind_textos', JSON.stringify(indTextos)); }catch(e){} };
-  body.querySelectorAll('[data-indedit]').forEach(b=>b.addEventListener('click', ()=>{ indEditY = Number(b.dataset.indedit); renderIndicador(); }));
-  body.querySelectorAll('[data-indcancel]').forEach(b=>b.addEventListener('click', ()=>{ indEditY = null; renderIndicador(); }));
-  body.querySelectorAll('[data-indsave]').forEach(b=>b.addEventListener('click', async ()=>{ indTextos[b.dataset.indsave] = document.getElementById('indTa').value.trim(); if(!indTextos[b.dataset.indsave]) delete indTextos[b.dataset.indsave]; indEditY = null; await gTxt(); renderIndicador(); }));
-  body.querySelectorAll('[data-indreset]').forEach(b=>b.addEventListener('click', async ()=>{ delete indTextos[b.dataset.indreset]; await gTxt(); renderIndicador(); }));
+  body.querySelectorAll('[data-inddet]').forEach(el=>el.addEventListener('click', ()=>abrirDet(Number(el.dataset.inddet))));
   document.getElementById('indCerrar').addEventListener('click', ()=>document.getElementById('indModalBg').classList.remove('active'));
 }
 document.getElementById('indModalBg').addEventListener('click', e=>{ if(e.target.id==='indModalBg') e.target.classList.remove('active'); });
