@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1912';
+const APP_VERSION = '2026-11-24-1916';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15221,7 +15221,7 @@ const IND_HIST = {2024:[[23,11,24,19,11,21],[11,9,12,10,5,9],[12,8,11,9,7,8],[16
 const IND_TXT = {2024:'Durante 2024, el indicador alcanzó un cumplimiento global del 81 %, ubicándose en un nivel adecuado. Ninguno de los trimestres alcanzó la meta institucional del 90 %.', 2025:'En 2025 el indicador mejoró frente al año anterior y alcanzó un cumplimiento global del 85 %. Se destaca el primer trimestre (95 %), que superó la meta institucional.'};
 let indAno = null, indTextos = {}, indTxtCargado = false, indEditY = null;
 const indPlano = h => String(h).replace(/<br\s*\/?>/g,'\n').replace(/<[^>]+>/g,'');
-const indSeg = g => g.seg || (/silla|puesto|mobiliario|mueble/i.test(g.n) ? 'mob' : /aire|equipo/i.test(g.n) ? 'eq' : 'inf');
+const indSeg = g => g.seg || (/silla|puesto|mobiliario|mueble|cerraj/i.test(g.n) ? 'mob' : /aire|equipo/i.test(g.n) ? 'eq' : 'inf');
 function indDatos(y){
   if(IND_HIST[y]) return IND_HIST[y].map(r=>({p:[r[0],r[1],r[2]], e:[r[3],r[4],r[5]], real:true}));
   const gr = planAnual[y] || [], out = [];
