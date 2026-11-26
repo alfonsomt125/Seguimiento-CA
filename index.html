@@ -1941,7 +1941,7 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Número</th><th>Tipo</th><th>Nombre</th><th>Empresa</th><th>Fecha acta</th><th>Firma</th><th></th></tr></thead>
+        <thead><tr><th>Número</th><th>Tipo</th><th>Nombre</th><th>Empresa</th><th>Fecha acta</th><th>Recibido</th><th>Firma</th><th></th></tr></thead>
         <tbody id="rsBody"></tbody>
       </table>
     </div>
@@ -3308,7 +3308,7 @@
       <div class="field"><label>Documento identificación</label><input type="text" id="rsDocumento"></div>
       <div class="field"><label>Cargo</label><input type="text" id="rsCargo"></div>
     </div>
-    <div class="field" style="max-width:220px;"><label>Fecha del acta</label><input type="date" id="rsFechaActa"></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;"><div class="field" style="max-width:220px;"><label>Fecha del acta</label><input type="date" id="rsFechaActa"></div><div class="field" style="max-width:220px;"><label>Recibido</label><select id="rsAlcance"><option value="">Sin definir</option><option>Completo</option><option>Parcial</option></select></div></div>
     <p class="hint" id="rsFirmaInfo" style="margin:8px 0;"></p>
     <div class="modal-actions">
       <button class="ghost" id="btnCerrarRS">Cerrar</button>
@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-25-2010';
+const APP_VERSION = '2026-11-26-1322';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -12571,9 +12571,10 @@ function renderRecibidos(){
   document.getElementById('rsBody').innerHTML = filas.length ? filas.map(a=>`<tr>
     <td><strong>${esc(a.numero)}</strong></td><td>${esc(a.tipo)}</td><td>${esc(a.nombre)}</td><td>${esc(a.empresa)||'—'}</td>
     <td>${a.fechaActa?fmtDate(a.fechaActa):'—'}</td>
+    <td>${a.alcance?`<span style="font-weight:600;color:${a.alcance==='Parcial'?'var(--orange)':'#2e9e6b'};">${a.alcance}</span>`:'—'}</td>
     <td>${a.firmado?`✅ <small>${esc(a.codigoFirma)}</small>`:'<span style="color:var(--orange);">Sin firmar</span>'}</td>
     <td style="white-space:nowrap;"><button class="ghost" data-rsedit="${a.id}">Abrir</button> <button class="ghost" data-rspdf="${a.id}">👁 PDF</button> <button class="ghost danger" data-rsdel="${a.id}">Eliminar</button></td></tr>`).join('')
-    : '<tr><td colspan="7" class="empty">Aún no hay actas registradas.</td></tr>';
+    : '<tr><td colspan="8" class="empty">Aún no hay actas registradas.</td></tr>';
   const tb = document.getElementById('rsBody');
   tb.querySelectorAll('[data-rsedit]').forEach(b=>b.addEventListener('click', ()=>abrirRS(b.dataset.rsedit)));
   tb.querySelectorAll('[data-rspdf]').forEach(b=>b.addEventListener('click', ()=>pdfRS(recibidosSatisfaccion.find(a=>a.id===b.dataset.rspdf))));
@@ -12599,6 +12600,7 @@ function abrirRS(id){
   document.getElementById('rsDocumento').value = v('documento');
   document.getElementById('rsCargo').value = v('cargo');
   document.getElementById('rsFechaActa').value = a ? (a.fechaActa||'') : todayISO();
+  document.getElementById('rsAlcance').value = a ? (a.alcance||'') : 'Completo';
   document.getElementById('rsPlazo').value = rsPlazoTexto(v('fechaInicio'), v('fechaFin'));
   document.getElementById('rsFirmaInfo').textContent = a && a.firmado ? `Firmada · código ${a.codigoFirma}. Si modificas el acta, la firma se anula.` : 'Sin firmar.';
   document.getElementById('btnPdfRS').style.display = a ? '' : 'none';
@@ -12617,7 +12619,8 @@ function leerFormRS(){
     supervisor: document.getElementById('rsSupervisor').value.trim(),
     documento: document.getElementById('rsDocumento').value.trim(),
     cargo: document.getElementById('rsCargo').value.trim(),
-    fechaActa: document.getElementById('rsFechaActa').value
+    fechaActa: document.getElementById('rsFechaActa').value,
+    alcance: document.getElementById('rsAlcance').value
   };
 }
 ['rsInicio','rsFin'].forEach(id=>document.getElementById(id).addEventListener('change', ()=>{
@@ -12737,7 +12740,7 @@ function construirActaHTML(a, firmaImg){
     <table style="margin-top:10px;"><tr><td colspan="3" style="${hd}">SUPERVISIÓN DEL CONTRATO</td></tr>
       <tr><td style="${hd}">NOMBRE DEL SUPERVISOR</td><td style="${hd}">DOCUMENTO IDENTIFICACIÓN</td><td style="${hd}">CARGO</td></tr>
       <tr class="c" style="height:30px;font-size:17px;"><td style="${td}">${esc(a.supervisor)}</td><td style="${td}">${esc(a.documento)}</td><td style="${td}">${esc(a.cargo)}</td></tr></table>
-    <p style="text-align:justify;font-size:14.5px;line-height:1.55;margin:20px 0;">Una vez revisado y verificado el cumplimiento del objeto del Contrato citado y los informes de avances y supervisión, las partes relacionadas a continuación realizan la entrega y el recibo a satisfacción de las actividades, con el proposito de dar por terminada la etapa de ejecución. Para contancia de lo anterior, firman esta Acta en Barranquilla, a los <u>&nbsp;${dd}&nbsp;</u> días del mes de <u>&nbsp;${mm}&nbsp;</u> de <u>&nbsp;${yy}&nbsp;</u></p>
+    <p style="text-align:justify;font-size:14.5px;line-height:1.55;margin:20px 0;">Una vez revisado y verificado el cumplimiento del objeto del Contrato citado y los informes de avances y supervisión, las partes relacionadas a continuación realizan la entrega y el recibo a satisfacción${a.alcance?' '+a.alcance.toLowerCase().replace('completo','completo').replace('parcial','parcial'):''} de las actividades, con el proposito de dar por terminada la etapa de ejecución. Para contancia de lo anterior, firman esta Acta en Barranquilla, a los <u>&nbsp;${dd}&nbsp;</u> días del mes de <u>&nbsp;${mm}&nbsp;</u> de <u>&nbsp;${yy}&nbsp;</u></p>
     <table style="font-size:15px;"><colgroup><col style="width:44%"><col style="width:12%"><col style="width:44%"></colgroup>
       <tr><td>Por: Colegio Americano de Barranquilla</td><td></td><td>Por: ${esc(a.empresa)}</td></tr>
       <tr><td style="height:120px;vertical-align:bottom;text-align:center;padding:0;">${firmaImg?`<img src="${firmaImg}" style="display:block;margin:0 auto -2px;max-height:110px;max-width:100%;mix-blend-mode:multiply;">`:''}</td><td></td><td></td></tr>
