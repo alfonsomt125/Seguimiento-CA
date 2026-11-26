@@ -1315,7 +1315,7 @@
       </div>
       <div class="kpis" id="paKpis"></div>
       <div id="paGrupos"></div>
-      <details style="margin-top:6px;"><summary style="cursor:pointer;font-size:13px;color:var(--gray);">Cómo se calcula</summary><p class="hint" style="margin:8px 0 0;">El plan se divide en dos semestres (1 ene–30 jun y 1 jul–30 dic) y cada uno tiene su propio indicador. Cada actividad tiene semanas programadas (azul) y se marca como cumplida al tocarla. El % de una actividad es cumplidas ÷ programadas hasta la fecha de corte; el % de cada grupo es el promedio de sus actividades, y el indicador final es el promedio de los grupos (igual que tu Excel). Con “Editar plan” tocas las semanas para programarlas o quitarlas.</p></details>
+      <details style="margin-top:6px;"><summary style="cursor:pointer;font-size:13px;color:var(--gray);">Cómo se calcula</summary><p class="hint" style="margin:8px 0 0;">El plan se divide en dos semestres (1 ene–30 jun y 1 jul–30 dic) y cada uno tiene su propio indicador. Cada actividad tiene semanas programadas (azul) y se marca como cumplida al tocarla. El % de una actividad es cumplidas ÷ programadas hasta la fecha de corte; el % de cada actividad, grupo, trimestre, semestre y año es siempre ejecutadas ÷ programadas de su periodo (el semestre suma sus 2 trimestres y el año los 4), igual que tu Excel. Con “Editar plan” tocas las semanas para programarlas o quitarlas.</p></details>
     </div>
     <div id="ganttWrap">
     <div class="panel">
@@ -5378,11 +5378,11 @@ function renderResumen(){
         const g1 = R1.gs[i], cnt = x=>x.acts.reduce((t,y)=>[t[0]+y.ok,t[1]+y.pr],[0,0]);
         if(resPlanSem===0) return {n:g0.g.n,pct:g0.pct,c:cnt(g0)};
         if(resPlanSem===1) return {n:g1.g.n,pct:g1.pct,c:cnt(g1)};
-        const a_=cnt(g0), b_=cnt(g1); return {n:g0.g.n,pct:avg([g0.pct,g1.pct]),c:[a_[0]+b_[0],a_[1]+b_[1]]};
+        const a_=cnt(g0), b_=cnt(g1); const tp = a_[1]+b_[1]; return {n:g0.g.n,pct:tp ? (a_[0]+b_[0])/tp : null,c:[a_[0]+b_[0],tp]};
       }).filter(x=>x.pct!==null);
       areaRows = lst.map(x=>`<div class="rd-row"><span class="n" title="${esc(x.n)}">${esc(x.n)}</span><div class="rd-trk"><i style="width:${x.pct*100}%;background:${x.pct>=CFG.verde/100?'#1F7A5C':x.pct>=CFG.ambar/100?'#F29622':'#B3261E'}"></i></div><b>${Math.round(x.pct*100)}% <small style="font-weight:400;color:var(--gray)">${x.c[0]}/${x.c[1]}</small></b></div>`).join('');
     }
-    body = `<div class="rd">${side('Plan anual '+(py||''), pc(resPlanSem===null||!R0?anual:(resPlanSem?R1:R0).global), resPlanSem===null?'Promedio del año '+(py||''):'Promedio '+(resPlanSem?'2.º':'1.er')+' semestre '+(py||''), `<div class="ps-bs" style="margin-top:12px;">1.er semestre <b>${R0?pc(R0.global):'—'}</b><br>2.º semestre <b>${R1?pc(R1.global):'—'}</b></div><div class="ps-bs" style="margin-top:12px;"><b>${tD}</b> tareas cumplidas de <b>${tP}</b> programadas en el año</div><button type="button" class="ps-ind" data-indopen="1">Ver indicador</button>`)}
+    body = `<div class="rd">${side('Plan anual '+(py||''), pc(resPlanSem===null||!R0?anual:(resPlanSem?R1:R0).global), resPlanSem===null?'Cumplimiento del año '+(py||''):'Cumplimiento '+(resPlanSem?'2.º':'1.er')+' semestre '+(py||''), `<div class="ps-bs" style="margin-top:12px;">1.er semestre <b>${R0?pc(R0.global):'—'}</b><br>2.º semestre <b>${R1?pc(R1.global):'—'}</b></div><div class="ps-bs" style="margin-top:12px;"><b>${tD}</b> tareas cumplidas de <b>${tP}</b> programadas en el año</div><button type="button" class="ps-ind" data-indopen="1">Ver indicador</button>`)}
     <div class="rd-main">
       <div class="rd-c w"><h3>CUMPLIDAS / PROGRAMADAS POR MES${resPlanSem!==null?' · '+(resPlanSem?'2.º':'1.er')+' SEMESTRE':''}</h3>${py?colsP:'<p class="empty">Sin plan anual.</p>'}</div>
       ${R0?`<div class="rd-c"><h3>PROMEDIO POR SEMESTRE</h3>${semRow('1.er semestre',R0,0)}${semRow('2.º semestre',R1,1)}<p class="hint" style="margin:10px 0 0;">${resPlanSem===null?'Toca un semestre para ver sus áreas.':'<button class="rd-more" id="rdTodo">Ver todo el año</button>'}</p></div>`:''}
@@ -5390,10 +5390,10 @@ function renderResumen(){
         const DT = indDatos(py), RO = ['T1','T2','T3','T4'];
         const qs = [0,1,2,3].filter(q=>resPlanSem===null || Math.floor(q/2)===resPlanSem);
         const vq = qs.map(q=>indPct(DT[q])).filter(v=>v!==null);
-        const gv = vq.length ? vq.reduce((a,b)=>a+b,0)/vq.length : null;
+        const gP_ = qs.reduce((t,q)=>t+(DT[q]?DT[q].p.reduce((a,b)=>a+b,0):0),0), gE_ = qs.reduce((t,q)=>t+(DT[q]?DT[q].e.reduce((a,b)=>a+b,0):0),0), gv = gP_ ? gE_/gP_ : null;
         return `<div class="rd-c${resPlanSem!==null?' rd-hl':''}"><h3>INDICADOR TRIMESTRAL · ${resPlanSem===null?'AÑO '+py:(resPlanSem?'2.º':'1.er')+' SEMESTRE '+py}</h3>${qs.map(q=>{ const d = DT[q], v = indPct(d), P = d?d.p.reduce((a,b)=>a+b,0):0, E = d?d.e.reduce((a,b)=>a+b,0):0;
           return `<div class="rd-row rd-pick" data-ptri="${q}" title="Ir al cronograma de este trimestre"><span class="n">${RO[q]} <small style="font-weight:400;color:var(--gray)">${d?E+'/'+P:''}</small></span><div class="rd-trk" style="position:relative;"><i style="width:${(v||0)*100}%;background:${indCol(v)}"></i><u style="position:absolute;left:90%;top:-2px;bottom:-2px;border-left:1.5px dashed #2e9e6b;"></u></div><b style="color:${indCol(v)}">${pc(v)}</b></div>`; }).join('')}
-          <p class="hint" style="margin:10px 0 0;">Promedio de los trimestres = <b>${pc(gv)}</b> · meta 90 %. <button type="button" class="rd-more" data-indopen="1">Ver indicador</button></p></div>`; })()}
+          <p class="hint" style="margin:10px 0 0;">Total = <b>${pc(gv)}</b> (${gE_}/${gP_}) · meta 90 %. <button type="button" class="rd-more" data-indopen="1">Ver indicador</button></p></div>`; })()}
       <div class="rd-c${R0?'':' w'}${resPlanSem!==null?' rd-hl':''}"><h3>${areaTit}</h3>${areaRows||'<p class="empty">Sin datos aún.</p>'}</div>
     </div></div>`;
   } else {
@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-25-1955';
+const APP_VERSION = '2026-11-25-1958';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15218,7 +15218,7 @@ async function loadPlanAnual(){
 
 /* Indicador: Ejecución del Plan de Mantenimiento Preventivo (ficha FOR-EXC-04, medición trimestral) */
 const IND_HIST = {2024:[[23,11,24,19,11,21],[11,9,12,10,5,9],[12,8,11,9,7,8],[16,10,11,12,8,11]], 2025:[[23,10,27,22,10,25],[11,9,13,9,7,10],[12,8,11,10,7,8],[16,9,11,13,9,10]]};
-const IND_TXT = {2024:'Durante 2024, el indicador alcanzó un cumplimiento global del 81 %, ubicándose en un nivel adecuado. Ninguno de los trimestres alcanzó la meta institucional del 90 %.', 2025:'En 2025 el indicador mejoró frente al año anterior y alcanzó un cumplimiento global del 85 %. Se destaca el primer trimestre (95 %), que superó la meta institucional.'};
+const IND_TXT = {2024:'Durante 2024, el indicador alcanzó un cumplimiento global del 82 %, ubicándose en un nivel adecuado. Ninguno de los trimestres alcanzó la meta institucional del 90 %.', 2025:'En 2025 el indicador mejoró frente al año anterior y alcanzó un cumplimiento global del 88 %. Se destaca el primer trimestre (95 %), que superó la meta institucional.'};
 let indAno = null, indTextos = {}, indTxtCargado = false, indEditY = null;
 const indPlano = h => String(h).replace(/<br\s*\/?>/g,'\n').replace(/<[^>]+>/g,'');
 const indSeg = g => g.seg || (/silla|puesto|mobiliario|mueble|cerraj/i.test(g.n) ? 'mob' : /aire|equipo/i.test(g.n) ? 'eq' : 'inf');
@@ -15284,7 +15284,7 @@ function renderIndicador(){
     <div style="background:#011632;color:#fff;padding:20px 24px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
       <div style="min-width:0;flex:1;"><div style="font-size:11px;letter-spacing:.8px;color:#F29622;font-weight:600;">IRE-OPR-01 · FICHA DE INDICADORES FOR-EXC-04</div>
         <div style="font-size:18px;font-weight:700;margin:6px 0 0;">Ejecución del Plan de Mantenimiento Preventivo</div></div>
-      <div style="text-align:right;"><div style="font-size:38px;font-weight:700;color:#F29622;line-height:1;">${pc(gAct)}</div><div style="font-size:11px;color:#b9c6dc;margin-top:4px;">Cumplimiento ${yAct} · meta 90 %</div><div style="font-size:11px;color:#b9c6dc;">Promedio de los trimestres · ${tAct.e} de ${tAct.p} actividades</div></div>
+      <div style="text-align:right;"><div style="font-size:38px;font-weight:700;color:#F29622;line-height:1;">${pc(gAct)}</div><div style="font-size:11px;color:#b9c6dc;margin-top:4px;">Cumplimiento ${yAct} · meta 90 %</div><div style="font-size:11px;color:#b9c6dc;">Acumulado · ${tAct.e} de ${tAct.p} actividades</div></div>
     </div>
     <div style="padding:16px 24px 22px;">
       <div style="display:flex;justify-content:flex-end;"><button class="ghost" id="indCerrar">Cerrar</button></div>
@@ -15362,14 +15362,14 @@ function paCalc(grupos, corteGlob, sem){
       let pr = 0, ok = 0; const aP = [0,0], aD = [0,0];
       for(let i=lo;i<lo+24;i++){ if(a.p[i]==='1'){ anualP++; if(a.h[i]==='1') anualD++; if(i<=corte){ pr++; const h = a.h[i]==='1'; if(h) ok++; aP[(i-lo)<12?0:1]++; if(h) aD[(i-lo)<12?0:1]++; qP[(i-lo)<12?0:1]++; if(h) qD[(i-lo)<12?0:1]++; } } }
       const aq = [0,1].map(k=>aP[k] ? aD[k]/aP[k] : null), aqv = aq.filter(v=>v!==null);
-      const pct = aqv.length ? aqv.reduce((x,y)=>x+y,0)/aqv.length : null; if(pct!==null){ sumA += pct; nA++; }
+      const pct = (aP[0]+aP[1]) ? (aD[0]+aD[1])/(aP[0]+aP[1]) : null; if(pct!==null){ sumA += pct; nA++; }
       totP += pr; totD += ok; vencidas += pr-ok;
       (a.rp||[]).forEach(x=>{ if(x.o>=lo && x.o<=corte){ repN++; if(x.d) repOk++; } });
       return {a, pr, ok, pct, aP, aD};
     });
     const gP = acts.reduce((t,x)=>t+x.pr,0), gD = acts.reduce((t,x)=>t+x.ok,0);
     const gq = [0,1].map(k=>{ const p = acts.reduce((t,x)=>t+x.aP[k],0); return p ? acts.reduce((t,x)=>t+x.aD[k],0)/p : null; }), gqv = gq.filter(v=>v!==null);
-    const pct = gqv.length ? gqv.reduce((x,y)=>x+y,0)/gqv.length : null; if(pct!==null){ sumG += pct; nG++; }
+    const gp = gq.length ? acts.reduce((t,x)=>t+x.aP[0]+x.aP[1],0) : 0, pct = gp ? acts.reduce((t,x)=>t+x.aD[0]+x.aD[1],0)/gp : null; if(pct!==null){ sumG += pct; nG++; }
     gs.push({g, acts, pct, gq});
   });
   const qv = [0,1].map(k=>qP[k] ? qD[k]/qP[k] : null), qvv = qv.filter(v=>v!==null);
