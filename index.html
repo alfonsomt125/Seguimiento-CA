@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-26-1329';
+const APP_VERSION = '2026-11-26-1504';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -12573,10 +12573,16 @@ function renderRecibidos(){
     <td>${a.fechaActa?fmtDate(a.fechaActa):'—'}</td>
     <td>${a.alcance?`<span style="font-weight:600;color:${a.alcance==='Parcial'?'var(--orange)':'#2e9e6b'};">${a.alcance}</span>`:'—'}</td>
     <td>${a.firmado?`✅ <small>${esc(a.codigoFirma)}</small>`:'<span style="color:var(--orange);">Sin firmar</span>'}</td>
-    <td style="white-space:nowrap;"><button class="ghost" data-rsedit="${a.id}">Abrir</button> <button class="ghost" data-rspdf="${a.id}">👁 PDF</button> <button class="ghost danger" data-rsdel="${a.id}">Eliminar</button></td></tr>`).join('')
+    <td style="white-space:nowrap;"><button class="ghost" data-rsedit="${a.id}">Abrir</button> ${a.alcance==='Parcial'?`<button class="ghost" data-rsnuevo="${a.id}" title="Crea otra acta con los mismos datos y la fecha de hoy">+ Nuevo recibido</button> `:''}<button class="ghost" data-rspdf="${a.id}">👁 PDF</button> <button class="ghost danger" data-rsdel="${a.id}">Eliminar</button></td></tr>`).join('')
     : '<tr><td colspan="8" class="empty">Aún no hay actas registradas.</td></tr>';
   const tb = document.getElementById('rsBody');
   tb.querySelectorAll('[data-rsedit]').forEach(b=>b.addEventListener('click', ()=>abrirRS(b.dataset.rsedit)));
+  tb.querySelectorAll('[data-rsnuevo]').forEach(b=>b.addEventListener('click', async ()=>{
+    const o = recibidosSatisfaccion.find(x=>x.id===b.dataset.rsnuevo); if(!o) return;
+    const n = {...o, id:uid(), numero:rsSiguienteNumero(), fechaActa:todayISO(), alcance:'Completo', origen:o.numero, firmado:false, codigoFirma:'', fechaFirma:'', createdAt:new Date().toISOString()};
+    recibidosSatisfaccion.push(n); await saveRecibidos(); renderRecibidos(); abrirRS(n.id);
+    showToast(`Se creó ${n.numero} a partir de ${o.numero}. Revisa el alcance y las fechas.`);
+  }));
   tb.querySelectorAll('[data-rspdf]').forEach(b=>b.addEventListener('click', ()=>pdfRS(recibidosSatisfaccion.find(a=>a.id===b.dataset.rspdf))));
   tb.querySelectorAll('[data-rsdel]').forEach(b=>b.addEventListener('click', async ()=>{
     if(!await customConfirm('¿Eliminar esta acta?')) return;
