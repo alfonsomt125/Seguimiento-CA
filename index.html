@@ -5366,7 +5366,7 @@ function renderResumen(){
     }
     const pc = v=>v===null||v===undefined?'—':Math.round(v*100)+'%';
     const avg = arr=>{ const v = arr.filter(x=>x!==null&&x!==undefined); return v.length ? v.reduce((x,y)=>x+y,0)/v.length : null; };
-    const anual = R0 ? avg([...R0.qv,...R1.qv]) : null;
+    const anual = R0 ? ((R0.qP[0]+R0.qP[1]+R1.qP[0]+R1.qP[1]) ? (R0.qD[0]+R0.qD[1]+R1.qD[0]+R1.qD[1])/(R0.qP[0]+R0.qP[1]+R1.qP[0]+R1.qP[1]) : null) : null;
     const mx = Math.max(1,...pm.filter((_,i)=>resPlanSem===null||(i<6?0:1)===resPlanSem));
     const colsP = `<div class="rd-col">${pm.map((n,i)=>resPlanSem!==null&&(i<6?0:1)!==resPlanSem?'':`<div class="${i===mHoy?'hoy':''}"><em>${n?dm[i]+'/'+n:''}</em><i style="height:${n/mx*70}%;background:${n&&dm[i]===n?'#1F7A5C':''}"></i>${PA_MESES[i][0]}</div>`).join('')}</div>`;
     const semRow = (t,R,k)=>`<div class="rd-row rd-pick${resPlanSem===k?' sel':''}" data-rps="${k}" title="Toca para ver sus áreas"><span class="n">${t}</span><div class="rd-trk"><i style="width:${(R.global||0)*100}%"></i></div><b>${pc(R.global)}</b></div>`;
@@ -10443,7 +10443,7 @@ document.getElementById('btnHorPdf').addEventListener('click', ()=>{
 /* ===== Aviso de nueva versión =====
    APP_VERSION cambia en cada publicación. La página se vuelve a descargar sin caché cada 5 minutos y al
    volver a la pestaña; si trae otra versión, muestra un aviso para actualizar. */
-const APP_VERSION = '2026-11-24-1930';
+const APP_VERSION = '2026-11-25-1955';
 (function(){
   const tag = document.createElement('div');
   tag.textContent = 'v ' + APP_VERSION;
@@ -15248,7 +15248,7 @@ function renderIndicador(){
   const RO = ['I','II','III','IV'], SUM = a => a.reduce((x,y)=>x+y,0);
   const DA = {}; anos.forEach(y=>{ DA[y] = indDatos(y); });
   const yTot = y => DA[y].reduce((t,d)=>{ if(d){ t.p += SUM(d.p); t.e += SUM(d.e); } return t; },{p:0,e:0});
-  const yPct = y => { const vq = DA[y].map(indPct).filter(v=>v!==null); return vq.length ? vq.reduce((a,b)=>a+b,0)/vq.length : null; };
+  const yPct = y => { const t = yTot(y); return t.p ? t.e/t.p : null; };
   const yAct = anos.slice().reverse().find(y=>yTot(y).p>0) || anos[anos.length-1];
   const tAct = yTot(yAct), gAct = yPct(yAct);
   const card = (k,v)=>`<div style="border:1px solid #e3e8f2;border-radius:10px;padding:8px 10px;min-width:0;"><div style="font-size:10.5px;color:#5b6b85;">${k}</div><b style="font-size:12.5px;color:#011632;">${v}</b></div>`;
@@ -15274,7 +15274,7 @@ function renderIndicador(){
     const ult = qs[qs.length-1], PU = SUM(ult.d.p), EU = SUM(ult.d.e), falta = Math.max(0, Math.ceil(PU*.9) - EU), pend = t.p - t.e;
     const prev = DA[y-1] && indPct(DA[y-1][ult.q]);
     const sig = ult.q<3 ? 'el trimestre '+y+'-'+RO[ult.q+1] : 'el año '+(y+1);
-    const logros = `Se ejecutaron ${t.e} de ${t.p} actividades programadas (promedio trimestral ${Math.round(g*100)} %). La meta institucional del 90 %, que se mide por trimestre, ${ok.length?`se cumplió en ${lista(ok)}`:'no se alcanzó en ningún trimestre'}${seg.length>1?`; el segmento con mejor ejecución fue ${sMej.n} (${Math.round(sMej.v*100)} %)`:''}${prev!==null&&prev!==undefined?`; el trimestre ${RO[ult.q]} ${ult.v>=prev?'mejora':'baja'} frente al mismo de ${y-1} (${Math.round(prev*100)} % → ${Math.round(ult.v*100)} %)`:''}.`;
+    const logros = `Se ejecutaron ${t.e} de ${t.p} actividades programadas (${Math.round(g*100)} %). La meta institucional del 90 %, que se mide por trimestre, ${ok.length?`se cumplió en ${lista(ok)}`:'no se alcanzó en ningún trimestre'}${seg.length>1?`; el segmento con mejor ejecución fue ${sMej.n} (${Math.round(sMej.v*100)} %)`:''}${prev!==null&&prev!==undefined?`; el trimestre ${RO[ult.q]} ${ult.v>=prev?'mejora':'baja'} frente al mismo de ${y-1} (${Math.round(prev*100)} % → ${Math.round(ult.v*100)} %)`:''}.`;
     const mejora = !no.length ? 'Todos los trimestres cumplen la meta; mantener el nivel alcanzado.' : `${no.length>1?'No alcanzaron':'No alcanzó'} la meta ${lista(no)}. ${seg.length>1&&sPeor.v<.9?`${sPeor.n[0].toUpperCase()+sPeor.n.slice(1)} es el segmento con menor ejecución (${sPeor.E} de ${sPeor.P}, ${Math.round(sPeor.v*100)} %). `:''}Hay ${pend} actividades programadas sin ejecutar.`;
     const proy = `${ult.v<.9&&falta>0?`Para alcanzar la meta en ${RO[ult.q]} faltan ${falta} actividades por ejecutar. `:''}Para ${sig}: ${ult.q<3&&pend>0?`priorizar las pendientes (reprogramándolas dentro del mismo periodo)${seg.length>1&&sPeor.v<.9?`, empezando por ${sPeor.n}`:''}, `:`${seg.length>1&&sPeor.v<.9?`reforzar ${sPeor.n}, `:''}`}asegurar los recursos antes de cada trimestre y programar solo lo que pueda ejecutarse para sostener el 90 % o más en cada trimestre.`;
     return `<b style="color:#2e9e6b">Lo logrado.</b> ${logros}<br><b style="color:#c98a00">Por mejorar.</b> ${mejora}<br><b style="color:#03459B">Proyección.</b> ${proy}`;
@@ -15373,7 +15373,8 @@ function paCalc(grupos, corteGlob, sem){
     gs.push({g, acts, pct, gq});
   });
   const qv = [0,1].map(k=>qP[k] ? qD[k]/qP[k] : null), qvv = qv.filter(v=>v!==null);
-  return {gs, qv, global: qvv.length ? qvv.reduce((x,y)=>x+y,0)/qvv.length : null, totP, totD, vencidas, anualP, anualD, repN, repOk};
+  const sP = qP[0]+qP[1], sD = qD[0]+qD[1];
+  return {gs, qv, qP, qD, global: sP ? sD/sP : null, totP, totD, vencidas, anualP, anualD, repN, repOk};
 }
 const paPct = v => v===null ? '—' : Math.round(v*100)+'%';
 const paTQ = (gq,sem) => gq ? `T${sem*2+1} ${paPct(gq[0])} · T${sem*2+2} ${paPct(gq[1])}` : '';
